@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/haisum/smpp"
-	"github.com/haisum/smpp/queue"
+	"bitbucket.com/codefreak/hsmpp/smpp"
+	"bitbucket.com/codefreak/hsmpp/smpp/queue"
 	"log"
 	"net/http"
 	"strconv"

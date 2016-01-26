@@ -2,8 +2,8 @@ package main
 
 import (
 	smppstatus "github.com/fiorix/go-smpp/smpp"
-	"github.com/haisum/smpp"
-	"github.com/haisum/smpp/queue"
+	"bitbucket.com/codefreak/hsmpp/smpp"
+	"bitbucket.com/codefreak/hsmpp/smpp/queue"
 	"github.com/streadway/amqp"
 	"log"
 	"os"

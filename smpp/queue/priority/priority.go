@@ -1,7 +1,7 @@
 package priority
 
 import (
-	"github.com/haisum/smpp/queue"
+	"bitbucket.com/codefreak/hsmpp/smpp/queue"
 )
 
 const (
