@@ -1,0 +1,9 @@
+---
+- hosts: all
+  roles:
+    - rabbitmq
+    - mongo
+    #- build
+    #- copybinaries
+    #- iptables
+    - supervisor

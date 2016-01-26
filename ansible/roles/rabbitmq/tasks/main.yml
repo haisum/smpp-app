@@ -1,0 +1,15 @@
+---
+- name: Add erlang repo
+  yumrepo: name="Erlang-solutions" baseurl="http://packages.erlang-solutions.com/rpm/centos/$releasever/$basearch" gpgcheck=yes gpgkey="http://packages.erlang-solutions.com/rpm/erlang_solutions.asc" enabled=yes
+
+- name: Install erlang
+  yum: state="present" name="erlang" disablerepo=epel
+
+- name: Get rabbitmq package
+  get_url: url="https://www.rabbitmq.com/releases/rabbitmq-server/v3.6.0/rabbitmq-server-3.6.0-1.noarch.rpm" dest="/tmp/rabbitmq.rpm" 
+
+- name: Download and install rabbitmq package
+  yum: state=present name="/tmp/rabbitmq.rpm"
+
+- name: Make rabbitmq service available on start up
+  service: name="rabbitmq-server" enabled=yes

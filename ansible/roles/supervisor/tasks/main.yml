@@ -1,0 +1,9 @@
+---
+- name: Install python-setuptools
+  yum: name="python-setuptools" state="present"
+
+- name: Install supervisor package
+  command: easy_install supervisor
+
+- name: Copy supervisor template
+  template: src="supervisord.conf.template.j2" dest="{{project_home}}/supervisord.conf.template"

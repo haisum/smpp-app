@@ -1,0 +1,4 @@
+.vagrant
+smppworker
+httpserver
+*.log

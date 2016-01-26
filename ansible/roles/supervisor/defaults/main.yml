@@ -1,0 +1,8 @@
+---
+user: "vagrant"
+project_home: "/home/{{user}}/smpp/"
+supervisor_log_file: "{{project_home}}/supervisord.log"
+supervisor_user: "{{user}}"
+supervisor_group: "{{user}}"
+supervisor_admin: "admin"
+supervisor_admin_password: "qwerty"

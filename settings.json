@@ -1,0 +1,26 @@
+{
+	"Connections" : [
+		{
+			"url": "",
+			"user": "",
+			"password": "",
+			"size" : 5,
+			"time" : 1, 
+			"prefixes" : [
+				"032",
+				"030"
+			]
+		},
+		{
+			"url": "",
+			"user": "",
+			"password": "",
+			"size" : 10,
+			"time" : 1,
+			"prefixes" : [
+				"032",
+				"030"
+			]
+		}
+	]
+}
