@@ -59,12 +59,12 @@ func gracefulShutdown(r *queue.Rabbit) {
 
 func main() {
 	var r queue.Rabbit
-	err := r.Init("amqp://guest:guest@localhost:5672/", "TestExchange")
+	err := r.Init("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 5)
 	if err != nil {
 		os.Exit(1)
 	}
 	routingKeys := []string{"firstroutingkey"}
-	err = r.Bind("smppworker_queue", routingKeys, handler)
+	err = r.Bind("smppworker-queue", routingKeys, handler)
 	if err != nil {
 		os.Exit(1)
 	}

@@ -12,17 +12,19 @@ type Handler func(<-chan amqp.Delivery, chan error)
 
 // Holds host and port to connect to for rabbit mq and other properties for internal use
 type Rabbit struct {
-	url  string
-	ex   string
-	conn *amqp.Connection
-	ch   *amqp.Channel
-	msgs <-chan amqp.Delivery
-	done chan error
+	url    string
+	ex     string
+	pCount int
+	conn   *amqp.Connection
+	ch     *amqp.Channel
+	msgs   <-chan amqp.Delivery
+	done   chan error
 }
 
-func (r *Rabbit) Init(url string, ex string) error {
+func (r *Rabbit) Init(url string, ex string, pCount int) error {
 	r.url = url
 	r.ex = ex
+	r.pCount = pCount
 	r.done = make(chan error)
 	err := r.connect()
 	if err != nil {
@@ -55,6 +57,7 @@ func (r *Rabbit) connect() error {
 	}
 	log.Print("Connection Successful. Creating channel.")
 	r.ch, err = r.conn.Channel()
+	r.ch.Qos(r.pCount, 0, false)
 	if err != nil {
 		log.Printf("[ERROR]: Failed to create channel. Error: %s.", r.url, err)
 	}

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/queue"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -29,7 +29,7 @@ func matchKey(keys []string, str string, noKey string) string {
 
 func main() {
 	var q queue.Rabbit
-	err := q.Init("amqp://guest:guest@localhost:5672/", "TestExchange")
+	err := q.Init("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 5)
 	if err != nil {
 		log.Fatalf("Error occured in connecting to rabbitmq. %s", err)
 	}
