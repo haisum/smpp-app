@@ -16,8 +16,14 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 
 	var s smpp.Sender
 	s.Connect("192.168.0.105:2775", "smppclient1", "password")
+	count := 0
 	for d := range deliveries {
+		if count == 5 {
+			<-time.Tick(time.Second * 1)
+			count = 0
+		}
 		go send(&s, d)
+		count++
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
