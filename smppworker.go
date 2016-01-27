@@ -1,9 +1,9 @@
 package main
 
 import (
-	smppstatus "github.com/fiorix/go-smpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/queue"
+	smppstatus "github.com/fiorix/go-smpp/smpp"
 	"github.com/streadway/amqp"
 	"log"
 	"os"
@@ -64,7 +64,7 @@ func main() {
 		os.Exit(1)
 	}
 	routingKeys := []string{"firstroutingkey"}
-	err = r.BindQueues(routingKeys, handler)
+	err = r.Bind("smppworker_queue", routingKeys, handler)
 	if err != nil {
 		os.Exit(1)
 	}

@@ -96,12 +96,11 @@ func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
 	return err
 }
 
-// Binds to queues defined by routing keys on exchange supplied to Init method.
+// Binds to queue defined by routing keys on exchange supplied to Init method.
 // This method must be called after Init, otherwise it would fail.
-// kia ma chudaye hai yeh
-func (r *Rabbit) BindQueues(keys []string, handler Handler) error {
+func (r *Rabbit) Bind(qName string, keys []string, handler Handler) error {
 	q, err := r.ch.QueueDeclare(
-		"",    // name
+		qName, // name
 		false, // durable
 		false, // delete when usused
 		true,  // exclusive
