@@ -1,26 +1,30 @@
 {
-	"Connections" : [
-		{
-			"url": "",
-			"user": "",
-			"password": "",
-			"size" : 5,
-			"time" : 1, 
-			"prefixes" : [
-				"032",
-				"030"
-			]
-		},
-		{
-			"url": "",
-			"user": "",
-			"password": "",
-			"size" : 10,
-			"time" : 1,
-			"prefixes" : [
-				"032",
-				"030"
-			]
-		}
-	]
+    "AmqpUrl": "amqp://guest:guest@localhost:5672/",
+    "Conns": [
+        {
+            "Id": "du-1",
+            "Url": "192.168.0.105:2775",
+            "User": "smppclient1",
+            "Passwd": "password",
+            "Pfxs": [
+                "+97105",
+                "+97106"
+            ],
+            "Size": 5,
+            "Time": 1
+        },
+        {
+            "Id": "du-2",
+            "Url": "192.168.0.105:2775",
+            "User": "smppclient2",
+            "Passwd": "password",
+            "Pfxs": [
+                "+97107",
+                "+97108"
+            ],
+            "Size": 5,
+            "Time": 1
+        }
+    ],
+    "DefaultPfx": "+97105"
 }

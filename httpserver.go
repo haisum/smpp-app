@@ -4,7 +4,7 @@ import (
 	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/queue"
 	"encoding/json"
-	"log"
+	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,7 +12,7 @@ import (
 
 type SendResponse struct {
 	Errors  []string
-	Request smpp.QueueItem
+	Request queue.QueueItem
 }
 
 // Given a list of strings and a string,
@@ -28,14 +28,20 @@ func matchKey(keys []string, str string, noKey string) string {
 }
 
 func main() {
-	var q queue.Rabbit
-	err := q.Init("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 5)
+	var c smpp.Config
+	err := c.LoadFile("settings.json")
 	if err != nil {
-		log.Fatalf("Error occured in connecting to rabbitmq. %s", err)
+		log.Fatal("Can't continue without settings. Exiting.")
 	}
 
-	keys := []string{"firstroutingkey"}
-	noKey := "firstroutingkey"
+	var q queue.Rabbit
+	err = q.Init(c.AmqpUrl, "smppworker-exchange", 5)
+	if err != nil {
+		log.WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
+	}
+
+	keys := c.GetKeys()
+	noKey := c.DefaultPfx
 
 	http.HandleFunc("/api/send", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
@@ -53,7 +59,7 @@ func main() {
 		dst := r.PostFormValue("Dst")
 		src := r.PostFormValue("Src")
 
-		resp.Request = smpp.QueueItem{
+		resp.Request = queue.QueueItem{
 			Msg:      msg,
 			Dst:      dst,
 			Src:      src,
@@ -72,7 +78,10 @@ func main() {
 		if len(resp.Errors) > 0 {
 			respJson, err := json.Marshal(resp)
 			if err != nil {
-				log.Printf("Error in formatting json response %v. Error: %s", resp, err)
+				log.WithFields(log.Fields{
+					"resp": resp,
+					"err":  err,
+				}).Error("Error in formatting json response.")
 				http.Error(w, "Internal server error. See logs for details.", http.StatusInternalServerError)
 				return
 			}
@@ -81,7 +90,10 @@ func main() {
 		}
 		rJson, err := resp.Request.ToJSON()
 		if err != nil {
-			log.Printf("Error in formatting json request %v. Error: %s", resp.Request, err)
+			log.WithFields(log.Fields{
+				"resp.Request": resp.Request,
+				"err":          err,
+			}).Error("Error in formatting json request.")
 			http.Error(w, "Internal server error. See logs for details.", http.StatusInternalServerError)
 			return
 		}
@@ -93,7 +105,10 @@ func main() {
 
 		b, err := json.Marshal(resp)
 		if err != nil {
-			log.Printf("Error in unmarshalling response: %v. %s", resp, err)
+			log.WithFields(log.Fields{
+				"resp": resp,
+				"err":  err,
+			}).Error("Error in unmarshalling response.")
 			http.Error(w, "Internal server error occured. See http server logs for details.", http.StatusInternalServerError)
 			return
 		}
@@ -101,10 +116,10 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_, err = w.Write(b)
 		if err != nil {
-			log.Printf("Error in writing response. %s", err)
+			log.WithFields(log.Fields{"err": err, "b": b}).Error("Error in writing response.")
 			http.Error(w, "Internal server error occured. See http server logs for details.", http.StatusInternalServerError)
 		}
 	})
-	log.Printf("Listening on http://127.0.0.1:8080.")
+	log.Info("Listening on http://127.0.0.1:8080.")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

@@ -5,21 +5,24 @@ import (
 	"bitbucket.com/codefreak/hsmpp/smpp/queue"
 	smppstatus "github.com/fiorix/go-smpp/smpp"
 	"github.com/streadway/amqp"
-	"log"
+	log "github.com/Sirupsen/logrus"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 )
 
+var c smpp.Config
+var conn smpp.Conn
+
 func handler(deliveries <-chan amqp.Delivery, done chan error) {
 
 	var s smpp.Sender
-	s.Connect("192.168.0.105:2775", "smppclient1", "password")
+	s.Connect(conn.Url, conn.User, conn.Passwd)
 	count := 0
 	for d := range deliveries {
-		if count == 5 {
-			<-time.Tick(time.Second * 1)
+		if count == conn.Size {
+			<-time.Tick(time.Second * time.Duration(conn.Time))
 			count = 0
 		}
 		go send(&s, d)
@@ -30,7 +33,7 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 }
 
 func send(s *smpp.Sender, d amqp.Delivery) {
-	var i smpp.QueueItem
+	var i queue.QueueItem
 	err := i.FromJSON(d.Body)
 	if err != nil {
 		log.Printf("Failed in parsing json %s. Error: %s", string(d.Body[:]), err)
@@ -64,13 +67,23 @@ func gracefulShutdown(r *queue.Rabbit) {
 }
 
 func main() {
+	err := c.LoadFile("settings.json")
+	if err != nil {
+		log.Fatal("Can't continue without settings. Exiting.")
+	}
+	connid := ""
+
+	conn, err = c.GetConn(connid)
+	if err != nil {
+		log.Fatalf("Couldn't get connection %s from settings.", connid)
+	}
+
 	var r queue.Rabbit
-	err := r.Init("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 5)
+	err = r.Init(c.AmqpUrl, "smppworker-exchange", 5)
 	if err != nil {
 		os.Exit(1)
 	}
-	routingKeys := []string{"firstroutingkey"}
-	err = r.Bind("smppworker-queue", routingKeys, handler)
+	err = r.Bind("smppworker-queue", conn.Pfxs, handler)
 	if err != nil {
 		os.Exit(1)
 	}

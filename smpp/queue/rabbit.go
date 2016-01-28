@@ -1,8 +1,8 @@
 package queue
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
-	"log"
 )
 
 type Priority uint8
@@ -37,11 +37,11 @@ func (r *Rabbit) Init(url string, ex string, pCount int) error {
 //call this with defer after calling Init function
 func (r *Rabbit) Close() error {
 	if err := r.conn.Close(); err != nil {
-		log.Printf("AMQP connection close error: %s", err)
+		log.WithField("err", err).Error("AMQP connection close error")
 		return err
 	}
 
-	defer log.Printf("AMQP shutdown OK")
+	defer log.Info("AMQP shutdown OK")
 
 	// wait for handle() to exit
 	return <-r.done
@@ -52,14 +52,20 @@ func (r *Rabbit) connect() error {
 	var err error
 	r.conn, err = amqp.Dial(r.url)
 	if err != nil {
-		log.Printf("[ERROR]: Failed to connect to rabbit mq on url %s. Error: %s.", r.url, err)
+		log.WithFields(log.Fields{
+			"url": r.url,
+			"err": err,
+		}).Error("Failed to connect to rabbit mq.")
 		return err
 	}
-	log.Print("Connection Successful. Creating channel.")
+	log.Info("Connection Successful. Creating channel.")
 	r.ch, err = r.conn.Channel()
 	r.ch.Qos(r.pCount, 0, false)
 	if err != nil {
-		log.Printf("[ERROR]: Failed to create channel. Error: %s.", r.url, err)
+		log.WithFields(log.Fields{
+			"url": r.url,
+			"err": err,
+		}).Error("Failed to create channel.")
 	}
 	return err
 }
@@ -76,7 +82,10 @@ func (r *Rabbit) startExchange() error {
 		nil,      // arguments
 	)
 	if err != nil {
-		log.Printf("Error in creating exchange named %s. Error: %s.", r.ex, err)
+		log.WithFields(log.Fields{
+			"ex":  r.ex,
+			"err": err,
+		}).Error("Error in creating exchange.")
 	}
 	return err
 }
@@ -94,7 +103,10 @@ func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
 			Priority:    uint8(priority),
 		})
 	if err != nil {
-		log.Printf("Error in publishing message %s. Error: %s", msg, err)
+		log.WithFields(log.Fields{
+			"msg": msg,
+			"err": err,
+		}).Error("Error in publishing message.")
 	}
 	return err
 }
@@ -104,19 +116,22 @@ func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
 func (r *Rabbit) Bind(qName string, keys []string, handler Handler) error {
 	q, err := r.ch.QueueDeclare(
 		qName, // name
-		false, // durable
+		true,  // durable
 		false, // delete when usused
-		true,  // exclusive
+		false, // exclusive
 		false, // no-wait
 		nil,   // arguments
 	)
 	if err != nil {
-		log.Printf("Failed to create a queue. Error: %s", err)
+		log.WithField("err", err).Error("Failed to create a queue.")
 		return err
 	}
 	for _, k := range keys {
-		log.Printf("Binding queue %s to exchange %s with routing key %s",
-			q.Name, r.ex, k)
+		log.WithFields(log.Fields{
+			"q.Name": q.Name,
+			"r.ex":   r.ex,
+			"k":      k,
+		}).Info("Binding queue.")
 		err = r.ch.QueueBind(
 			q.Name, // queue name
 			k,      // routing key
@@ -124,7 +139,12 @@ func (r *Rabbit) Bind(qName string, keys []string, handler Handler) error {
 			false,
 			nil)
 		if err != nil {
-			log.Printf("Failed to bind queue %s to exchange %s with routing key %k. Error: %s", q.Name, r.ex, k, err)
+			log.WithFields(log.Fields{
+				"q.Name": q.Name,
+				"r.ex":   r.ex,
+				"k":      k,
+				"err":    err,
+			}).Error("Failed to bind queue.")
 			return err
 		}
 	}
@@ -139,7 +159,7 @@ func (r *Rabbit) Bind(qName string, keys []string, handler Handler) error {
 		nil,    // args
 	)
 	if err != nil {
-		log.Printf("Failed to register a consumer. Error: %s", err)
+		log.WithField("err", err).Error("Failed to register a consumer.")
 	}
 	go handler(r.msgs, r.done)
 	return err

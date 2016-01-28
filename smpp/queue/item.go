@@ -1,4 +1,4 @@
-package smpp
+package queue
 
 import (
 	"encoding/json"
