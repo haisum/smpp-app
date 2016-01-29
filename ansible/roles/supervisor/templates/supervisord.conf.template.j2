@@ -12,6 +12,7 @@ username={{supervisor_admin}}              ; (default is no username (open serve
 password={{supervisor_admin_password}}     ; (default is no password (open server))
 
 [supervisord]
+childlogdir={{supervisor_child_log_dir}}
 logfile={{supervisor_log_file}} ; (main log file;default $CWD/supervisord.log)
 logfile_maxbytes=50MB        ; (max main logfile bytes b4 rotation;default 50MB)
 logfile_backups=10           ; (num of main logfile rotation backups;default 10)
@@ -37,6 +38,7 @@ serverurl=unix:///tmp/supervisor.sock ; use a unix:// URL  for a unix socket
 
 [program:{{.Name}}]
 command={{.Command}}
+redirect_stderr=true
 
 {{end}}
 

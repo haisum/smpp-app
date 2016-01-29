@@ -7,10 +7,12 @@
   with_items:
     - httpserver
     - smppworker
+    - smppctl
     - "settings.json"
 
 - name: Make binaries executable
   file: path="{{project_home}}/{{item}}" mode="0750"
   with_items:
     - httpserver
+    - smppctl
     - smppworker

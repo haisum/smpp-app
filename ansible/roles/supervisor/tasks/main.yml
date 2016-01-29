@@ -4,6 +4,12 @@
 
 - name: Install supervisor package
   command: easy_install supervisor
+  register: supervisor
+  changed_when: supervisor.stdout.find("is already the active version") == -1
+
+- name: Make sure log dir exists
+  file: path="{{supervisor_child_log_dir}}" state="directory"
+  become: no
 
 - name: Copy supervisor template
   template: src="supervisord.conf.template.j2" dest="{{project_home}}/supervisord.conf.template"
