@@ -2,3 +2,4 @@
 smppworker
 httpserver
 *.log
+smppctl

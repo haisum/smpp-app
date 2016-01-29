@@ -122,9 +122,8 @@ func main() {
 		}
 	})
 	log.WithFields(log.Fields{
-		"HttpIp":   c.HttpIp,
-		"HttpPort": c.HttpPort,
+		"HttpPort": c.HttpsPort,
 	}).Info("Listening for http requests.")
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%d", c.HttpIp, c.HttpPort), nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", c.HttpsPort), nil))
 }
