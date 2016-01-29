@@ -3,9 +3,10 @@ package main
 import (
 	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/queue"
+	"flag"
+	log "github.com/Sirupsen/logrus"
 	smppstatus "github.com/fiorix/go-smpp/smpp"
 	"github.com/streadway/amqp"
-	log "github.com/Sirupsen/logrus"
 	"os"
 	"os/signal"
 	"syscall"
@@ -67,15 +68,21 @@ func gracefulShutdown(r *queue.Rabbit) {
 }
 
 func main() {
+	connid := flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
+	flag.Parse()
+	if *connid == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
+
 	err := c.LoadFile("settings.json")
 	if err != nil {
 		log.Fatal("Can't continue without settings. Exiting.")
 	}
-	connid := ""
 
-	conn, err = c.GetConn(connid)
+	conn, err = c.GetConn(*connid)
 	if err != nil {
-		log.Fatalf("Couldn't get connection %s from settings.", connid)
+		log.WithField("connid", *connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")
 	}
 
 	var r queue.Rabbit
