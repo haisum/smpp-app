@@ -22,8 +22,7 @@ type Config struct {
 	AmqpUrl    string
 	Conns      []Conn
 	DefaultPfx string
-	HttpIp     string
-	HttpPort   string
+	HttpsPort  string
 }
 
 func (c *Config) GetKeys() []string {
