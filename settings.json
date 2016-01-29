@@ -1,5 +1,7 @@
 {
     "AmqpUrl": "amqp://guest:guest@localhost:5672/",
+    "HttpIp" : "127.0.0.1",
+    "HttpPort": "8080",
     "Conns": [
         {
             "Id": "du-1",

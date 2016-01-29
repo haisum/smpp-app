@@ -4,6 +4,7 @@ import (
 	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/queue"
 	"encoding/json"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"strconv"
@@ -120,6 +121,10 @@ func main() {
 			http.Error(w, "Internal server error occured. See http server logs for details.", http.StatusInternalServerError)
 		}
 	})
-	log.Info("Listening on http://127.0.0.1:8080.")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.WithFields(log.Fields{
+		"HttpIp":   c.HttpIp,
+		"HttpPort": c.HttpPort,
+	}).Info("Listening for http requests.")
+
+	log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%d", c.HttpIp, c.HttpPort), nil))
 }
