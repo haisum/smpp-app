@@ -7,3 +7,4 @@
 
 - name: Copy supervisor template
   template: src="supervisord.conf.template.j2" dest="{{project_home}}/supervisord.conf.template"
+  become: no

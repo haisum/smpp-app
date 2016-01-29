@@ -1,9 +1,11 @@
 ---
 - hosts: all
+  become: no
+  roles:
+    - copyfiles
+
+- hosts: all
+  become: yes
   roles:
     - rabbitmq
-    - mongo
-    #- build
-    #- copybinaries
-    #- iptables
     - supervisor

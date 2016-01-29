@@ -1,0 +1,16 @@
+---
+- name: Make sure project home exists
+  file: path="{{project_home}}" state=directory
+
+- name: Copy files
+  copy: src="{{playbook_dir}}/../{{item}}" dest="{{project_home}}"
+  with_items:
+    - httpserver
+    - smppworker
+    - "settings.json"
+
+- name: Make binaries executable
+  file: path="{{project_home}}/{{item}}" mode="0750"
+  with_items:
+    - httpserver
+    - smppworker

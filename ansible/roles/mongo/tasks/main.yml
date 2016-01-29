@@ -1,9 +1,0 @@
----
-- name: Add mongodb repo
-  yumrepo: name="MongoDB-Repository" baseurl="https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/3.2/x86_64/" gpgcheck=no enabled=yes
-
-- name: Install mongodb packages
-  yum: name="mongodb-org"
-
-- name: Make mongodb available on startup
-  service: name="mongod" enabled=yes
