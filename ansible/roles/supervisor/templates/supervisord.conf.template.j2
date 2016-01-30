@@ -7,7 +7,7 @@ chown={{supervisor_user}}:{{supervisor_group}}       ; socket file uid:gid owner
 ;password=123               ; (default is no password (open server))
 
 [inet_http_server]         ; inet (TCP) server disabled by default
-port=*:9001        ; (ip_address:port specifier, *:port for all iface)
+port=127.0.0.1:9001        ; (ip_address:port specifier, *:port for all iface)
 username={{supervisor_admin}}              ; (default is no username (open server))
 password={{supervisor_admin_password}}     ; (default is no password (open server))
 
