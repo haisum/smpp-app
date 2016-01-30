@@ -14,3 +14,8 @@
 - name: Copy supervisor template
   template: src="supervisord.conf.template.j2" dest="{{project_home}}/supervisord.conf.template"
   become: no
+
+- name: Start services
+  command: chdir="{{project_home}}" ./smppctl start all
+  register: started
+  changed_when: started.stdout.find("started") != -1
