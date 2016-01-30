@@ -36,7 +36,7 @@ func main() {
 	}
 
 	var q queue.Rabbit
-	err = q.Init(c.AmqpUrl, "smppworker-exchange", 5)
+	err = q.Init(c.AmqpUrl, "smppworker-exchange", 1)
 	if err != nil {
 		log.WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
 	}
@@ -103,7 +103,12 @@ func main() {
 			http.Error(w, "Internal server error. See logs for details.", http.StatusInternalServerError)
 			return
 		}
-		err = q.Publish(matchKey(keys, resp.Request.Dst, noKey), rJson, queue.Priority(p))
+		key := matchKey(keys, resp.Request.Dst, noKey)
+		log.WithFields(log.Fields{
+			"key": key,
+			"Dst": resp.Request.Dst,
+		}).Info("Sending message.")
+		err = q.Publish(key, rJson, queue.Priority(p))
 		if err != nil {
 			http.Error(w, "Internal server error occured. See http server logs for details.", http.StatusInternalServerError)
 			return

@@ -8,7 +8,8 @@ import (
 )
 
 type Sender struct {
-	Tx *smpp.Transmitter
+	Tx        *smpp.Transmitter
+	Connected chan bool
 }
 
 func (s *Sender) Connect(addr, user, passwd string) {
@@ -18,6 +19,7 @@ func (s *Sender) Connect(addr, user, passwd string) {
 		Passwd: passwd,
 	}
 	conn := s.Tx.Bind() // make persistent connection.
+	s.Connected = make(chan bool, 1)
 	go func() {
 		for c := range conn {
 			st := c.Status()
@@ -27,6 +29,8 @@ func (s *Sender) Connect(addr, user, passwd string) {
 				<-time.After(time.Second * 10)
 				go s.Connect(addr, user, passwd)
 				return
+			} else {
+				s.Connected <- true
 			}
 		}
 	}()

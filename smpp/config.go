@@ -12,7 +12,7 @@ type Conn struct {
 	Id     string
 	Url    string
 	User   string
-	Size   int
+	Size   int32
 	Time   int
 	Passwd string
 	Pfxs   []string

@@ -7,8 +7,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 	smppstatus "github.com/fiorix/go-smpp/smpp"
 	"github.com/streadway/amqp"
+	"math"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -17,23 +19,27 @@ var c smpp.Config
 var conn smpp.Conn
 
 func handler(deliveries <-chan amqp.Delivery, done chan error) {
-
 	var s smpp.Sender
 	s.Connect(conn.Url, conn.User, conn.Passwd)
-	count := 0
+	log.Info("Waiting for smpp connection")
+	<-s.Connected
+	var count int32
+	count = 0
 	for d := range deliveries {
-		if count == conn.Size {
-			<-time.Tick(time.Second * time.Duration(conn.Time))
-			count = 0
+		cur := atomic.LoadInt32(&count)
+		if cur >= conn.Size {
+			log.Info("Waiting one second before proceeding")
+			time.Sleep(time.Second * time.Duration(conn.Time))
+			log.Info("Resuming messages")
+			atomic.SwapInt32(&count, 0)
 		}
-		go send(&s, d)
-		count++
+		go send(&s, d, &count)
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
 }
 
-func send(s *smpp.Sender, d amqp.Delivery) {
+func send(s *smpp.Sender, d amqp.Delivery, count *int32) {
 	var i queue.QueueItem
 	err := i.FromJSON(d.Body)
 	if err != nil {
@@ -41,7 +47,14 @@ func send(s *smpp.Sender, d amqp.Delivery) {
 		d.Nack(false, true)
 		return
 	}
-	_, err = s.Send(i.Src, i.Dst, i.Msg)
+	charLimit := 160
+	if i.Enc == "UCS" {
+		charLimit = 60
+	}
+	res := float64(float64(len(i.Msg)) / float64(charLimit))
+	total := math.Ceil(res)
+	atomic.AddInt32(count, int32(total))
+	_, err = s.Send(i.Src, i.Dst, i.Enc, i.Msg)
 	if err != nil {
 		log.Printf("Couldn't send message from %s to %s", i.Src, i.Dst)
 		if err != smppstatus.ErrNotConnected {
@@ -49,10 +62,14 @@ func send(s *smpp.Sender, d amqp.Delivery) {
 		} else {
 			d.Nack(false, true)
 		}
+	} else {
+		log.WithFields(log.Fields{
+			"Src": i.Src,
+			"Dst": i.Dst,
+			"Enc": i.Enc,
+		}).Info("Sent message.")
+		d.Ack(false)
 	}
-	m, _ := time.Now().MarshalText()
-	log.Printf("%s\n", m)
-	d.Ack(false)
 }
 
 func gracefulShutdown(r *queue.Rabbit) {
@@ -86,11 +103,12 @@ func main() {
 	}
 
 	var r queue.Rabbit
-	err = r.Init(c.AmqpUrl, "smppworker-exchange", 5)
+	err = r.Init(c.AmqpUrl, "smppworker-exchange", 1)
 	if err != nil {
 		os.Exit(1)
 	}
-	err = r.Bind("smppworker-queue", conn.Pfxs, handler)
+	log.WithField("Pfxs", conn.Pfxs).Info("Binding to routing keys")
+	err = r.Bind(conn.Pfxs, handler)
 	if err != nil {
 		os.Exit(1)
 	}
