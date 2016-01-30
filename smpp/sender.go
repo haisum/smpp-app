@@ -32,11 +32,17 @@ func (s *Sender) Connect(addr, user, passwd string) {
 	}()
 }
 
-func (s *Sender) Send(src, dst, msg string) (string, error) {
+func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
+	var text pdutext.Codec
+	if enc == "ucs" {
+		text = pdutext.UCS2(msg)
+	} else {
+		text = pdutext.Latin1(msg)
+	}
 	sm, err := s.Tx.Submit(&smpp.ShortMessage{
 		Src:      src,
 		Dst:      dst,
-		Text:     pdutext.Raw(msg),
+		Text:     text,
 		Register: smpp.NoDeliveryReceipt,
 	})
 	if err != nil {
@@ -44,6 +50,7 @@ func (s *Sender) Send(src, dst, msg string) (string, error) {
 			log.WithFields(log.Fields{
 				"Src":  src,
 				"Dst":  dst,
+				"Enc":  enc,
 				"Text": msg,
 			}).Error("Error in processing sms request because smpp is not connected.")
 		}

@@ -59,11 +59,13 @@ func main() {
 		msg := r.PostFormValue("Msg")
 		dst := r.PostFormValue("Dst")
 		src := r.PostFormValue("Src")
+		enc := r.PostFormValue("Enc")
 
 		resp.Request = queue.QueueItem{
 			Msg:      msg,
 			Dst:      dst,
 			Src:      src,
+			Enc:      enc,
 			Priority: p,
 		}
 
@@ -75,6 +77,9 @@ func main() {
 		}
 		if src == "" {
 			resp.Errors = append(resp.Errors, "Source is empty.")
+		}
+		if enc != "ucs" && enc != "latin" {
+			resp.Errors = append(resp.Errors, "Encoding can either be \"latin\" or \"ucs\".")
 		}
 		if len(resp.Errors) > 0 {
 			respJson, err := json.Marshal(resp)

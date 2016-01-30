@@ -96,6 +96,7 @@ func tpl() {
 }
 
 func main() {
+	log.SetOutput(os.Stdout)
 	if len(os.Args) < 2 {
 		log.Fatalf("Usage: \n%s [status|start (all|httpserver|smppworker)|restart (all|httpserver|smppworker)|stop (all|httpserver|smppworker)]", os.Args[0])
 	}

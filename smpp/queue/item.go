@@ -10,6 +10,7 @@ type QueueItem struct {
 	Msg      string
 	Dst      string
 	Src      string
+	Enc      string
 	Priority int
 }
 
