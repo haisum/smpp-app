@@ -43,7 +43,7 @@ redirect_stderr=true
 {{end}}
 
 [group:{{.Name}}]
-programs={{range $index, $element := .Programs}}{{if $index}},{{end}}{{$element.Name}}
+programs={{range $index, $element := .Programs}}{{if $index}},{{end}}{{$element.Name}}{{end}}
 priority=999
 
 {{end}}

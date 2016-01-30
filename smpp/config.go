@@ -22,7 +22,7 @@ type Config struct {
 	AmqpUrl    string
 	Conns      []Conn
 	DefaultPfx string
-	HttpsPort  string
+	HttpsPort  int
 }
 
 func (c *Config) GetKeys() []string {
@@ -46,9 +46,6 @@ func (c *Config) GetConn(id string) (Conn, error) {
 
 func (c *Config) LoadJSON(data []byte) error {
 	err := json.Unmarshal(data, c)
-	if err == nil {
-		log.WithField("Config", c).Info("Loaded configuration")
-	}
 	return err
 }
 
