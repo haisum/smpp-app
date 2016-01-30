@@ -16,7 +16,7 @@
   become: no
 
 - name: Make sure socket file exists for supervisor
-  file: path="/tmp/supervisor.sock" mode="0755"
+  file: path="/tmp/supervisor.sock" mode="0755" state=touch
   become: no
 
 - name: Start supervisord

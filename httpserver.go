@@ -173,5 +173,5 @@ func main() {
 		"HttpPort": c.HttpsPort,
 	}).Info("Listening for http requests.")
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", c.HttpsPort), nil))
+	log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", c.HttpsPort), "cert.pem", "server.key", nil))
 }

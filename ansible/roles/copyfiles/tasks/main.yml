@@ -8,7 +8,9 @@
     - httpserver
     - smppworker
     - smppctl
-    - "settings.json"
+    - settings.json
+    - cert.pem
+    - server.key
 
 - name: Make binaries executable
   file: path="{{project_home}}/{{item}}" mode="0750"
