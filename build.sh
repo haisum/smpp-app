@@ -5,4 +5,4 @@
 	go build  smppctl.go 
 } || exit 1
 cd ansible
-ansible-playbook -i hosts -u vagrant --private-key=/home/haisum/.vagrant.d/insecure_private_key  setup.yml
+ansible-playbook -vvv -i hosts -u vagrant --private-key=/home/haisum/.vagrant.d/insecure_private_key  setup.yml

@@ -19,6 +19,13 @@
   file: path="/tmp/supervisor.sock" mode="0755"
   become: no
 
+- name: Start supervisord
+  command: chdir="{{project_home}}" supervisord
+  ignore_errors: yes
+  register: supervisord
+  become: no
+  changed_when: supervisord.stderr and supervisord.stderr.find("Error") == -1
+
 - name: Start services
   command: chdir="{{project_home}}" ./smppctl start all
   register: started

@@ -16,5 +16,5 @@
 - name: Download and install rabbitmq package
   yum: state=present name="/tmp/rabbitmq.rpm"
 
-- name: Make rabbitmq service available on start up
-  service: name="rabbitmq-server" enabled=yes
+- name: Start and make rabbitmq service available on start up
+  service: name="rabbitmq-server" enabled=yes state=started
