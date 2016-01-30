@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 type SendResponse struct {
 	Errors  []string
 	Request queue.QueueItem
+	File    string
 }
 
 // Given a list of strings and a string,
@@ -52,14 +54,58 @@ func main() {
 		var resp SendResponse
 		resp.Errors = make([]string, 0)
 
-		p, err := strconv.Atoi(r.PostFormValue("Priority"))
+		p, err := strconv.Atoi(r.FormValue("Priority"))
 		if err != nil {
 			resp.Errors = append(resp.Errors, "Priority not set correctly.")
 		}
-		msg := r.PostFormValue("Msg")
-		dst := r.PostFormValue("Dst")
-		src := r.PostFormValue("Src")
-		enc := r.PostFormValue("Enc")
+
+		dsts := make([]string, 0)
+
+		f, h, err := r.FormFile("File")
+		if err == nil {
+			resp.File = h.Filename
+			log.Info("Parsing file")
+			defer f.Close()
+			content, err := ioutil.ReadAll(f)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"f":   f,
+					"h":   h,
+					"err": err,
+				}).Error("Couldn't read file")
+				resp.Errors = append(resp.Errors, "Couldn't read file")
+			} else {
+				csv := strings.Split(string(content[:]), ",")
+				for _, x := range csv {
+					if len(x) > 15 {
+						log.WithField("x", x).Error("Chunk too long to be a number. Skipping.")
+					} else {
+						dsts = append(dsts, strings.TrimRight(strings.TrimLeft(x, "\n \t"), "\n \t"))
+					}
+				}
+			}
+		}
+		msg := r.FormValue("Msg")
+		dst := r.FormValue("Dst")
+		src := r.FormValue("Src")
+		enc := r.FormValue("Enc")
+
+		if dst != "" && len(dsts) == 0 {
+			dsts = append(dsts, dst)
+		}
+
+		if msg == "" {
+			resp.Errors = append(resp.Errors, "Message is empty.")
+		}
+		if len(dsts) == 0 {
+			resp.Errors = append(resp.Errors, "Destination is empty or file couldn't be loaded.")
+		}
+		if src == "" {
+			resp.Errors = append(resp.Errors, "Source is empty.")
+		}
+		if enc != "ucs" && enc != "latin" {
+			resp.Errors = append(resp.Errors, "Encoding can either be \"latin\" or \"ucs\".")
+		}
 
 		resp.Request = queue.QueueItem{
 			Msg:      msg,
@@ -67,19 +113,6 @@ func main() {
 			Src:      src,
 			Enc:      enc,
 			Priority: p,
-		}
-
-		if msg == "" {
-			resp.Errors = append(resp.Errors, "Message is empty.")
-		}
-		if dst == "" {
-			resp.Errors = append(resp.Errors, "Destination is empty.")
-		}
-		if src == "" {
-			resp.Errors = append(resp.Errors, "Source is empty.")
-		}
-		if enc != "ucs" && enc != "latin" {
-			resp.Errors = append(resp.Errors, "Encoding can either be \"latin\" or \"ucs\".")
 		}
 		if len(resp.Errors) > 0 {
 			respJson, err := json.Marshal(resp)
@@ -94,26 +127,31 @@ func main() {
 			http.Error(w, string(respJson[:]), http.StatusBadRequest)
 			return
 		}
-		rJson, err := resp.Request.ToJSON()
-		if err != nil {
+		for _, d := range dsts {
+			resp.Request.Dst = d
+			rJson, err := resp.Request.ToJSON()
+			if err != nil {
+				log.WithFields(log.Fields{
+					"resp.Request": resp.Request,
+					"err":          err,
+				}).Error("Error in formatting json request.")
+				http.Error(w, "Internal server error. See logs for details.", http.StatusInternalServerError)
+				return
+			}
+			key := matchKey(keys, resp.Request.Dst, noKey)
 			log.WithFields(log.Fields{
-				"resp.Request": resp.Request,
-				"err":          err,
-			}).Error("Error in formatting json request.")
-			http.Error(w, "Internal server error. See logs for details.", http.StatusInternalServerError)
-			return
+				"key": key,
+				"Dst": resp.Request.Dst,
+			}).Info("Sending message.")
+			err = q.Publish(key, rJson, queue.Priority(p))
+			if err != nil {
+				http.Error(w, "Internal server error occured. See http server logs for details.", http.StatusInternalServerError)
+				return
+			}
 		}
-		key := matchKey(keys, resp.Request.Dst, noKey)
-		log.WithFields(log.Fields{
-			"key": key,
-			"Dst": resp.Request.Dst,
-		}).Info("Sending message.")
-		err = q.Publish(key, rJson, queue.Priority(p))
-		if err != nil {
-			http.Error(w, "Internal server error occured. See http server logs for details.", http.StatusInternalServerError)
-			return
+		if resp.File != "" {
+			resp.Request.Dst = ""
 		}
-
 		b, err := json.Marshal(resp)
 		if err != nil {
 			log.WithFields(log.Fields{
