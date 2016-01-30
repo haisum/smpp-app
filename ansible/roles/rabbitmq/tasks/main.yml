@@ -1,6 +1,9 @@
 ---
 - name: Add erlang repo
-  yumrepo: name="Erlang-solutions" baseurl="http://packages.erlang-solutions.com/rpm/centos/$releasever/$basearch" gpgcheck=yes gpgkey="http://packages.erlang-solutions.com/rpm/erlang_solutions.asc" enabled=yes
+  command: rpm --import http://packages.erlang-solutions.com/rpm/erlang_solutions.asc
+
+- name: Install erlang repo
+  copy: src="erlang-solutions.repo" dest="/etc/yum.repos.d/erlang-solutions.repo"  
 
 - name: Install erlang
   yum: state="present" name="erlang" disablerepo=epel
