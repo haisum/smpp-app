@@ -15,6 +15,10 @@
   template: src="supervisord.conf.template.j2" dest="{{project_home}}/supervisord.conf.template"
   become: no
 
+- name: Make sure socket file exists for supervisor
+  file: path="/tmp/supervisor.sock" mode="0755"
+  become: no
+
 - name: Start services
   command: chdir="{{project_home}}" ./smppctl start all
   register: started

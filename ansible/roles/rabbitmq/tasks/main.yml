@@ -1,6 +1,8 @@
 ---
 - name: Add erlang repo
   command: rpm --import http://packages.erlang-solutions.com/rpm/erlang_solutions.asc
+  register: rpmimport
+  changed_when: rpmimport.stdout != ""
 
 - name: Install erlang repo
   copy: src="erlang-solutions.repo" dest="/etc/yum.repos.d/erlang-solutions.repo"  
