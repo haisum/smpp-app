@@ -12,6 +12,8 @@ import (
 	"strings"
 )
 
+// Response that's sent back to client when they send
+// a request to /api/send
 type SendResponse struct {
 	Errors  []string
 	Request queue.QueueItem

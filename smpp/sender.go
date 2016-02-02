@@ -7,11 +7,19 @@ import (
 	"time"
 )
 
+// Holds smpp transmitter and a channel indicating when smpp connection
+// becomes connected.
 type Sender struct {
 	Tx        *smpp.Transmitter
 	Connected chan bool
 }
 
+// Connects to smpp server given by addr, user and passwd
+// This function triggers a go routine that checks for smpp connection status
+// If connection is lost at some point, this retries after 10 seconds.
+// Channel Sender.Connected is filled if smpp gets connected. Other routines
+// that depend on smpp connection should wait for Connected channel before
+// proceeding.
 func (s *Sender) Connect(addr, user, passwd string) {
 	s.Tx = &smpp.Transmitter{
 		Addr:   addr,
@@ -25,7 +33,10 @@ func (s *Sender) Connect(addr, user, passwd string) {
 			st := c.Status()
 			log.WithField("st", st).Info("SMPP connection status changed.")
 			if st != smpp.Connected {
-				log.Error("SMPP connection failed. Retrying in 10 seconds...")
+				log.WithFields(log.Fields{
+					"st":  st,
+					"err": c.Error(),
+				}).Error("SMPP connection failed. Retrying in 10 seconds...")
 				<-time.After(time.Second * 10)
 				go s.Connect(addr, user, passwd)
 				return
@@ -36,6 +47,8 @@ func (s *Sender) Connect(addr, user, passwd string) {
 	}()
 }
 
+// Send sends sms to given source and destination with latin as encoding
+// or ucs if asked.
 func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
 	var text pdutext.Codec
 	if enc == "ucs" {

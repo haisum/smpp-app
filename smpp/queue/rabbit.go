@@ -5,6 +5,12 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// Higher number means higher priority. Four priorities are supported:
+// priority.Low
+// priority.Normal
+// priority.Medium
+// priority.High
+// Passing other numbers doesn't halt program but may result in undefined behavior
 type Priority uint8
 
 // Handler is a function which accepts deliveries channel and a error channel to indicate when processing is done
@@ -21,6 +27,8 @@ type Rabbit struct {
 	done   chan error
 }
 
+// Takes url, exchange name and burst count as argument and
+// creates a new exchange, on rabbitmq url
 func (r *Rabbit) Init(url string, ex string, pCount int) error {
 	r.url = url
 	r.ex = ex

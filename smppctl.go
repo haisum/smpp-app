@@ -10,16 +10,19 @@ import (
 	"text/template"
 )
 
+// Group represents group of related processes
 type Group struct {
 	Name     string
 	Programs []Program
 }
 
+// Program's name and command to start
 type Program struct {
 	Name    string
 	Command string
 }
 
+// Data passed to supervisord.conf template
 type TplData struct {
 	Groups []Group
 }
