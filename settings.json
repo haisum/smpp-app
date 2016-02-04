@@ -12,7 +12,20 @@
                 "+97106"
             ],
             "Size": 5,
-            "Time": 1
+            "Time": 1,
+            "Fields" : {
+                "ServiceType":          "",
+                "SourceAddrTON":        0,
+                "SourceAddrNPI":        0,
+                "DestAddrTON":          0,
+                "DestAddrNPI":          0,
+                "ESMClass":             0,
+                "ProtocolID":           0,
+                "PriorityFlag" :        0,
+                "ScheduleDeliveryTime" : "",
+                "ReplaceIfPresentFlag" : 0,
+                "SMDefaultMsgID"       :0
+            }
         },
         {
             "Id": "du-2",

@@ -25,7 +25,11 @@ func TestMain(m *testing.M) {
                 "+97106"
             ],
             "Size": 5,
-            "Time": 1
+            "Time": 1,
+			"Fields" : {
+				"ServiceType" : "sample service",
+				"SourceAddrTON" : 2
+			}
         },
         {
             "Id": "du-2",
@@ -100,7 +104,7 @@ func TestConfig_LoadJSON(t *testing.T) {
 	}
 	var newc Config
 	newc.LoadJSON(data)
-	if newc.DefaultPfx != c.DefaultPfx || newc.AmqpUrl != c.AmqpUrl {
+	if newc.DefaultPfx != c.DefaultPfx || newc.AmqpUrl != c.AmqpUrl || newc.Conns[0].Fields.SourceAddrTON != 2 {
 		t.Fatalf("Loaded config doesn't match")
 	}
 }

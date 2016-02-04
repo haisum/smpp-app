@@ -12,6 +12,7 @@ import (
 type Sender struct {
 	Tx        *smpp.Transmitter
 	Connected chan bool
+	Fields    PduFields
 }
 
 // Connects to smpp server given by addr, user and passwd
@@ -57,10 +58,21 @@ func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
 		text = pdutext.Latin1(msg)
 	}
 	sm, err := s.Tx.Submit(&smpp.ShortMessage{
-		Src:      src,
-		Dst:      dst,
-		Text:     text,
-		Register: smpp.NoDeliveryReceipt,
+		Src:                  src,
+		Dst:                  dst,
+		Text:                 text,
+		ServiceType:          s.Fields.ServiceType,
+		SourceAddrTON:        s.Fields.SourceAddrTON,
+		SourceAddrNPI:        s.Fields.SourceAddrNPI,
+		DestAddrTON:          s.Fields.DestAddrTON,
+		DestAddrNPI:          s.Fields.DestAddrNPI,
+		ESMClass:             s.Fields.ESMClass,
+		ProtocolID:           s.Fields.ProtocolID,
+		PriorityFlag:         s.Fields.PriorityFlag,
+		ScheduleDeliveryTime: s.Fields.ScheduleDeliveryTime,
+		ReplaceIfPresentFlag: s.Fields.ReplaceIfPresentFlag,
+		SMDefaultMsgID:       s.Fields.SMDefaultMsgID,
+		Register:             smpp.NoDeliveryReceipt,
 	})
 	if err != nil {
 		if err == smpp.ErrNotConnected {
@@ -69,6 +81,7 @@ func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
 				"Dst":  dst,
 				"Enc":  enc,
 				"Text": msg,
+				"sm":   sm,
 			}).Error("Error in processing sms request because smpp is not connected.")
 		}
 		return "", err

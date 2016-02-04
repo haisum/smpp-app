@@ -36,6 +36,7 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 		"c":      c,
 	}).Info("Dialing")
 	s.Connect(conn.Url, conn.User, conn.Passwd)
+	s.Fields = conn.Fields
 	log.Info("Waiting for smpp connection")
 	<-s.Connected
 	var count int32
@@ -80,10 +81,11 @@ func send(s *smpp.Sender, d amqp.Delivery, count *int32) {
 	_, err = s.Send(i.Src, i.Dst, i.Enc, i.Msg)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"Src": i.Src,
-			"Dst": i.Dst,
-			"err": err,
-			"Enc": i.Enc,
+			"Src":    i.Src,
+			"Dst":    i.Dst,
+			"err":    err,
+			"Enc":    i.Enc,
+			"Fields": s.Fields,
 		}).Error("Couldn't send message.")
 		if err != smppstatus.ErrNotConnected {
 			d.Reject(false)
@@ -92,9 +94,10 @@ func send(s *smpp.Sender, d amqp.Delivery, count *int32) {
 		}
 	} else {
 		log.WithFields(log.Fields{
-			"Src": i.Src,
-			"Dst": i.Dst,
-			"Enc": i.Enc,
+			"Src":    i.Src,
+			"Dst":    i.Dst,
+			"Enc":    i.Enc,
+			"Fields": s.Fields,
 		}).Info("Sent message.")
 		d.Ack(false)
 	}
