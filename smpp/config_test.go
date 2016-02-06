@@ -11,8 +11,8 @@ import (
 func TestMain(m *testing.M) {
 	settings := []byte(`
 {
-    "AmqpUrl": "amqp://guest:guest@localhost:5672/",
-    "HttpsPort": 8443,
+    "AmqpURL": "amqp://guest:guest@localhost:5672/",
+    "HTTPSPort": 8443,
     "Conns": [
         {
             "Id": "du-1",
@@ -104,7 +104,7 @@ func TestConfig_LoadJSON(t *testing.T) {
 	}
 	var newc Config
 	newc.LoadJSON(data)
-	if newc.DefaultPfx != c.DefaultPfx || newc.AmqpUrl != c.AmqpUrl || newc.Conns[0].Fields.SourceAddrTON != 2 {
+	if newc.DefaultPfx != c.DefaultPfx || newc.AmqpURL != c.AmqpURL || newc.Conns[0].Fields.SourceAddrTON != 2 {
 		t.Fatalf("Loaded config doesn't match")
 	}
 }

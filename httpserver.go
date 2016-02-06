@@ -12,11 +12,11 @@ import (
 	"strings"
 )
 
-// Response that's sent back to client when they send
+// SendResponse represdents response that's sent back to client when they send
 // a request to /api/send
 type SendResponse struct {
 	Errors  []string
-	Request queue.QueueItem
+	Request queue.Item
 	File    string
 }
 
@@ -40,7 +40,7 @@ func main() {
 	}
 
 	var q queue.Rabbit
-	err = q.Init(c.AmqpUrl, "smppworker-exchange", 1)
+	err = q.Init(c.AmqpURL, "smppworker-exchange", 1)
 	if err != nil {
 		log.WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
 	}
@@ -61,7 +61,7 @@ func main() {
 			resp.Errors = append(resp.Errors, "Priority not set correctly.")
 		}
 
-		dsts := make([]string, 0)
+		var dsts []string
 
 		f, h, err := r.FormFile("File")
 		if err == nil {
@@ -109,7 +109,7 @@ func main() {
 			resp.Errors = append(resp.Errors, "Encoding can either be \"latin\" or \"ucs\".")
 		}
 
-		resp.Request = queue.QueueItem{
+		resp.Request = queue.Item{
 			Msg:      msg,
 			Dst:      dst,
 			Src:      src,
@@ -117,7 +117,7 @@ func main() {
 			Priority: p,
 		}
 		if len(resp.Errors) > 0 {
-			respJson, err := json.Marshal(resp)
+			respJSON, err := json.Marshal(resp)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"resp": resp,
@@ -126,12 +126,12 @@ func main() {
 				http.Error(w, "Internal server error. See logs for details.", http.StatusInternalServerError)
 				return
 			}
-			http.Error(w, string(respJson[:]), http.StatusBadRequest)
+			http.Error(w, string(respJSON[:]), http.StatusBadRequest)
 			return
 		}
 		for _, d := range dsts {
 			resp.Request.Dst = d
-			rJson, err := resp.Request.ToJSON()
+			respJSON, err := resp.Request.ToJSON()
 			if err != nil {
 				log.WithFields(log.Fields{
 					"resp.Request": resp.Request,
@@ -145,7 +145,7 @@ func main() {
 				"key": key,
 				"Dst": resp.Request.Dst,
 			}).Info("Sending message.")
-			err = q.Publish(key, rJson, queue.Priority(p))
+			err = q.Publish(key, respJSON, queue.Priority(p))
 			if err != nil {
 				http.Error(w, "Internal server error occured. See http server logs for details.", http.StatusInternalServerError)
 				return
@@ -172,8 +172,8 @@ func main() {
 		}
 	})
 	log.WithFields(log.Fields{
-		"HttpPort": c.HttpsPort,
+		"HttpPort": c.HTTPSPort,
 	}).Info("Listening for http requests.")
 
-	log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", c.HttpsPort), "cert.pem", "server.key", nil))
+	log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", c.HTTPSPort), "cert.pem", "server.key", nil))
 }

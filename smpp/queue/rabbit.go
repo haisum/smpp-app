@@ -5,6 +5,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// Priority represents priority of a message
 // Higher number means higher priority. Four priorities are supported:
 // priority.Low
 // priority.Normal
@@ -16,7 +17,7 @@ type Priority uint8
 // Handler is a function which accepts deliveries channel and a error channel to indicate when processing is done
 type Handler func(<-chan amqp.Delivery, chan error)
 
-// Holds host and port to connect to for rabbit mq and other properties for internal use
+// Rabbit holds host and port to connect to for rabbit mq and other properties for internal use
 type Rabbit struct {
 	url    string
 	ex     string
@@ -27,7 +28,7 @@ type Rabbit struct {
 	done   chan error
 }
 
-// Takes url, exchange name and burst count as argument and
+// Init takes url, exchange name and burst count as argument and
 // creates a new exchange, on rabbitmq url
 func (r *Rabbit) Init(url string, ex string, pCount int) error {
 	r.url = url
@@ -42,6 +43,7 @@ func (r *Rabbit) Init(url string, ex string, pCount int) error {
 	return err
 }
 
+//Close closes the connection to rabbitmq
 //call this with defer after calling Init function
 func (r *Rabbit) Close() error {
 	if err := r.conn.Close(); err != nil {
@@ -98,7 +100,7 @@ func (r *Rabbit) startExchange() error {
 	return err
 }
 
-// Takes exchange name, routing key and message as parameters and publishes message
+// Publish takes exchange name, routing key and message as parameters and publishes message
 func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
 	err := r.ch.Publish(
 		r.ex,  // exchange
@@ -119,7 +121,7 @@ func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
 	return err
 }
 
-// Binds to queue defined by routing keys on exchange supplied to Init method.
+// Bind binds to queue defined by routing keys on exchange supplied to Init method.
 // This method must be called after Init, otherwise it would fail.
 func (r *Rabbit) Bind(keys []string, handler Handler) error {
 	q, err := r.ch.QueueDeclare(

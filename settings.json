@@ -1,6 +1,6 @@
 {
-    "AmqpUrl": "amqp://guest:guest@localhost:5672/",
-    "HttpsPort": 8443,
+    "AmqpURL": "amqp://guest:guest@localhost:5672/",
+    "HTTPSPort": 8443,
     "Conns": [
         {
             "Id": "du-1",

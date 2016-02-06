@@ -16,13 +16,13 @@ type Group struct {
 	Programs []Program
 }
 
-// Program's name and command to start
+// Program represents program's name and command to start
 type Program struct {
 	Name    string
 	Command string
 }
 
-// Data passed to supervisord.conf template
+// TplData represents data passed to supervisord.conf template
 type TplData struct {
 	Groups []Group
 }
@@ -33,7 +33,7 @@ func (t *TplData) load(c smpp.Config) {
 		log.WithField("err", err).Fatal("Couldn't determine path of app. Weird, very weird.")
 	}
 
-	workers := make([]Program, 0)
+	var workers []Program
 	for _, w := range c.Conns {
 		p := Program{
 			Name:    fmt.Sprintf("smppworker-%s", w.Id),

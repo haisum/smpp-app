@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Holds smpp transmitter and a channel indicating when smpp connection
+// Sender holds smpp transmitter and a channel indicating when smpp connection
 // becomes connected.
 type Sender struct {
 	Tx        *smpp.Transmitter
@@ -15,7 +15,7 @@ type Sender struct {
 	Fields    PduFields
 }
 
-// Connects to smpp server given by addr, user and passwd
+// Connect connects to smpp server given by addr, user and passwd
 // This function triggers a go routine that checks for smpp connection status
 // If connection is lost at some point, this retries after 10 seconds.
 // Channel Sender.Connected is filled if smpp gets connected. Other routines

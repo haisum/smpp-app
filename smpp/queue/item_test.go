@@ -2,8 +2,8 @@ package queue
 
 import "testing"
 
-func TestQueueItem_FromJSON(t *testing.T) {
-	var q QueueItem
+func TestItem_FromJSON(t *testing.T) {
+	var q Item
 	err := q.FromJSON([]byte(`
 			{
 				"Msg" : "Hello world",
@@ -32,8 +32,8 @@ func TestQueueItem_FromJSON(t *testing.T) {
 		t.Fatalf("Error didn't return on malformed json")
 	}
 }
-func TestQueueItem_ToJSON(t *testing.T) {
-	q := QueueItem{
+func TestItem_ToJSON(t *testing.T) {
+	q := Item{
 		Msg:      "Hello world",
 		Enc:      "UCS",
 		Priority: 11,

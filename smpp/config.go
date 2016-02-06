@@ -9,22 +9,22 @@ import (
 
 // Config represents all settings defined in settings file
 type Config struct {
-	AmqpUrl    string
+	AmqpURL    string
 	Conns      []Conn
 	DefaultPfx string
-	HttpsPort  int
+	HTTPSPort  int
 }
 
-// Returns all prefixes defined by all the connections
+// GetKeys returns all prefixes defined by all the connections
 func (c *Config) GetKeys() []string {
-	keys := make([]string, 0)
+	var keys []string
 	for _, con := range c.Conns {
 		keys = append(keys, con.Pfxs...)
 	}
 	return keys
 }
 
-// Returns a connection with given id
+// GetConn returns a connection with given id
 func (c *Config) GetConn(id string) (Conn, error) {
 	var con Conn
 	for _, con = range c.Conns {
@@ -36,13 +36,13 @@ func (c *Config) GetConn(id string) (Conn, error) {
 	return con, fmt.Errorf("Couldn't find key for connection %s.", id)
 }
 
-// Loads config from json byte stream
+// LoadJSON loads config from json byte stream
 func (c *Config) LoadJSON(data []byte) error {
 	err := json.Unmarshal(data, c)
 	return err
 }
 
-// Loads config from given file
+// LoadFile loads config from given file
 func (c *Config) LoadFile(filename string) error {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {

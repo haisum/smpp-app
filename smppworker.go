@@ -61,7 +61,7 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 // This function also increments count by ceil of number of characters divided by number of characters per message.
 // When count reaches a certain number defined per connection, worker waits for time t defined in configuration before resuming operations.
 func send(s *smpp.Sender, d amqp.Delivery, count *int32) {
-	var i queue.QueueItem
+	var i queue.Item
 	err := i.FromJSON(d.Body)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -126,7 +126,7 @@ func bind() {
 	}
 
 	var r queue.Rabbit
-	err = r.Init(c.AmqpUrl, "smppworker-exchange", 1)
+	err = r.Init(c.AmqpURL, "smppworker-exchange", 1)
 	if err != nil {
 		os.Exit(1)
 	}
