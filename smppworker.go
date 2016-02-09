@@ -29,13 +29,13 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 	conn, _ := c.GetConn(*connid)
 	var s smpp.Sender
 	log.WithFields(log.Fields{
-		"Url":    conn.Url,
+		"URL":    conn.URL,
 		"User":   conn.User,
 		"Passwd": conn.Passwd,
 		"Conn":   conn,
 		"c":      c,
 	}).Info("Dialing")
-	s.Connect(conn.Url, conn.User, conn.Passwd)
+	s.Connect(conn.URL, conn.User, conn.Passwd)
 	s.Fields = conn.Fields
 	log.Info("Waiting for smpp connection")
 	<-s.Connected

@@ -2,8 +2,8 @@ package smpp
 
 // Conn represents configuration specific to a single smpp connection
 type Conn struct {
-	Id     string
-	Url    string
+	ID     string
+	URL    string
 	User   string
 	Size   int32
 	Time   int

@@ -15,8 +15,8 @@ func TestMain(m *testing.M) {
     "HTTPSPort": 8443,
     "Conns": [
         {
-            "Id": "du-1",
-            "Url": "192.168.0.105:2775",
+            "ID": "du-1",
+            "URL": "192.168.0.105:2775",
             "User": "smppclient1",
             "Passwd": "password",
             "Pfxs": [
@@ -32,8 +32,8 @@ func TestMain(m *testing.M) {
 			}
         },
         {
-            "Id": "du-2",
-            "Url": "192.168.0.105:2775",
+            "ID": "du-2",
+            "URL": "192.168.0.105:2775",
             "User": "smppclient2",
             "Passwd": "password",
             "Pfxs": [
