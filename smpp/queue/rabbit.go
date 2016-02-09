@@ -17,15 +17,35 @@ type Priority uint8
 // Handler is a function which accepts deliveries channel and a error channel to indicate when processing is done
 type Handler func(<-chan amqp.Delivery, chan error)
 
+// Channel interface abstracts amqp.Channel for depdendency injection for testing
+type Channel interface {
+	Qos(prefetchCount, prefetchSize int, global bool) error
+	ExchangeDeclare(name, kind string, durable, autoDelete, internal, noWait bool, args amqp.Table) error
+	Publish(exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error
+	QueueDeclare(name string, durable, autoDelete, exclusive, noWait bool, args amqp.Table) (amqp.Queue, error)
+	Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args amqp.Table) (<-chan amqp.Delivery, error)
+	QueueBind(name, key, exchange string, noWait bool, args amqp.Table) error
+}
+
+// Connection interface abstracts amqp.Connection for testing
+type Connection interface {
+	Close() error
+	Channel() (*amqp.Channel, error)
+}
+
 // Rabbit holds host and port to connect to for rabbit mq and other properties for internal use
 type Rabbit struct {
 	url    string
 	ex     string
 	pCount int
-	conn   *amqp.Connection
-	ch     *amqp.Channel
-	msgs   <-chan amqp.Delivery
-	done   chan error
+	// In non-test use this should be set to &amqp.Connection{} when declaring Rabbit struct
+	Conn Connection
+	// In non-test use this should be set to &amqp.Channel{} when declaring Rabbit struct
+	Ch Channel
+	// In non-test use this should be set to amqp.Dial when declaring Rabbit struct
+	Dial func(url string) (*amqp.Connection, error)
+	msgs <-chan amqp.Delivery
+	done chan error
 }
 
 // Init takes url, exchange name and burst count as argument and
@@ -46,7 +66,7 @@ func (r *Rabbit) Init(url string, ex string, pCount int) error {
 //Close closes the connection to rabbitmq
 //call this with defer after calling Init function
 func (r *Rabbit) Close() error {
-	if err := r.conn.Close(); err != nil {
+	if err := r.Conn.Close(); err != nil {
 		log.WithField("err", err).Error("AMQP connection close error")
 		return err
 	}
@@ -60,7 +80,7 @@ func (r *Rabbit) Close() error {
 // Connects and makes channel to given amqp url
 func (r *Rabbit) connect() error {
 	var err error
-	r.conn, err = amqp.Dial(r.url)
+	r.Conn, err = r.Dial(r.url)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"url": r.url,
@@ -69,8 +89,8 @@ func (r *Rabbit) connect() error {
 		return err
 	}
 	log.Info("Connection Successful. Creating channel.")
-	r.ch, err = r.conn.Channel()
-	r.ch.Qos(r.pCount, 0, false)
+	r.Ch, err = r.Conn.Channel()
+	r.Ch.Qos(r.pCount, 0, false)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"url": r.url,
@@ -82,7 +102,7 @@ func (r *Rabbit) connect() error {
 
 // Declares and Starts exchange ex.This can be called multiple times and wont re-create exchange once created. This uses direct exchange. See https://www.rabbitmq.com/tutorials/tutorial-four-go.html for details.
 func (r *Rabbit) startExchange() error {
-	err := r.ch.ExchangeDeclare(
+	err := r.Ch.ExchangeDeclare(
 		r.ex,     // name
 		"direct", // type
 		true,     // durable
@@ -102,7 +122,7 @@ func (r *Rabbit) startExchange() error {
 
 // Publish takes exchange name, routing key and message as parameters and publishes message
 func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
-	err := r.ch.Publish(
+	err := r.Ch.Publish(
 		r.ex,  // exchange
 		key,   // routing key
 		false, // mandatory
@@ -124,7 +144,7 @@ func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
 // Bind binds to queue defined by routing keys on exchange supplied to Init method.
 // This method must be called after Init, otherwise it would fail.
 func (r *Rabbit) Bind(keys []string, handler Handler) error {
-	q, err := r.ch.QueueDeclare(
+	q, err := r.Ch.QueueDeclare(
 		"",    // name
 		false, // durable
 		false, // delete when usused
@@ -142,7 +162,7 @@ func (r *Rabbit) Bind(keys []string, handler Handler) error {
 			"r.ex":   r.ex,
 			"k":      k,
 		}).Info("Binding queue.")
-		err = r.ch.QueueBind(
+		err = r.Ch.QueueBind(
 			q.Name, // queue name
 			k,      // routing key
 			r.ex,   // exchange
@@ -159,7 +179,7 @@ func (r *Rabbit) Bind(keys []string, handler Handler) error {
 		}
 	}
 
-	r.msgs, err = r.ch.Consume(
+	r.msgs, err = r.Ch.Consume(
 		q.Name, // queue
 		"",     // consumer
 		false,  // auto ack

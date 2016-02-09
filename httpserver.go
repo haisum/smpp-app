@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/streadway/amqp"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -39,7 +40,12 @@ func main() {
 		log.Fatal("Can't continue without settings. Exiting.")
 	}
 
-	var q queue.Rabbit
+	q := queue.Rabbit{
+		Conn: &amqp.Connection{},
+		Ch:   &amqp.Channel{},
+		Dial: amqp.Dial,
+	}
+
 	err = q.Init(c.AmqpURL, "smppworker-exchange", 1)
 	if err != nil {
 		log.WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
