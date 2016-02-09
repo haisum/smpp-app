@@ -28,7 +28,7 @@ func (c *Config) GetKeys() []string {
 func (c *Config) GetConn(id string) (Conn, error) {
 	var con Conn
 	for _, con = range c.Conns {
-		if con.Id == id {
+		if con.ID == id {
 			return con, nil
 		}
 	}
