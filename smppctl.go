@@ -36,8 +36,8 @@ func (t *TplData) load(c smpp.Config) {
 	var workers []Program
 	for _, w := range c.Conns {
 		p := Program{
-			Name:    fmt.Sprintf("smppworker-%s", w.Id),
-			Command: fmt.Sprintf("%s/./smppworker -cid='%s'", path, w.Id),
+			Name:    fmt.Sprintf("smppworker-%s", w.ID),
+			Command: fmt.Sprintf("%s/./smppworker -cid='%s'", path, w.ID),
 		}
 		workers = append(workers, p)
 	}

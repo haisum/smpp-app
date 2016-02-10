@@ -9,7 +9,6 @@ type PduFields struct {
 	SourceAddrNPI        uint8
 	DestAddrTON          uint8
 	DestAddrNPI          uint8
-	ESMClass             uint8
 	ProtocolID           uint8
 	PriorityFlag         uint8
 	ScheduleDeliveryTime string

@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+const (
+	esmClassUdhiMask uint8 = 0x40
+	//MaxLatinChars is number of characters allowed in single latin encoded text message
+	MaxLatinChars int = 160
+	//MaxUCSChars is number of characters allowed in single ucs encoded text message
+	MaxUCSChars int = 70
+)
+
 // Sender holds smpp transmitter and a channel indicating when smpp connection
 // becomes connected.
 type Sender struct {
@@ -41,50 +49,68 @@ func (s *Sender) Connect(addr, user, passwd string) {
 				<-time.After(time.Second * 10)
 				go s.Connect(addr, user, passwd)
 				return
-			} else {
-				s.Connected <- true
 			}
+			s.Connected <- true
 		}
 	}()
 }
 
 // Send sends sms to given source and destination with latin as encoding
 // or ucs if asked.
-func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
+func (s *Sender) Send(src, dst, enc, msg string) ([]string, error) {
 	var text pdutext.Codec
+
+	var esm uint8
+	maxLen := MaxLatinChars
 	if enc == "ucs" {
-		text = pdutext.UCS2(msg)
-	} else {
-		text = pdutext.Latin1(msg)
+		maxLen = MaxUCSChars
 	}
-	sm, err := s.Tx.Submit(&smpp.ShortMessage{
-		Src:                  src,
-		Dst:                  dst,
-		Text:                 text,
-		ServiceType:          s.Fields.ServiceType,
-		SourceAddrTON:        s.Fields.SourceAddrTON,
-		SourceAddrNPI:        s.Fields.SourceAddrNPI,
-		DestAddrTON:          s.Fields.DestAddrTON,
-		DestAddrNPI:          s.Fields.DestAddrNPI,
-		ESMClass:             s.Fields.ESMClass,
-		ProtocolID:           s.Fields.ProtocolID,
-		PriorityFlag:         s.Fields.PriorityFlag,
-		ScheduleDeliveryTime: s.Fields.ScheduleDeliveryTime,
-		ReplaceIfPresentFlag: s.Fields.ReplaceIfPresentFlag,
-		SMDefaultMsgID:       s.Fields.SMDefaultMsgID,
-		Register:             smpp.NoDeliveryReceipt,
-	})
-	if err != nil {
-		if err == smpp.ErrNotConnected {
-			log.WithFields(log.Fields{
-				"Src":  src,
-				"Dst":  dst,
-				"Enc":  enc,
-				"Text": msg,
-				"sm":   sm,
-			}).Error("Error in processing sms request because smpp is not connected.")
+	runeLength := len([]rune(msg))
+	if runeLength > maxLen {
+		esm = esmClassUdhiMask
+	}
+	var respIDs []string
+	for i := 0; i < runeLength; i += maxLen {
+		end := runeLength
+		if runeLength > i+maxLen {
+			end = i + maxLen
 		}
-		return "", err
+		msgPart := string([]rune(msg)[i:end])
+		if enc == "ucs" {
+			text = pdutext.UCS2(msgPart)
+		} else {
+			text = pdutext.Latin1(msgPart)
+		}
+		sm, err := s.Tx.Submit(&smpp.ShortMessage{
+			Src:                  src,
+			Dst:                  dst,
+			Text:                 text,
+			ServiceType:          s.Fields.ServiceType,
+			SourceAddrTON:        s.Fields.SourceAddrTON,
+			SourceAddrNPI:        s.Fields.SourceAddrNPI,
+			DestAddrTON:          s.Fields.DestAddrTON,
+			DestAddrNPI:          s.Fields.DestAddrNPI,
+			ESMClass:             esm,
+			ProtocolID:           s.Fields.ProtocolID,
+			PriorityFlag:         s.Fields.PriorityFlag,
+			ScheduleDeliveryTime: s.Fields.ScheduleDeliveryTime,
+			ReplaceIfPresentFlag: s.Fields.ReplaceIfPresentFlag,
+			SMDefaultMsgID:       s.Fields.SMDefaultMsgID,
+			Register:             smpp.NoDeliveryReceipt,
+		})
+		if err != nil {
+			if err == smpp.ErrNotConnected {
+				log.WithFields(log.Fields{
+					"Src":  src,
+					"Dst":  dst,
+					"Enc":  enc,
+					"Text": msg,
+					"sm":   sm,
+				}).Error("Error in processing sms request because smpp is not connected.")
+			}
+			return respIDs, err
+		}
+		respIDs = append(respIDs, sm.RespID())
 	}
-	return sm.RespID(), nil
+	return respIDs, nil
 }

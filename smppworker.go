@@ -71,9 +71,9 @@ func send(s *smpp.Sender, d amqp.Delivery, count *int32) {
 		d.Nack(false, true)
 		return
 	}
-	charLimit := 160
+	charLimit := smpp.MaxLatinChars
 	if i.Enc == "UCS" {
-		charLimit = 60
+		charLimit = smpp.MaxUCSChars
 	}
 	res := float64(float64(len(i.Msg)) / float64(charLimit))
 	total := math.Ceil(res)
