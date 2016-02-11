@@ -3,3 +3,5 @@ smppworker
 httpserver
 *.log
 smppctl
+*.zip
+.vscode
