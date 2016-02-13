@@ -9,6 +9,12 @@
 * **Method:**
 
   `POST` multipart/form-data
+
+* **URL Params** *
+
+   **Required**
+
+   `AuthToken[string]`
   
 * **Data Params**
     

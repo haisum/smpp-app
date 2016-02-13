@@ -9,6 +9,10 @@
 * **Method:**
 
   `POST`
+
+* **Permission**
+
+  `CampaignSend`
   
 *  **URL Params**
 
@@ -19,6 +23,11 @@
    `Enc=[string]` Can be either latin or ucs
    `Priority=[int]` Can be a number from 0-9. Higher numbers are given priority 9 
    `Msg=[string]`
+
+   **Optional:**
+
+   `SendAt=[string]` Time to schedule this message for in YYYY-MM-DD HH:MM:SS format
+
 * **Data Params**
 
   None
