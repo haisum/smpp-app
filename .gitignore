@@ -5,3 +5,4 @@ httpserver
 smppctl
 *.zip
 .vscode
+docs
