@@ -1,14 +1,18 @@
 ---
-- name: Add erlang repo
-  command: rpm --import http://packages.erlang-solutions.com/rpm/erlang_solutions.asc
-  register: rpmimport
-  changed_when: rpmimport.stdout != ""
 
 - name: Install erlang repo
   copy: src="erlang-solutions.repo" dest="/etc/yum.repos.d/erlang-solutions.repo"  
 
+- name: Add epel 6 for dependencies
+  copy: src='epel-6.repo.j2' dest="/etc/yum.repos.d/epel.repo"
+  when: ansible_distribution_version|int < 7
+
+- name: Add epel 7 for dependencies
+  copy: src='epel-7.repo.j2' dest="/etc/yum.repos.d/epel.repo"
+  when: ansible_distribution_version|int >= 7
+
 - name: Install erlang
-  yum: state="present" name="erlang" disablerepo=epel
+  yum: state="present" name="erlang" disablerepo="epel"
 
 - name: Get rabbitmq package
   get_url: url="https://www.rabbitmq.com/releases/rabbitmq-server/v3.6.0/rabbitmq-server-3.6.0-1.noarch.rpm" dest="/tmp/rabbitmq.rpm" 

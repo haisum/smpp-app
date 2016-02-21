@@ -1,18 +1,19 @@
 package smpp
 
 import (
+	"math/rand"
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
-	"time"
 )
 
 const (
-	esmClassUdhiMask uint8 = 0x40
 	//MaxLatinChars is number of characters allowed in single latin encoded text message
-	MaxLatinChars int = 160
+	MaxLatinChars int = 140
 	//MaxUCSChars is number of characters allowed in single ucs encoded text message
-	MaxUCSChars int = 70
+	MaxUCSChars int = 50
 )
 
 // Sender holds smpp transmitter and a channel indicating when smpp connection
@@ -60,15 +61,13 @@ func (s *Sender) Connect(addr, user, passwd string) {
 func (s *Sender) Send(src, dst, enc, msg string) ([]string, error) {
 	var text pdutext.Codec
 
-	var esm uint8
 	maxLen := MaxLatinChars
 	if enc == "ucs" {
 		maxLen = MaxUCSChars
 	}
 	runeLength := len([]rune(msg))
-	if runeLength > maxLen {
-		esm = esmClassUdhiMask
-	}
+	rand.Seed(time.Now().UnixNano())
+	msgRefNum := uint8(rand.Intn(10000))
 	var respIDs []string
 	for i := 0; i < runeLength; i += maxLen {
 		end := runeLength
@@ -90,14 +89,21 @@ func (s *Sender) Send(src, dst, enc, msg string) ([]string, error) {
 			SourceAddrNPI:        s.Fields.SourceAddrNPI,
 			DestAddrTON:          s.Fields.DestAddrTON,
 			DestAddrNPI:          s.Fields.DestAddrNPI,
-			ESMClass:             esm,
 			ProtocolID:           s.Fields.ProtocolID,
 			PriorityFlag:         s.Fields.PriorityFlag,
 			ScheduleDeliveryTime: s.Fields.ScheduleDeliveryTime,
 			ReplaceIfPresentFlag: s.Fields.ReplaceIfPresentFlag,
 			SMDefaultMsgID:       s.Fields.SMDefaultMsgID,
 			Register:             smpp.NoDeliveryReceipt,
+			SarMsgRefNum:         msgRefNum,
+			SarSegmentSeqnum:     uint8((i / maxLen) + 1),
+			SarTotalSegments:     uint8((runeLength / maxLen) + 1),
 		})
+		log.WithFields(log.Fields{
+			"SarMsgRefNum":     msgRefNum,
+			"SarSegmentSeqnum": uint8((i / maxLen) + 1),
+			"SarTotalSegments": uint8((runeLength / maxLen) + 1),
+		}).Info("Sar fields")
 		if err != nil {
 			if err == smpp.ErrNotConnected {
 				log.WithFields(log.Fields{
