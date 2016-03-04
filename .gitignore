@@ -8,3 +8,4 @@ smppctl
 docs
 ansible/hosts
 *.sublime*
+make.sh
