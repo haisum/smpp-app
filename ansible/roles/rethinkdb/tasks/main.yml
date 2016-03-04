@@ -1,0 +1,11 @@
+- name: Adding rethinkdb repo
+  get_url: url="https://download.rethinkdb.com/centos/{{ansible_distribution_major_version}}/{{ansible_architecture}}/rethinkdb.repo" dest="/etc/yum.repos.d/rethinkdb.repo"
+
+- name: Install rethinkdb
+  yum: name="rethinkdb" state="present"
+
+- name: Copy config file
+  copy: src="instance1.conf" dest="/etc/rethinkdb/instances.d/instance1.conf"
+
+- name: Start and make rethinkdb service available on start up
+  service: name="rethinkdb" enabled=yes state=started

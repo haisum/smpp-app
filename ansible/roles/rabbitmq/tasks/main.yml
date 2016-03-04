@@ -3,13 +3,8 @@
 - name: Install erlang repo
   copy: src="erlang-solutions.repo" dest="/etc/yum.repos.d/erlang-solutions.repo"  
 
-- name: Add epel 6 for dependencies
-  copy: src='epel-6.repo.j2' dest="/etc/yum.repos.d/epel.repo"
-  when: ansible_distribution_version|int < 7
-
-- name: Add epel 7 for dependencies
-  copy: src='epel-7.repo.j2' dest="/etc/yum.repos.d/epel.repo"
-  when: ansible_distribution_version|int >= 7
+- name: Add epel for dependencies
+  copy: src='epel-{{ansible_distribution_major_version}}.repo.j2' dest="/etc/yum.repos.d/epel.repo"
 
 - name: Install erlang
   yum: state="present" name="erlang" disablerepo="epel"
