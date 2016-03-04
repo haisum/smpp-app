@@ -37,7 +37,25 @@ var (
 	isUCS    = flag.Bool("isUCS", false, "Set this flag if data should be sent as UCS instead of latin.")
 )
 
+func packUi16(n uint16) (b []byte) {
+	b = make([]byte, 2)
+	binary.BigEndian.PutUint16(b, n)
+	return
+}
+
+func packUi8(n uint8) (b []byte) {
+	b = make([]byte, 2)
+	binary.BigEndian.PutUint16(b, uint16(n))
+	return b[1:]
+}
+
 func main() {
+	optionalFields := []string{"source_addr_ton", "source_addr_npi", "dest_addr_ton", "dest_addr_npi"}
+	optionalFlags := make(map[string]*int)
+	for _, v := range optionalFields {
+		optionalFlags[v] = flag.Int(v, 0, fmt.Sprintf("optional %s field", v))
+	}
+
 	flag.Parse()
 	if *username == "" || *password == "" || *dst == "" || *src == "" {
 		flag.Usage()
@@ -64,13 +82,17 @@ func main() {
 	}
 	runeLength := len([]rune(*message))
 	rand.Seed(time.Now().UnixNano())
-	msgRefNum := make([]byte, 2)
 	randRefNum := uint16(rand.Intn(math.MaxUint16))
-	binary.LittleEndian.PutUint16(msgRefNum, randRefNum)
+	msgRefNum := packUi16(randRefNum)
 
 	for i := 0; i < runeLength; i += maxLen {
 		var text string
 		params := smpp.Params{}
+		for _, v := range optionalFields {
+			if *optionalFlags[v] != 0 {
+				params[v] = *optionalFlags[v]
+			}
+		}
 		end := runeLength
 		if runeLength > i+maxLen {
 			end = i + maxLen
@@ -95,8 +117,8 @@ func main() {
 		fmt.Printf("SarRef: %d, total:  %d, this: %d\n", randRefNum, (runeLength/maxLen)+1, (i/maxLen)+1)
 
 		p.SetTLVField(SarMsgRefNum, 2, msgRefNum)
-		p.SetTLVField(SarSegmentSeqnum, 1, []byte{byte((i / maxLen) + 1)})
-		p.SetTLVField(SarTotalSegments, 1, []byte{byte((runeLength / maxLen) + 1)})
+		p.SetTLVField(SarSegmentSeqnum, 1, packUi8(uint8((i/maxLen)+1)))
+		p.SetTLVField(SarTotalSegments, 1, packUi8(uint8((runeLength/maxLen)+1)))
 
 		err = trx.Write(p)
 		// Pdu gen errors
@@ -121,10 +143,11 @@ func main() {
 		switch pdu.GetHeader().Id {
 		case smpp.SUBMIT_SM_RESP:
 			// message_id should match this with seq message
-			fmt.Println("MSG ID:", pdu.GetField("message_id").Value())
+			fmt.Println("MSG ID: ", string(pdu.GetField("message_id").Value().([]byte)))
 		case smpp.DELIVER_SM:
 			// received Deliver Sm
-			fmt.Printf("Message %s got delivered.", pdu.GetField("message_id").Value())
+			// fmt.Printf("Message %s got delivered.", pdu.GetField("message_id").Value())
+			fmt.Println("Message got delivered.")
 			// Print all fields
 			for _, v := range pdu.MandatoryFieldsList() {
 				f := pdu.GetField(v)

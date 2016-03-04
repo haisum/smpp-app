@@ -6,3 +6,5 @@ smppctl
 *.zip
 .vscode
 docs
+ansible/hosts
+*.sublime*
