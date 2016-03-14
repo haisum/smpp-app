@@ -1,7 +1,6 @@
 package smpp
 
 import (
-	"encoding/binary"
 	smpp "github.com/CodeMonkeyKevin/smpp34"
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
@@ -14,15 +13,17 @@ import (
 const (
 	//MaxLatinChars is number of characters allowed in single latin encoded text message
 	MaxLatinChars int = 160
+	//Max latin in one message with UDH
+	MaxLatinCharsMulti int = 153
 	//MaxUCSChars is number of characters allowed in single ucs encoded text message
 	MaxUCSChars int = 70
+	// Max UCS chars in Multi sms
+	MaxUCSCharsMulti int = 67
 
 	Latin1Type int = 0x03
 	UCS2Type   int = 0x08
-
-	SarMsgRefNum     int = 0x020C
-	SarTotalSegments int = 0x020E
-	SarSegmentSeqnum int = 0x020F
+	// ESM Class UDHI indicates UDI presence
+	UDHI int = 0x40
 )
 
 // Sender holds smpp transmitter and a channel indicating when smpp connection
@@ -56,18 +57,6 @@ func (s *Sender) Connect(host string, port int, username, password string) {
 	}
 }
 
-func packUi16(n uint16) (b []byte) {
-	b = make([]byte, 2)
-	binary.BigEndian.PutUint16(b, n)
-	return
-}
-
-func packUi8(n uint8) (b []byte) {
-	b = make([]byte, 2)
-	binary.BigEndian.PutUint16(b, uint16(n))
-	return b[1:]
-}
-
 //Closes connection to smpp
 func (s *Sender) Close() {
 	s.Trx.Close()
@@ -81,12 +70,17 @@ func (s *Sender) Send(src, dst, message string, isUCS bool, params smpp.Params) 
 		maxLen = MaxUCSChars
 	}
 	runeLength := len([]rune(message))
-	var msgRefNum []byte
-	total := (runeLength / maxLen) + 1
+	var msgRefNum uint8
+	total := math.Ceil(float64(runeLength) / float64(maxLen))
 	if total > 1 {
+		if isUCS { //make room for UDH
+			maxLen = MaxUCSCharsMulti
+		} else {
+			maxLen = MaxLatinCharsMulti
+		}
+		total = math.Ceil(float64(runeLength) / float64(maxLen))
 		rand.Seed(time.Now().UnixNano())
-		randRefNum := uint16(rand.Intn(math.MaxUint16))
-		msgRefNum = packUi16(randRefNum)
+		msgRefNum = uint8(rand.Intn(math.MaxUint8))
 	}
 
 	for i := 0; i < runeLength; i += maxLen {
@@ -109,6 +103,24 @@ func (s *Sender) Send(src, dst, message string, isUCS bool, params smpp.Params) 
 			"text":   text,
 			"params": params,
 		}).Info("Sending message")
+
+		if total > 1 {
+			params[smpp.ESM_CLASS] = UDHI
+			udh := []byte{
+				5,
+				0x00,
+				3,
+				msgRefNum,
+				uint8(total),
+				uint8((i / maxLen) + 1),
+			}
+			text = string(append(udh, []byte(text)...))
+			log.WithFields(log.Fields{
+				"MsgRefNum":     msgRefNum,
+				"SeqNum":        uint8(i/maxLen + 1),
+				"TotalSegments": uint8(total),
+			}).Info("Sending long one")
+		}
 		// Send SubmitSm
 		p, err := s.Trx.Smpp.SubmitSm(src, dst, text, &params)
 
@@ -116,11 +128,6 @@ func (s *Sender) Send(src, dst, message string, isUCS bool, params smpp.Params) 
 		if err != nil {
 			log.WithField("err", err).Error("SubmitSm err")
 			return err
-		}
-		if total > 1 {
-			p.SetTLVField(SarMsgRefNum, 2, msgRefNum)
-			p.SetTLVField(SarSegmentSeqnum, 1, packUi8(uint8((i/maxLen)+1)))
-			p.SetTLVField(SarTotalSegments, 1, packUi8(uint8((runeLength/maxLen)+1)))
 		}
 
 		err = s.Trx.Write(p)

@@ -68,6 +68,7 @@ func (u *User) Add(s *r.Session) (string, error) {
 	}
 	if w.Inserted != 1 {
 		log.Error("Insert count not as expected.")
+		return "", fmt.Errorf("Query was succesful but unexpected number of users inserted.")
 	}
 	return w.GeneratedKeys[0], nil
 }
@@ -168,7 +169,7 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 		c.PerPage = 100
 	}
 	if c.From != "" {
-		t = t.Between(c.From, nil, r.BetweenOpts{
+		t = t.Between(c.From, r.MaxVal, r.BetweenOpts{
 			Index:     key,
 			LeftBound: "open",
 		})

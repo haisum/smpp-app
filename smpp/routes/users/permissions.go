@@ -30,7 +30,7 @@ func Permissions(w http.ResponseWriter, r *http.Request) {
 	}
 	b, cType, err := routes.MakeResponse(*r, &resp)
 	if err != nil {
-		log.WithError(err).Error("Couldn't send permissions")
+		log.WithError(err).Error("Couldn't make send permissions response.")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

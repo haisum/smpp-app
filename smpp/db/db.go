@@ -26,6 +26,7 @@ func Connect() (*r.Session, error) {
 			"err":         err,
 			"ConnectOpts": opt,
 		}).Error("Couldn't connect to rethinkdb.")
+		return s, err
 	}
 	if !fresh.Exists(s, DBName) {
 		err = fresh.Create(s, DBName)

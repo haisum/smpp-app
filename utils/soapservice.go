@@ -39,7 +39,7 @@ func main() {
 	s := hsmpp.Sender{}
 	s.Connect(*host, *port, *username, *password)
 	defer s.Close()
-	go s.ReadPDUs()
+
 	params := smpp.Params{}
 	for _, v := range optionalFields {
 		if *optionalFlags[v] != 0 {
@@ -72,6 +72,7 @@ func main() {
 		fmt.Fprintf(w, soap.WSDL, host)
 		return
 	})
+	go s.ReadPDUs()
 	log.Infof("Listening on port %s.", HTTPPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", HTTPPort), nil))
 }
