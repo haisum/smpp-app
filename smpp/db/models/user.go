@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"net/mail"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -30,6 +31,9 @@ type User struct {
 // UserCriteria is used to filter users
 type UserCriteria struct {
 	Username         string
+	Email            string
+	Name             string
+	Suspended        bool
 	RegisteredAfter  int64
 	OrderByKey       string
 	OrderByDir       string
@@ -129,6 +133,8 @@ func GetIdUser(s *r.Session, id string) (User, error) {
 
 // GetUsers filters users by a criteria and returns filtered users
 func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
+	var users []User
+	log.WithField("Criteria", c).Info("Making query.")
 	t := r.DB(db.DBName).Table("User")
 	f := make(map[string]interface{})
 	if c.ConnectionGroup != "" {
@@ -151,7 +157,16 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 		t = t.Filter(r.Row.Field("RegisteredAt").Lt(c.RegisteredBefore))
 	}
 	if c.Username != "" {
-		t = t.Filter(r.Row.Field("Username").Match(c.Username))
+		t = t.Filter(r.Row.Field("Username").Eq(c.Username))
+	}
+	if c.Email != "" {
+		t = t.Filter(r.Row.Field("Email").Eq(c.Email))
+	}
+	if c.Name != "" {
+		t = t.Filter(r.Row.Field("Name").Match(c.Name))
+	}
+	if c.Suspended == true {
+		t = t.Filter(r.Row.Field("Suspended").Eq(c.Suspended))
 	}
 
 	// See https://rethinkdb.com/blog/beerthink/
@@ -169,13 +184,42 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 		c.PerPage = 100
 	}
 	if c.From != "" {
-		t = t.Between(c.From, r.MaxVal, r.BetweenOpts{
-			Index:     key,
-			LeftBound: "open",
-		})
+		if c.OrderByDir == "ASC" {
+			if c.OrderByKey == "RegisteredAt" {
+				from, err := strconv.ParseInt(c.From, 10, 64)
+				if err != nil {
+					return users, fmt.Errorf("Invalid value for RegisteredAt")
+				}
+				t = t.Between(from, r.MaxVal, r.BetweenOpts{
+					Index:     key,
+					LeftBound: "open",
+				})
+			} else {
+				t = t.Between(c.From, r.MaxVal, r.BetweenOpts{
+					Index:     key,
+					LeftBound: "open",
+				})
+			}
+		} else {
+			if c.OrderByKey == "RegisteredAt" {
+				upto, err := strconv.ParseInt(c.From, 10, 64)
+				if err != nil {
+					return users, fmt.Errorf("Invalid value for RegisteredAt")
+				}
+				t = t.Between(r.MinVal, upto, r.BetweenOpts{
+					Index:     key,
+					LeftBound: "open",
+				})
+			} else {
+				t = t.Between(r.MinVal, c.From, r.BetweenOpts{
+					Index:     key,
+					LeftBound: "open",
+				})
+			}
+		}
 	}
 	t = t.OrderBy(order(key)).Limit(c.PerPage)
-	var users []User
+	log.WithField("Query", t.String()).Info("Fetching users.")
 	cur, err := t.Run(s)
 	if err != nil {
 		log.WithError(err).Error("Error in filtering")

@@ -40,6 +40,7 @@ func Users(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, string(b), http.StatusBadRequest)
 		return
 	}
+	log.Infof("Ureq %+v", uReq)
 	uReq.Url = r.URL.RequestURI()
 	s, err := db.GetSession()
 	if err != nil {
