@@ -28,7 +28,34 @@ func Create(s *r.Session, dbname string) error {
 	if err != nil {
 		return err
 	}
+	err = ttoken(s, dbname)
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+func ttoken(s *r.Session, dbname string) error {
+	_, err := r.DB(dbname).TableCreate("Token").RunWrite(s)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":   err,
+			"name":  dbname,
+			"table": "Token",
+		}).Error("Error occured in creating table.")
+		return err
+	}
+	err = r.DB(dbname).Table("Token").IndexCreate("Username").Exec(s)
+	if err != nil {
+		log.WithError(err).Error("Couldn't create Username index.")
+		return err
+	}
+	err = r.DB(dbname).Table("User").IndexCreate("Token").Exec(s)
+	if err != nil {
+		log.WithError(err).Error("Couldn't create Token index.")
+		return err
+	}
+	return err
 }
 
 func tuser(s *r.Session, dbname string) error {

@@ -44,6 +44,10 @@ type UserCriteria struct {
 	Permissions      []Permission
 }
 
+const (
+	DefaultConnectionGroup string = "Default"
+)
+
 // Add adds a user to database and returns its primary key
 func (u *User) Add(s *r.Session) (string, error) {
 	verrors, err := u.Validate()
@@ -61,6 +65,9 @@ func (u *User) Add(s *r.Session) (string, error) {
 	if err != nil {
 		log.WithError(err).Error("Couldn't hash.")
 		return "", fmt.Errorf("Couldn't hash password. %s", err)
+	}
+	if u.ConnectionGroup == "" {
+		u.ConnectionGroup = DefaultConnectionGroup
 	}
 	w, err := r.DB(db.DBName).Table("User").Insert(u).RunWrite(s)
 	if err != nil {
@@ -108,7 +115,7 @@ func (u *User) Update(s *r.Session, passwdChanged bool) error {
 // GetUser gets a single user identified by username
 func GetUser(s *r.Session, username string) (User, error) {
 	var u User
-	cur, err := r.DB(db.DBName).Table("User").Filter(map[string]string{"Username": username}).Run(s)
+	cur, err := r.DB(db.DBName).Table("User").Filter(r.Row.Field("Username").Eq(username)).Run(s)
 	defer cur.Close()
 	if err != nil {
 		log.WithError(err).Error("Couldn't get user.")
@@ -136,9 +143,8 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 	var users []User
 	log.WithField("Criteria", c).Info("Making query.")
 	t := r.DB(db.DBName).Table("User")
-	f := make(map[string]interface{})
 	if c.ConnectionGroup != "" {
-		f["ConnectionGroup"] = c.ConnectionGroup
+		t.Filter(r.Row.Field("ConnectionGroup").Eq(c.ConnectionGroup))
 	}
 	if len(c.Permissions) > 0 {
 		for _, perm := range c.Permissions {

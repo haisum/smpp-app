@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>SMPP Management</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="css/materialize.min.css">
+        <link rel="stylesheet" href="css/main.css">
+    </head>
+    <body class="teal teal-text">
+        <header>
+          <nav class="top-nav white teal-text">
+            <a href="#" data-activates="slide-out" class="button-collapse teal-text"><i class="mdi-navigation-menu"></i></a>
+            <div class="container">
+              <div class="nav-wrapper"><a class="page-title teal-text">Users</a>
+                <div class="right teal-text" style="line-height: 40px;">
+                  Haisum Mussawir<br/>
+                  <a href="#" class="right teal-text" style="line-height:10px">Logout</a>
+                </div>
+              </div>
+            </div>
+          </nav>
+          <ul id="slide-out" class="side-nav fixed">
+            <li class="logo"><h4 id="logo-container" class="brand-logo">SMS Manager</h4></li>
+            <li class="bold"><a href="#!">SMS</a></li>
+            <li class="bold"><a href="#!">Campaign</a></li>
+            <li class="bold"><a href="#!">Files</a></li>
+            <li class="bold"><a href="#!">Reports</a></li>
+            <li class="bold"><a href="#!">Services</a></li>
+            <li class="bold"><a href="#!">Account Settings</a></li>
+            <li class="bold"><a href="#!">System Settings</a></li>
+            <li class="bold active"><a href="#!">Users</a></li>
+          </ul>
+        </header>
+        <main>
+          <div class="container">
+            <div class="card-panel">
+              <div class="row">
+                <div class="col s12">
+                  <ul class="tabs teal-text">
+                    <li class="tab col s6 m4 l3"><a class="teal-text text-darken-1" href="#listusers">Users</a></li>
+                    <li class="tab col s6 m4 l3 teal-text text-darken-2"><a class=" teal-text text-darken-2" href="#adduser">Add User</a></li>
+                    <li class="tab col s6 m4 l3"><a class="teal-text text-darken-2" href="#edituser">Edit User</a></li>
+                  </ul>
+                </div>
+                <div id="listusers" class="col s12">
+                  <div class="row">
+                    <form class="col s12">
+                      <div class="row">
+                        <div class="input-field col s6 m4 l3">
+                          <input id="Username" type="text" class="validate">
+                          <label for="Username">Username</label>
+                        </div>
+                        <div class="input-field col s6 m4 l3">
+                          <input id="Email" type="text" class="validate">
+                          <label for="Email">Email</label>
+                        </div>
+                        <div class="input-field col s6 m4 l3">
+                          <input id="Name" type="text" class="validate">
+                          <label for="Name">Name</label>
+                        </div>
+                        <div class="input-field col s6 m4 l3">
+                          <input id="ConnectionGroup" type="text" class="validate">
+                          <label for="ConnectionGroup">Connection Group</label>
+                        </div>
+                        <div class="input-field col s6 m4 l3">
+                          <input id="RegisteredAfter" type="date" class="datepicker">
+                          <label for="RegisteredAfter">Registered After</label>
+                        </div>
+                        <div class="input-field col s6 m4 l3">
+                          <input id="RegisteredBefore" type="date" class="datepicker">
+                          <label for="RegisteredBefore">Registered Before</label>
+                        </div>
+                        <div class="input-field col s6 m4 l3">
+                          <input type="checkbox" id="Suspended" />
+                          <label for="Suspended">Suspended</label>
+                        </div>
+                        <div class="input-field col s6 m4 l3">
+                          <input id="Permission" type="text" class="validate">
+                          <label for="Permission">Permission</label>
+                        </div>
+                        <div class="input-field col s6 m4 l3">
+                          <input id="PerPage" type="text" class="validate">
+                          <label for="PerPage">Records Per Page</label>
+                        </div>
+                        <div class="input-field col s12">
+                          <br/>
+                          <button class="btn teal waves-effect waves-light" type="submit" name="action">Filter Users
+                            <i class="mdi-content-send right"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                  <table class="striped responsive-table">
+                    <thead>
+                      <tr>
+                          <th data-field="id">Username</th>
+                          <th data-field="name">Name</th>
+                          <th data-field="price">Email</th>
+                          <th data-field="price">Connection Group</th>
+                          <th data-field="price">Permissions</th>
+                          <th data-field="price">Registered At</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      <tr>
+                        <td>hmussawir</td>
+                        <td>Eclair</td>
+                        <td>eclair@yahoo.com</td>
+                        <td>Default</td>
+                        <td>AddUser, SuspendUser</td>
+                        <td>27th July, 2015</td>
+                      </tr>
+                      <tr>
+                        <td>hmussawir</td>
+                        <td>Eclair</td>
+                        <td>eclair@yahoo.com</td>
+                        <td>Default</td>
+                        <td>AddUser, SuspendUser</td>
+                        <td>27th July, 2015</td>
+                      </tr>
+                      <tr>
+                        <td>hmussawir2</td>
+                        <td>Haisum</td>
+                        <td>eclair@gmail.com</td>
+                        <td>Default</td>
+                        <td>AddUser, SuspendUser</td>
+                        <td>27th July, 2015</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <ul class="pagination right">
+                    <li class="waves-effect"><a href="#!"><i class="mdi-navigation-chevron-left"></i></a></li>
+                    <li class="waves-effect"><a href="#!"><i class="mdi-navigation-chevron-right"></i></a></li>
+                  </ul>
+                </div>
+                <div id="adduser" class="col s12">
+                  <form class="col s12">
+                    <div class="row">
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addUsername" type="text" class="validate">
+                        <label for="addUsername">Username</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addPassword" type="password" class="validate">
+                        <label for="addPassword">Password</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addEmail" type="text" class="validate">
+                        <label for="addEmail">Email</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addName" type="text" class="validate">
+                        <label for="addName">Name</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addConnectionGroup" type="text" class="validate">
+                        <label for="addConnectionGroup">Connection Group</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addPermission" type="text" class="validate">
+                        <label for="addPermission">Permission</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addNightStartAt" type="text" class="validate">
+                        <label for="addNightStartAt">Don't Send After</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addNightEndAt" type="text" class="validate">
+                        <label for="addNightEndAt">Don't Send Before</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input type="checkbox" id="addSuspended" />
+                        <label for="addSuspended">Suspended</label>
+                      </div>
+                      <div class="input-field col s12">
+                        <br/>
+                        <button class="btn teal waves-effect waves-light" type="submit" name="action">Add User
+                          <i class="mdi-content-send right"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+                <div id="edituser" class="col s12">
+                  <form class="col s12">
+                    <div class="row">
+                      <div class="input-field col s6 m4 l3">
+                        <input id="editUsername" type="text" class="validate">
+                        <label for="editUsername">Username</label>
+                      </div>
+                      <div class="input-field col s9">
+                        <button class="btn teal waves-effect waves-light" type="submit" name="action">Find
+                          <i class="mdi-content-send right"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                  <form class="col s12">
+                    <div class="row">
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addPassword" type="password" class="validate">
+                        <label for="addPassword">Password</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addEmail" type="text" class="validate">
+                        <label for="addEmail">Email</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addName" type="text" class="validate">
+                        <label for="addName">Name</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addConnectionGroup" type="text" class="validate">
+                        <label for="addConnectionGroup">Connection Group</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addPermission" type="text" class="validate">
+                        <label for="addPermission">Permission</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addNightStartAt" type="text" class="validate">
+                        <label for="addNightStartAt">Don't Send After</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input id="addNightEndAt" type="text" class="validate">
+                        <label for="addNightEndAt">Don't Send Before</label>
+                      </div>
+                      <div class="input-field col s6 m4 l3">
+                        <input type="checkbox" id="addSuspended" />
+                        <label for="addSuspended">Suspended</label>
+                      </div>
+                      <div class="input-field col s12">
+                        <button class="btn teal waves-effect waves-light" type="submit" name="action">Update User
+                          <i class="mdi-content-send right"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.11.2.min.js"><\/script>')</script>
+        <script src="js/vendor/handlebars-v3.0.3.js"></script>
+        <script src="js/vendor/materialize.min.js"></script>
+        <script src="js/main.js"></script>
+
+    </body>
+</html>
