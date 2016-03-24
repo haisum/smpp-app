@@ -4,7 +4,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
-	"time"
 )
 
 const (
@@ -45,9 +44,7 @@ func (s *Sender) Connect(addr, user, passwd string) {
 				log.WithFields(log.Fields{
 					"st":  st,
 					"err": c.Error(),
-				}).Error("SMPP connection failed. Retrying in 10 seconds...")
-				<-time.After(time.Second * 10)
-				go s.Connect(addr, user, passwd)
+				}).Fatal("SMPP connection failed. Aborting.")
 				return
 			}
 			s.Connected <- true
@@ -57,60 +54,47 @@ func (s *Sender) Connect(addr, user, passwd string) {
 
 // Send sends sms to given source and destination with latin as encoding
 // or ucs if asked.
-func (s *Sender) Send(src, dst, enc, msg string) ([]string, error) {
+func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
 	var text pdutext.Codec
-
-	var esm uint8
-	maxLen := MaxLatinChars
 	if enc == "ucs" {
-		maxLen = MaxUCSChars
+		text = pdutext.UCS2(msg)
+	} else {
+		text = pdutext.Raw(msg)
 	}
-	runeLength := len([]rune(msg))
-	if runeLength > maxLen {
-		esm = esmClassUdhiMask
+	maxLen := 134 // 140-6 (UDH)
+	rawMsg := text.Encode()
+	total := int(len(rawMsg)/maxLen) + 1
+	submitFunc := s.Tx.Submit
+	if total > 1 {
+		submitFunc = s.Tx.SubmitLongMsg
 	}
-	var respIDs []string
-	for i := 0; i < runeLength; i += maxLen {
-		end := runeLength
-		if runeLength > i+maxLen {
-			end = i + maxLen
+	sm, err := submitFunc(&smpp.ShortMessage{
+		Src:                  src,
+		Dst:                  dst,
+		Text:                 text,
+		ServiceType:          s.Fields.ServiceType,
+		SourceAddrTON:        s.Fields.SourceAddrTON,
+		SourceAddrNPI:        s.Fields.SourceAddrNPI,
+		DestAddrTON:          s.Fields.DestAddrTON,
+		DestAddrNPI:          s.Fields.DestAddrNPI,
+		ProtocolID:           s.Fields.ProtocolID,
+		PriorityFlag:         s.Fields.PriorityFlag,
+		ScheduleDeliveryTime: s.Fields.ScheduleDeliveryTime,
+		ReplaceIfPresentFlag: s.Fields.ReplaceIfPresentFlag,
+		SMDefaultMsgID:       s.Fields.SMDefaultMsgID,
+		Register:             smpp.FinalDeliveryReceipt,
+	})
+	if err != nil {
+		if err == smpp.ErrNotConnected {
+			log.WithFields(log.Fields{
+				"Src":  src,
+				"Dst":  dst,
+				"Enc":  enc,
+				"Text": msg,
+				"sm":   sm,
+			}).Error("Error in processing sms request because smpp is not connected.")
 		}
-		msgPart := string([]rune(msg)[i:end])
-		if enc == "ucs" {
-			text = pdutext.UCS2(msgPart)
-		} else {
-			text = pdutext.Latin1(msgPart)
-		}
-		sm, err := s.Tx.Submit(&smpp.ShortMessage{
-			Src:                  src,
-			Dst:                  dst,
-			Text:                 text,
-			ServiceType:          s.Fields.ServiceType,
-			SourceAddrTON:        s.Fields.SourceAddrTON,
-			SourceAddrNPI:        s.Fields.SourceAddrNPI,
-			DestAddrTON:          s.Fields.DestAddrTON,
-			DestAddrNPI:          s.Fields.DestAddrNPI,
-			ESMClass:             esm,
-			ProtocolID:           s.Fields.ProtocolID,
-			PriorityFlag:         s.Fields.PriorityFlag,
-			ScheduleDeliveryTime: s.Fields.ScheduleDeliveryTime,
-			ReplaceIfPresentFlag: s.Fields.ReplaceIfPresentFlag,
-			SMDefaultMsgID:       s.Fields.SMDefaultMsgID,
-			Register:             smpp.NoDeliveryReceipt,
-		})
-		if err != nil {
-			if err == smpp.ErrNotConnected {
-				log.WithFields(log.Fields{
-					"Src":  src,
-					"Dst":  dst,
-					"Enc":  enc,
-					"Text": msg,
-					"sm":   sm,
-				}).Error("Error in processing sms request because smpp is not connected.")
-			}
-			return respIDs, err
-		}
-		respIDs = append(respIDs, sm.RespID())
+		return "", err
 	}
-	return respIDs, nil
+	return sm.RespID(), nil
 }
