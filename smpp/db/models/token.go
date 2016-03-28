@@ -2,7 +2,6 @@ package models
 
 import (
 	"bitbucket.com/codefreak/hsmpp/smpp/db"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 	"time"
