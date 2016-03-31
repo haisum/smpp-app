@@ -4,11 +4,16 @@ package models
 type Permission string
 
 const (
-	PermAddUser     Permission = "AddUser"
-	PermSuspendUser            = "SuspendUser"
+	PermAddUsers  Permission = "Add users"
+	PermEditUsers            = "Edit users"
+	PermListUsers            = "List users"
 )
 
 // GetPermissions returns all valid permissions for a user
 func GetPermissions() []Permission {
-	return []Permission{PermAddUser, PermSuspendUser}
+	return []Permission{
+		PermAddUsers,
+		PermEditUsers,
+		PermListUsers,
+	}
 }

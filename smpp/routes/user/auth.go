@@ -4,7 +4,6 @@ import (
 	"bitbucket.com/codefreak/hsmpp/smpp/db"
 	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
 )
@@ -19,8 +18,8 @@ type authResponse struct {
 	Token string
 }
 
-// Auth handler returns a token against valid username/password pair
-func Auth(w http.ResponseWriter, r *http.Request) {
+// AuthHandler  returns a token against valid username/password pair
+var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	uResp := authResponse{}
 	var uReq authRequest
 	err := routes.ParseRequest(*r, &uReq)
@@ -30,15 +29,7 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 				http.StatusText(http.StatusBadRequest): "Couldn't parse auth request",
 			},
 		}
-		b, cType, err := routes.MakeResponse(*r, resp)
-		if err != nil {
-			log.WithError(err).Error("Couldn't make response.")
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", cType)
-		log.WithError(err).Error("Error parsing user auth request.")
-		http.Error(w, string(b), http.StatusBadRequest)
+		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
 	uReq.Url = r.URL.RequestURI()
@@ -49,14 +40,7 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 		log.WithError(err).Error("Error in getting session.")
 		resp.Errors = routes.ResponseErrors{"db": "Couldn't connect to database."}
 		resp.Request = uReq
-		b, cType, err := routes.MakeResponse(*r, resp)
-		if err != nil {
-			log.WithError(err).Error("Couldn't create response.")
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", cType)
-		http.Error(w, string(b), http.StatusInternalServerError)
+		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
 	resp := routes.Response{
@@ -69,31 +53,28 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 		resp.Ok = false
 		resp.Errors = routes.ResponseErrors{"auth": "Username/Password pair is wrong."}
 		resp.Request = uReq
-		b, cType, err := routes.MakeResponse(*r, resp)
-		if err != nil {
-			log.WithError(err).Error("Couldn't make response.")
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", cType)
-		http.Error(w, string(b), http.StatusBadRequest)
+		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
 	if !u.Auth(uReq.Password) {
+		log.WithError(err).Error("Couldn't authenticate user.")
 		resp := routes.Response{
 			Errors: routes.ResponseErrors{
 				"auth": "Username/Password pair is wrong.",
 			},
+			Request: uReq,
 		}
-		log.WithError(err).Error("Couldn't authenticate user.")
-		b, cType, err := routes.MakeResponse(*r, resp)
-		if err != nil {
-			log.WithError(err).Error("Couldn't make response.")
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
+		resp.Send(w, *r, http.StatusBadRequest)
+		return
+	}
+	if u.Suspended {
+		resp := routes.Response{
+			Errors: routes.ResponseErrors{
+				"auth": "User is suspended.",
+			},
+			Request: uReq,
 		}
-		w.Header().Set("Content-Type", cType)
-		http.Error(w, string(b), http.StatusBadRequest)
+		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
 	token, _ := models.CreateToken(s, u.Username)
@@ -101,12 +82,5 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 	resp.Obj = uResp
 	resp.Ok = true
 	resp.Request = uReq
-	b, cType, err := routes.MakeResponse(*r, resp)
-	if err != nil {
-		log.WithError(err).Error("Couldn't make response.")
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", cType)
-	fmt.Fprint(w, string(b))
-}
+	resp.Send(w, *r, http.StatusOK)
+})

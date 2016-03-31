@@ -2,6 +2,9 @@ package routes
 
 import (
 	"encoding/xml"
+	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 // Response represents json/xml response we give to requests
@@ -41,4 +44,18 @@ func (r ResponseErrors) MarshalXML(e *xml.Encoder, start xml.StartElement) error
 	}
 
 	return nil
+}
+
+func (resp Response) Send(w http.ResponseWriter, r http.Request, code int) {
+	b, cType, err := MakeResponse(r, resp)
+	if err != nil {
+		log.WithError(err).Error("Couldn't make response.")
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", cType)
+	if code != http.StatusOK {
+		w.WriteHeader(code)
+	}
+	fmt.Fprint(w, string(b))
 }

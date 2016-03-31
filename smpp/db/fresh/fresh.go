@@ -5,6 +5,8 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
+	"golang.org/x/crypto/bcrypt"
+	"time"
 )
 
 func Create(s *r.Session, dbname string) error {
@@ -86,8 +88,54 @@ func tuser(s *r.Session, dbname string) error {
 	err = r.DB(dbname).Table("User").IndexCreate("Permissions").Exec(s)
 	if err != nil {
 		log.WithError(err).Error("Couldn't create Permissions index.")
+		return err
 	}
-	return err
+	u := struct {
+		Name            string
+		Password        string
+		Username        string
+		NightStartAt    string
+		NightEndAt      string
+		ConnectionGroup string
+		Permissions     []string
+		RegisteredAt    int64
+	}{
+		Name:            "Admin",
+		Password:        "admin123",
+		Username:        "admin",
+		NightEndAt:      "00:00AM",
+		NightStartAt:    "00:00AM",
+		ConnectionGroup: "default",
+		Permissions: []string{
+			"Add users",
+			"Edit users",
+			"List users",
+		},
+		RegisteredAt: time.Now().Unix(),
+	}
+	u.Password, err = hash(u.Password)
+	if err != nil {
+		return err
+	}
+	err = r.DB(dbname).Table("User").Insert(u).Exec(s)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func hash(pass string) (string, error) {
+	password := []byte(pass)
+	// Hashing the password with the default cost of 10
+	hashedPassword, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":      err,
+			"password": pass,
+		}).Error("Couldn't hash password")
+		return "", err
+	}
+	return string(hashedPassword[:]), nil
 }
 
 func Drop(s *r.Session, name string) error {

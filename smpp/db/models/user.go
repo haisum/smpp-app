@@ -264,12 +264,12 @@ func (u *User) Validate() (map[string]string, error) {
 	if err != nil {
 		errors["Email"] = "Invalid email address"
 	}
-	re := regexp.MustCompile("[0-9][0-9]:[0-9][0-9] (AM)|(PM)")
+	re := regexp.MustCompile("[0-9][0-9]:[0-9][0-9](AM)|(PM)")
 	if !re.Match([]byte(u.NightStartAt)) {
-		errors["NightStartAt"] = "Time should be in format hh:mm AM|PM"
+		errors["NightStartAt"] = "Time should be in format hh:mmAM|PM"
 	}
 	if !re.Match([]byte(u.NightEndAt)) {
-		errors["NightEndAt"] = "Time should be in format hh:mm AM|PM"
+		errors["NightEndAt"] = "Time should be in format hh:mmAM|PM"
 	}
 	for _, x := range u.Permissions {
 		var isValidPerm bool
