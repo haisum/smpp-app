@@ -1,6 +1,7 @@
 package fresh
 
 import (
+	"bitbucket.com/codefreak/hsmpp/smpp"
 	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -34,7 +35,105 @@ func Create(s *r.Session, dbname string) error {
 	if err != nil {
 		return err
 	}
+	err = tconfig(s, dbname)
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+func tconfig(s *r.Session, dbname string) error {
+	_, err := r.DB(dbname).TableCreate("Config").RunWrite(s)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":   err,
+			"name":  dbname,
+			"table": "Config",
+		}).Error("Error occured in creating table.")
+		return err
+	}
+	var c smpp.Config
+	err = json.Unmarshal([]byte(`{
+    "AmqpURL": "amqp://guest:guest@localhost:5672/",
+    "HTTPSPort": 8443,
+    "ConnGroups": [
+        {
+          "Name": "Default",
+          "Conns" :  [
+                {
+                    "ID": "du-1",
+                    "URL": "192.168.0.105:2775",
+                    "User": "smppclient1",
+                    "Passwd": "password",
+                    "Pfxs": [
+                        "+97105",
+                        "+97106"
+                    ],
+                    "Size": 5,
+                    "Time": 1,
+                    "Fields" : {
+                        "ServiceType":          "",
+                        "SourceAddrTON":        0,
+                        "SourceAddrNPI":        0,
+                        "DestAddrTON":          0,
+                        "DestAddrNPI":          0,
+                        "ESMClass":             0,
+                        "ProtocolID":           0,
+                        "PriorityFlag" :        0,
+                        "ScheduleDeliveryTime" : "",
+                        "ReplaceIfPresentFlag" : 0,
+                        "SMDefaultMsgID"       :0
+                    }
+                },
+                {
+                    "ID": "du-2",
+                    "URL": "192.168.0.105:2775",
+                    "User": "smppclient2",
+                    "Passwd": "password",
+                    "Pfxs": [
+                        "+97107",
+                        "+97108"
+                    ],
+                    "Size": 5,
+                    "Time": 1
+                }
+            ],
+          "DefaultPfx": "+97105",
+        },
+        {
+          "Name" : "AADC",
+          "Conns" :  [
+                {
+                    "ID": "du-2",
+                    "URL": "192.168.0.105:2775",
+                    "User": "smppclient2",
+                    "Passwd": "password",
+                    "Pfxs": [
+                        "+97107",
+                        "+97108"
+                    ],
+                    "Size": 5,
+                    "Time": 1
+                }
+            ],
+          "DefaultPfx": "+97105",
+        }
+	  ]
+	}
+	`), &c)
+	if err != nil {
+		log.WithError(err).Error("Couldn't load json in config struct.")
+		return err
+	}
+	_, err = r.DB(dbname).Table("Config").Insert(c).RunWrite(s)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":   err,
+			"name":  dbname,
+			"table": "Config",
+		}).Error("Error occured in inserting config in table.")
+		return err
+	}
 }
 
 func ttoken(s *r.Session, dbname string) error {

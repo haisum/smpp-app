@@ -1,65 +1,43 @@
 package smpp
 
-import (
-	"encoding/json"
-	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"io/ioutil"
-)
-
 // Config represents all settings defined in settings file
 type Config struct {
 	AmqpURL    string
-	Conns      []Conn
-	DefaultPfx string
+	ConnGroups []ConnGroup
 	HTTPSPort  int
 }
 
-// GetKeys returns all prefixes defined by all the connections
-func (c *Config) GetKeys() []string {
-	var keys []string
-	for _, con := range c.Conns {
-		keys = append(keys, con.Pfxs...)
-	}
-	return keys
+// ConnGroup is a group of connections to be used by a single tenant
+type ConnGroup struct {
+	Conns      []Conn
+	DefaultPfx string
+	Name       string
 }
 
-// GetConn returns a connection with given id
-func (c *Config) GetConn(id string) (Conn, error) {
-	var con Conn
-	for _, con = range c.Conns {
-		if con.ID == id {
-			return con, nil
-		}
-	}
-
-	return con, fmt.Errorf("Couldn't find key for connection %s.", id)
+// Conn represents configuration specific to a single smpp connection
+type Conn struct {
+	ID     string
+	URL    string
+	User   string
+	Size   int32
+	Time   int
+	Passwd string
+	Pfxs   []string
+	Fields PduFields
 }
 
-// LoadJSON loads config from json byte stream
-func (c *Config) LoadJSON(data []byte) error {
-	err := json.Unmarshal(data, c)
-	return err
-}
-
-// LoadFile loads config from given file
-func (c *Config) LoadFile(filename string) error {
-	b, err := ioutil.ReadFile(filename)
-	if err != nil {
-		log.WithField("filename", filename).Error("Could not read from file.")
-		return err
-	}
-	err = c.LoadJSON(b)
-	if err != nil {
-		log.WithField("err", err).Error("Couldn't load json from settings file.")
-		con := Conn{}
-		con.Pfxs = []string{"+97105", "+97106"}
-		c.Conns = []Conn{con}
-		c.DefaultPfx = "+97105"
-		d, err := json.MarshalIndent(c, "", "    ")
-		if err == nil {
-			log.Info("Expected format:\n%s", d)
-		}
-	}
-	return err
+// PduFields are fields that may be sent to smpp server
+// when sending an sms. These are usually optional but some smpp providers
+// require them.
+type PduFields struct {
+	ServiceType          string
+	SourceAddrTON        uint8
+	SourceAddrNPI        uint8
+	DestAddrTON          uint8
+	DestAddrNPI          uint8
+	ProtocolID           uint8
+	PriorityFlag         uint8
+	ScheduleDeliveryTime string
+	ReplaceIfPresentFlag uint8
+	SMDefaultMsgID       uint8
 }
