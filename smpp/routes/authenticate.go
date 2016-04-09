@@ -1,13 +1,14 @@
 package routes
 
 import (
+	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/db"
 	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
 )
 
-func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token string, p models.Permission) bool {
+func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token string, p smpp.Permission) bool {
 	resp := Response{
 		Request: req,
 	}

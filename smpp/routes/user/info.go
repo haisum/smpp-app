@@ -1,6 +1,7 @@
 package user
 
 import (
+	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/db"
 	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes"
@@ -20,7 +21,7 @@ type infoResponse struct {
 	NightStartAt    string
 	NightEndAt      string
 	ConnectionGroup string
-	Permissions     []models.Permission
+	Permissions     []smpp.Permission
 	RegisteredAt    int64
 	Suspended       bool
 }
@@ -52,6 +53,9 @@ var InfoHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 			Request: uReq,
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)
+		return
+	}
+	if !routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermAddUsers) {
 		return
 	}
 	t, err := models.GetToken(s, uReq.Token)

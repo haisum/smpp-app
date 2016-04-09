@@ -1,6 +1,7 @@
 package users
 
 import (
+	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/db"
 	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes"
@@ -14,7 +15,7 @@ type addRequest struct {
 	Token           string
 	Username        string
 	Password        string
-	Permissions     []models.Permission
+	Permissions     []smpp.Permission
 	Name            string
 	Email           string
 	NightStartAt    string
@@ -43,7 +44,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uReq.Url = r.URL.RequestURI()
-	if !routes.Authenticate(w, *r, uReq, uReq.Token, models.PermAddUsers) {
+	if !routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermAddUsers) {
 		return
 	}
 	s, err := db.GetSession()

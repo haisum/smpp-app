@@ -98,7 +98,7 @@ func tconfig(s *r.Session, dbname string) error {
                     "Time": 1
                 }
             ],
-          "DefaultPfx": "+97105",
+          "DefaultPfx": "+97105"
         },
         {
           "Name" : "AADC",
@@ -116,11 +116,10 @@ func tconfig(s *r.Session, dbname string) error {
                     "Time": 1
                 }
             ],
-          "DefaultPfx": "+97105",
+          "DefaultPfx": "+97105"
         }
 	  ]
-	}
-	`), &c)
+	}`), &c)
 	if err != nil {
 		log.WithError(err).Error("Couldn't load json in config struct.")
 		return err
@@ -132,8 +131,8 @@ func tconfig(s *r.Session, dbname string) error {
 			"name":  dbname,
 			"table": "Config",
 		}).Error("Error occured in inserting config in table.")
-		return err
 	}
+	return err
 }
 
 func ttoken(s *r.Session, dbname string) error {
@@ -196,7 +195,7 @@ func tuser(s *r.Session, dbname string) error {
 		NightStartAt    string
 		NightEndAt      string
 		ConnectionGroup string
-		Permissions     []string
+		Permissions     []smpp.Permission
 		RegisteredAt    int64
 	}{
 		Name:            "Admin",
@@ -204,13 +203,9 @@ func tuser(s *r.Session, dbname string) error {
 		Username:        "admin",
 		NightEndAt:      "00:00AM",
 		NightStartAt:    "00:00AM",
-		ConnectionGroup: "default",
-		Permissions: []string{
-			"Add users",
-			"Edit users",
-			"List users",
-		},
-		RegisteredAt: time.Now().Unix(),
+		ConnectionGroup: "Default",
+		Permissions:     smpp.GetPermissions(),
+		RegisteredAt:    time.Now().Unix(),
 	}
 	u.Password, err = hash(u.Password)
 	if err != nil {

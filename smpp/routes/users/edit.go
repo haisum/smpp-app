@@ -1,6 +1,7 @@
 package users
 
 import (
+	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/db"
 	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes"
@@ -13,7 +14,7 @@ type editRequest struct {
 	Token           string
 	Username        string
 	Password        string
-	Permissions     []models.Permission
+	Permissions     []smpp.Permission
 	Name            string
 	Email           string
 	NightStartAt    string
@@ -42,7 +43,7 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	uReq.Url = r.URL.RequestURI()
-	if !routes.Authenticate(w, *r, uReq, uReq.Token, models.PermEditUsers) {
+	if !routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermEditUsers) {
 		return
 	}
 	s, err := db.GetSession()

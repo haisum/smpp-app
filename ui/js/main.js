@@ -24,6 +24,7 @@ var app = {
 					"data": $(this).serialize(),
 				}).done(function(data){
 					localStorage.setItem("auth_token", data.Response.Token);
+					app.renderSMS();
 				}).fail(function(xhr, status, errThrone){
 					console.error(xhr);
 					var toastContent = '<span class="red-text">' + xhr.responseJSON.Errors.auth + '</span>';
@@ -37,15 +38,18 @@ var app = {
 		});
 	},
 	renderSMS: function(){
-		$(".button-collapse").sideNav();
-		$('.datepicker').pickadate({
-		    selectMonths: true, // Creates a dropdown to control month
-		    selectYears: 15 // Creates a dropdown of 15 years to control year
+		$.ajax("/templates/message.html").done(function(data){
+			$("#content").html(data);
+			$(".button-collapse").sideNav();
+			$('.datepicker').pickadate({
+			    selectMonths: true, // Creates a dropdown to control month
+			    selectYears: 15 // Creates a dropdown of 15 years to control year
+			});
+			$('.timepicker').pickatime({
+		      twelvehour: true
+		    });
+		    $('select').material_select();
 		});
-		$('.timepicker').pickatime({
-	      twelvehour: true
-	    });
-	    $('select').material_select();
 	}
 }
 

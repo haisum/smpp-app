@@ -1,6 +1,7 @@
 package models
 
 import (
+	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/db"
 	"encoding/json"
 	"fmt"
@@ -23,7 +24,7 @@ type User struct {
 	NightStartAt    string
 	NightEndAt      string
 	ConnectionGroup string
-	Permissions     []Permission
+	Permissions     []smpp.Permission
 	RegisteredAt    int64
 	Suspended       bool
 }
@@ -41,7 +42,7 @@ type UserCriteria struct {
 	ConnectionGroup  string
 	From             string
 	PerPage          int
-	Permissions      []Permission
+	Permissions      []smpp.Permission
 }
 
 const (
@@ -273,7 +274,7 @@ func (u *User) Validate() (map[string]string, error) {
 	}
 	for _, x := range u.Permissions {
 		var isValidPerm bool
-		for _, y := range GetPermissions() {
+		for _, y := range smpp.GetPermissions() {
 			if x == y {
 				isValidPerm = true
 				break
