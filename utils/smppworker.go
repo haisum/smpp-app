@@ -10,47 +10,35 @@ import (
 	"math"
 	"os"
 	"os/signal"
-	"sync/atomic"
 	"syscall"
 	"time"
 )
 
 var (
-	c smpp.Config
+	c      *smpp.Config
+	s      *smpp.Sender
+	sconn  *smpp.Conn
+	connid = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
+	cmutex smpp.CountMutex
 )
-
-var connid = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
 
 // Handler is called by rabbitmq library after a queue has been bound/
 // deliveries channel gets data when a new job is to be consumed by worker
 // This function should wait for done channel before terminating so that all
 // pending jobs should be finished and rabbitmq should be notified about disconnect
 func handler(deliveries <-chan amqp.Delivery, done chan error) {
-	conn, _ := c.GetConn(*connid)
-	var s smpp.Sender
-	log.WithFields(log.Fields{
-		"URL":    conn.URL,
-		"User":   conn.User,
-		"Passwd": conn.Passwd,
-		"Conn":   conn,
-		"c":      c,
-	}).Info("Dialing")
-	s.Connect(conn.URL, conn.User, conn.Passwd)
-	s.Fields = conn.Fields
-	log.Info("Waiting for smpp connection")
-	<-s.Connected
-	var count int32
-	count = 0
 	for d := range deliveries {
 		// multiple threads may race to read/write this, so we need atomic operation
-		cur := atomic.LoadInt32(&count)
-		if cur >= conn.Size {
+		cmutex.Lock()
+		cur := cmutex.Count
+		if cur >= sconn.Size {
 			log.Info("Waiting one second before proceeding")
-			time.Sleep(time.Second * time.Duration(conn.Time))
+			time.Sleep(time.Second * time.Duration(sconn.Time))
 			log.Info("Resuming messages")
-			atomic.SwapInt32(&count, 0)
+			cmutex.Count = 0
 		}
-		go send(&s, d, &count)
+		cmutex.Unlock()
+		go send(d)
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
@@ -60,7 +48,7 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 // This function is responsible for acknowledging the job completion to rabbitmq
 // This function also increments count by ceil of number of characters divided by number of characters per message.
 // When count reaches a certain number defined per connection, worker waits for time t defined in configuration before resuming operations.
-func send(s *smpp.Sender, d amqp.Delivery, count *int32) {
+func send(d amqp.Delivery) {
 	var i queue.Item
 	err := i.FromJSON(d.Body)
 	if err != nil {
@@ -77,7 +65,9 @@ func send(s *smpp.Sender, d amqp.Delivery, count *int32) {
 	}
 	res := float64(float64(len(i.Msg)) / float64(charLimit))
 	total := math.Ceil(res)
-	atomic.AddInt32(count, int32(total))
+	cmutex.Lock()
+	cmutex.Count = cmutex.Count + int32(total)
+	cmutex.Unlock()
 	_, err = s.Send(i.Src, i.Dst, i.Enc, i.Msg)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -119,8 +109,27 @@ func gracefulShutdown(r *queue.Rabbit) {
 // Binds to rabbitmq queue and listens for all numbers starting with supplied prefixes.
 // This function calls handler when a connection is succesfully established
 func bind() {
-	conn, err := c.GetConn(*connid)
-	log.WithField("conn", conn).Info("Binding")
+	var err error
+	sconn = &smpp.Conn{}
+	*sconn, err = c.GetConn(*connid)
+	log.WithFields(log.Fields{
+		"connid":   *connid,
+		"username": sconn.URL,
+	}).Info("Connection id")
+	log.WithFields(log.Fields{
+		"URL":    sconn.URL,
+		"User":   sconn.User,
+		"Passwd": sconn.Passwd,
+		"Conn":   sconn,
+		"c":      c,
+	}).Info("Dialing")
+	s = &smpp.Sender{}
+	s.Connect(sconn.URL, sconn.User, sconn.Passwd)
+	s.Fields = sconn.Fields
+	log.Info("Waiting for smpp connection")
+	<-s.Connected
+	cmutex = smpp.CountMutex{}
+	log.WithField("conn", sconn).Info("Binding")
 	if err != nil {
 		log.WithField("connid", connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")
 	}
@@ -134,8 +143,8 @@ func bind() {
 	if err != nil {
 		os.Exit(1)
 	}
-	log.WithField("Pfxs", conn.Pfxs).Info("Binding to routing keys")
-	err = r.Bind(conn.Pfxs, handler)
+	log.WithField("Pfxs", sconn.Pfxs).Info("Binding to routing keys")
+	err = r.Bind(sconn.Pfxs, handler)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -150,7 +159,7 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-
+	c = &smpp.Config{}
 	err := c.LoadFile("settings.json")
 	if err != nil {
 		log.Fatal("Can't continue without settings. Exiting.")

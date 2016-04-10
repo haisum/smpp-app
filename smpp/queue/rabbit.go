@@ -144,19 +144,19 @@ func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
 // Bind binds to queue defined by routing keys on exchange supplied to Init method.
 // This method must be called after Init, otherwise it would fail.
 func (r *Rabbit) Bind(keys []string, handler Handler) error {
-	q, err := r.Ch.QueueDeclare(
-		"",    // name
-		false, // durable
-		false, // delete when usused
-		true,  // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-	if err != nil {
-		log.WithField("err", err).Error("Failed to create a queue.")
-		return err
-	}
 	for _, k := range keys {
+		q, err := r.Ch.QueueDeclare(
+			k,     // name
+			false, // durable
+			false, // delete when usused
+			false, // exclusive
+			false, // no-wait
+			nil,   // arguments
+		)
+		if err != nil {
+			log.WithField("err", err).Error("Failed to create a queue.")
+			return err
+		}
 		log.WithFields(log.Fields{
 			"q.Name": q.Name,
 			"r.ex":   r.ex,
@@ -177,20 +177,21 @@ func (r *Rabbit) Bind(keys []string, handler Handler) error {
 			}).Error("Failed to bind queue.")
 			return err
 		}
-	}
 
-	r.msgs, err = r.Ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		false,  // auto ack
-		false,  // exclusive
-		false,  // no local
-		false,  // no wait
-		nil,    // args
-	)
-	if err != nil {
-		log.WithField("err", err).Error("Failed to register a consumer.")
+		r.msgs, err = r.Ch.Consume(
+			q.Name, // queue
+			"",     // consumer
+			false,  // auto ack
+			false,  // exclusive
+			false,  // no local
+			false,  // no wait
+			nil,    // args
+		)
+		if err != nil {
+			log.WithField("err", err).Error("Failed to register a consumer.")
+			return err
+		}
+		go handler(r.msgs, r.done)
 	}
-	go handler(r.msgs, r.done)
-	return err
+	return nil
 }
