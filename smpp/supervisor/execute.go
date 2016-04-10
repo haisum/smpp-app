@@ -40,7 +40,7 @@ func (t *TplData) load(c smpp.Config) {
 		for _, w := range g.Conns {
 			p := Program{
 				Name:    fmt.Sprintf("smppworker-%s-%s", g.Name, w.ID),
-				Command: fmt.Sprintf("%s/./smppworker -cid='%s' -gid='%s'", path, w.ID, g.Name),
+				Command: fmt.Sprintf("%s/./smppworker -cid='%s' -group='%s'", path, w.ID, g.Name),
 			}
 			workers = append(workers, p)
 		}
@@ -96,10 +96,19 @@ func tpl() {
 func Execute(command string) ([]string, error) {
 	var o []string
 	tpl()
-	out, err := supervisorctl(fmt.Sprintf("%s all", command))
+	var args []string
+	if command == "reload" {
+		args = []string{"reload"}
+	} else {
+		args = []string{fmt.Sprintf("%s all", command)}
+	}
+	exec.Command("supervisord").Output()
+	out, err := supervisorctl(args)
 	if err != nil {
 		return o, err
 	}
-	o = strings.Split(string(out[:]), '\n')
+	s := string(out)
+	log.WithField("out", s).Info("Executed ctl command.")
+	o = strings.Split(s, "\n")
 	return o, nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bitbucket.com/codefreak/hsmpp/smpp"
+	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.com/codefreak/hsmpp/smpp/queue"
 	"flag"
 	log "github.com/Sirupsen/logrus"
@@ -19,6 +20,7 @@ var (
 	s      *smpp.Sender
 	sconn  *smpp.Conn
 	connid = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
+	group  = flag.String("group", "", "Group name of connection.")
 	cmutex smpp.CountMutex
 )
 
@@ -111,7 +113,7 @@ func gracefulShutdown(r *queue.Rabbit) {
 func bind() {
 	var err error
 	sconn = &smpp.Conn{}
-	*sconn, err = c.GetConn(*connid)
+	*sconn, err = c.GetConn(*group, *connid)
 	log.WithFields(log.Fields{
 		"connid":   *connid,
 		"username": sconn.URL,
@@ -144,7 +146,7 @@ func bind() {
 		os.Exit(1)
 	}
 	log.WithField("Pfxs", sconn.Pfxs).Info("Binding to routing keys")
-	err = r.Bind(sconn.Pfxs, handler)
+	err = r.Bind(*group, sconn.Pfxs, handler)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -159,8 +161,9 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
+	var err error
 	c = &smpp.Config{}
-	err := c.LoadFile("settings.json")
+	*c, err = models.GetConfig()
 	if err != nil {
 		log.Fatal("Can't continue without settings. Exiting.")
 	}

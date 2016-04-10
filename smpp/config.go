@@ -1,5 +1,9 @@
 package smpp
 
+import (
+	"fmt"
+)
+
 // Config represents all settings defined in settings file
 type Config struct {
 	AmqpURL    string
@@ -40,4 +44,43 @@ type PduFields struct {
 	ScheduleDeliveryTime string
 	ReplaceIfPresentFlag uint8
 	SMDefaultMsgID       uint8
+}
+
+// GetKeys returns all prefixes defined by all the connections
+func (c *Config) GetKeys(group string) []string {
+	var keys []string
+	g, err := c.getGroup(group)
+	if err != nil {
+		return keys
+	}
+	for _, con := range g.Conns {
+		keys = append(keys, con.Pfxs...)
+	}
+	return keys
+}
+
+// GetConn returns a connection with given id
+func (c *Config) GetConn(group, id string) (Conn, error) {
+	var con Conn
+	g, err := c.getGroup(group)
+	if err != nil {
+		return con, err
+	}
+	for _, con = range g.Conns {
+		if con.ID == id {
+			return con, nil
+		}
+	}
+
+	return con, fmt.Errorf("Couldn't find key for connection %s.", id)
+}
+
+func (c *Config) getGroup(group string) (ConnGroup, error) {
+	var cg ConnGroup
+	for _, g := range c.ConnGroups {
+		if g.Name == group {
+			return g, nil
+		}
+	}
+	return cg, fmt.Errorf("Couldn't find group with name %s.", group)
 }

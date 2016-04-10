@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
@@ -143,8 +144,9 @@ func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
 
 // Bind binds to queue defined by routing keys on exchange supplied to Init method.
 // This method must be called after Init, otherwise it would fail.
-func (r *Rabbit) Bind(keys []string, handler Handler) error {
+func (r *Rabbit) Bind(group string, keys []string, handler Handler) error {
 	for _, k := range keys {
+		k = fmt.Sprintf("%s-%s", group, k)
 		q, err := r.Ch.QueueDeclare(
 			k,     // name
 			false, // durable

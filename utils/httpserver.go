@@ -4,6 +4,7 @@ import (
 	"bitbucket.com/codefreak/hsmpp/smpp/routes/services"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes/user"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes/users"
+	"bitbucket.com/codefreak/hsmpp/smpp/supervisor"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -22,5 +23,9 @@ func main() {
 	r.Handle("/api/services/config", handlers.MethodHandler{"GET": services.GetConfigHandler, "POST": services.PostConfigHandler})
 	ui := http.FileServer(http.Dir("./ui/"))
 	r.PathPrefix("/").Handler(ui)
+	_, err := supervisor.Execute("reload")
+	if err != nil {
+		log.Fatal("Couldn't executing supervisor to start workers.")
+	}
 	log.Fatal(http.ListenAndServeTLS(":8443", "keys/cert.pem", "keys/server.key", handlers.CombinedLoggingHandler(os.Stdout, r)))
 }

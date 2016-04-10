@@ -4,6 +4,7 @@ import (
 	"bitbucket.com/codefreak/hsmpp/smpp"
 	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes"
+	"bitbucket.com/codefreak/hsmpp/smpp/supervisor"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
 )
@@ -40,6 +41,16 @@ var PostConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 			Request: uReq,
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
+		return
+	}
+	_, err = supervisor.Execute("reload")
+	if err != nil {
+		log.WithError(err).Error("Couldn't reload supervisor.")
+		resp := routes.Response{
+			Errors:  routes.ResponseErrors{"config": "Couldn't reload supervisor."},
+			Request: uReq,
+		}
+		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
 	resp := routes.Response{}
