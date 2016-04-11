@@ -30,7 +30,7 @@ var PostConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 		return
 	}
 	uReq.Url = r.URL.RequestURI()
-	if !routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermEditConfig) {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermEditConfig); !ok {
 		return
 	}
 	err = models.SetConfig(uReq.Config)

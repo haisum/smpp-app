@@ -44,7 +44,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uReq.Url = r.URL.RequestURI()
-	if !routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermAddUsers) {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermAddUsers); !ok {
 		return
 	}
 	s, err := db.GetSession()

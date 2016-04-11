@@ -1,19 +1,46 @@
 package main
 
 import (
+	"bitbucket.com/codefreak/hsmpp/smpp/db"
+	"bitbucket.com/codefreak/hsmpp/smpp/queue"
+	"bitbucket.com/codefreak/hsmpp/smpp/routes/message"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes/services"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes/user"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes/users"
 	"bitbucket.com/codefreak/hsmpp/smpp/supervisor"
+	"flag"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+)
+
+var (
+	port    = flag.Int("port", 8443, "Port on which http service should start.")
+	amqpUrl = flag.String("amqpUrl", "amqp://guest:guest@localhost:5672/", "Amqp url for rabbitmq")
 )
 
 func main() {
+	flag.Parse()
+	log.Info("Connecting database.")
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't setup database connection.")
+	}
+	defer s.Close()
+
+	log.Info("Connecting with rabbitmq.")
+	q, err := queue.GetQueue(*amqpUrl, "smppworker-exchange", 1)
+	if err != nil {
+		log.WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
+	}
+	defer q.Close()
 	r := mux.NewRouter()
+	r.Handle("/api/message", handlers.MethodHandler{"POST": message.MessageHandler})
 	r.Handle("/api/users", handlers.MethodHandler{"GET": users.UsersHandler})
 	r.Handle("/api/users/permissions", handlers.MethodHandler{"GET": users.PermissionsHandler})
 	r.Handle("/api/users/add", handlers.MethodHandler{"POST": users.AddHandler})
@@ -23,9 +50,27 @@ func main() {
 	r.Handle("/api/services/config", handlers.MethodHandler{"GET": services.GetConfigHandler, "POST": services.PostConfigHandler})
 	ui := http.FileServer(http.Dir("./ui/"))
 	r.PathPrefix("/").Handler(ui)
-	_, err := supervisor.Execute("reload")
+	log.Info("Loading message workers.")
+	_, err = supervisor.Execute("reload")
 	if err != nil {
 		log.Fatal("Couldn't executing supervisor to start workers.")
 	}
-	log.Fatal(http.ListenAndServeTLS(":8443", "keys/cert.pem", "keys/server.key", handlers.CombinedLoggingHandler(os.Stdout, r)))
+
+	//Listen for termination signals from OS
+	go gracefulShutdown()
+	log.Infof("Listening for requests on port %d", *port)
+	log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", *port), "keys/cert.pem", "keys/server.key", handlers.CombinedLoggingHandler(os.Stdout, r)))
+}
+
+// When SIGTERM or SIGINT is received, this routine will close our workers
+func gracefulShutdown() {
+	s := make(chan os.Signal, 1)
+	signal.Notify(s, os.Interrupt)
+	signal.Notify(s, syscall.SIGTERM)
+	go func() {
+		<-s
+		log.Print("Sutting down gracefully.")
+		supervisor.Execute("stop")
+		os.Exit(0)
+	}()
 }

@@ -27,6 +27,7 @@ func GetConfig() (smpp.Config, error) {
 	if err != nil {
 		log.WithError(err).Error("Error loading config.")
 	}
+	defer cur.Close()
 	return c, err
 }
 

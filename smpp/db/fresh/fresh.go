@@ -54,8 +54,6 @@ func tconfig(s *r.Session, dbname string) error {
 	}
 	var c smpp.Config
 	err = json.Unmarshal([]byte(`{
-    "AmqpURL": "amqp://guest:guest@localhost:5672/",
-    "HTTPSPort": 8443,
     "ConnGroups": [
         {
           "Name": "Default",
@@ -260,6 +258,7 @@ func Exists(s *r.Session, name string) bool {
 	}
 	var dbs []string
 	cur.All(&dbs)
+	defer cur.Close()
 	for _, db := range dbs {
 		if db == name {
 			return true

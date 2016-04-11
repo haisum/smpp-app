@@ -40,6 +40,7 @@ func GetToken(s *r.Session, token string) (Token, error) {
 		log.WithError(err).Error("Couldn't read data from cursor to struct.")
 		return t, err
 	}
+	defer cur.Close()
 	now := time.Now()
 	// TokenValidity days ago
 	then := time.Date(now.Year(), now.Month(), now.Day()-TokenValidity, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location()).Unix()

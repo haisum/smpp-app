@@ -6,9 +6,7 @@ import (
 
 // Config represents all settings defined in settings file
 type Config struct {
-	AmqpURL    string
 	ConnGroups []ConnGroup
-	HTTPSPort  int
 }
 
 // ConnGroup is a group of connections to be used by a single tenant
@@ -49,7 +47,7 @@ type PduFields struct {
 // GetKeys returns all prefixes defined by all the connections
 func (c *Config) GetKeys(group string) []string {
 	var keys []string
-	g, err := c.getGroup(group)
+	g, err := c.GetGroup(group)
 	if err != nil {
 		return keys
 	}
@@ -62,7 +60,7 @@ func (c *Config) GetKeys(group string) []string {
 // GetConn returns a connection with given id
 func (c *Config) GetConn(group, id string) (Conn, error) {
 	var con Conn
-	g, err := c.getGroup(group)
+	g, err := c.GetGroup(group)
 	if err != nil {
 		return con, err
 	}
@@ -75,7 +73,7 @@ func (c *Config) GetConn(group, id string) (Conn, error) {
 	return con, fmt.Errorf("Couldn't find key for connection %s.", id)
 }
 
-func (c *Config) getGroup(group string) (ConnGroup, error) {
+func (c *Config) GetGroup(group string) (ConnGroup, error) {
 	var cg ConnGroup
 	for _, g := range c.ConnGroups {
 		if g.Name == group {

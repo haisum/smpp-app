@@ -2,10 +2,8 @@ package user
 
 import (
 	"bitbucket.com/codefreak/hsmpp/smpp"
-	"bitbucket.com/codefreak/hsmpp/smpp/db"
 	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes"
-	log "github.com/Sirupsen/logrus"
 	"net/http"
 )
 
@@ -41,45 +39,15 @@ var InfoHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	uReq.Url = r.URL.RequestURI()
-	if !routes.Authenticate(w, *r, uReq, uReq.Token, "") {
+	var (
+		u  models.User
+		ok bool
+	)
+	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
 		return
 	}
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Error in getting session.")
-		resp := routes.Response{
-			Ok:      false,
-			Errors:  routes.ResponseErrors{"db": "Couldn't connect to database."},
-			Request: uReq,
-		}
-		resp.Send(w, *r, http.StatusInternalServerError)
-		return
-	}
-	if !routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermAddUsers) {
-		return
-	}
-	t, err := models.GetToken(s, uReq.Token)
-	if err != nil {
-		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				"auth": "Couldn't verify token.",
-			},
-			Request: uReq,
-		}
-		log.WithError(err).Error("Error in verifying token.")
-		resp.Send(w, *r, http.StatusForbidden)
-		return
-	}
-
 	resp := routes.Response{}
-	u, err := models.GetUser(s, t.Username)
-	if err != nil {
-		resp.Ok = false
-		resp.Errors = routes.ResponseErrors{"auth": "Couldn't get user associated with token."}
-		resp.Request = uReq
-		resp.Send(w, *r, http.StatusForbidden)
-		return
-	}
+
 	uResp.ConnectionGroup = u.ConnectionGroup
 	uResp.Permissions = u.Permissions
 	uResp.NightEndAt = u.NightEndAt

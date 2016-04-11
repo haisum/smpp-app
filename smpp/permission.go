@@ -4,11 +4,12 @@ package smpp
 type Permission string
 
 const (
-	PermAddUsers   Permission = "Add users"
-	PermEditUsers             = "Edit users"
-	PermListUsers             = "List users"
-	PermShowConfig            = "Show config"
-	PermEditConfig            = "Edit config"
+	PermAddUsers    Permission = "Add users"
+	PermEditUsers              = "Edit users"
+	PermListUsers              = "List users"
+	PermShowConfig             = "Show config"
+	PermEditConfig             = "Edit config"
+	PermSendMessage            = "Send message"
 )
 
 // GetPermissions returns all valid permissions for a user
@@ -19,5 +20,6 @@ func GetPermissions() []Permission {
 		PermListUsers,
 		PermShowConfig,
 		PermEditConfig,
+		PermSendMessage,
 	}
 }

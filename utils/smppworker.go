@@ -135,13 +135,7 @@ func bind() {
 	if err != nil {
 		log.WithField("connid", connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")
 	}
-
-	r := queue.Rabbit{
-		Conn: &amqp.Connection{},
-		Ch:   &amqp.Channel{},
-		Dial: amqp.Dial,
-	}
-	err = r.Init(c.AmqpURL, "smppworker-exchange", 1)
+	r, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -151,7 +145,7 @@ func bind() {
 		os.Exit(1)
 	}
 	//Listen for termination signals from OS
-	go gracefulShutdown(&r)
+	go gracefulShutdown(r)
 
 }
 

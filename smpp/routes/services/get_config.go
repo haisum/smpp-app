@@ -28,7 +28,7 @@ var GetConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	uReq.Url = r.URL.RequestURI()
-	if !routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermShowConfig) {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermShowConfig); !ok {
 		return
 	}
 	c, err := models.GetConfig()

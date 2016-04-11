@@ -35,7 +35,7 @@ var UsersHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	uReq.Url = r.URL.RequestURI()
-	if !routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermListUsers) {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermListUsers); !ok {
 		return
 	}
 	s, err := db.GetSession()

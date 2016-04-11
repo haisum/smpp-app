@@ -123,6 +123,7 @@ func GetUser(s *r.Session, username string) (User, error) {
 		return u, err
 	}
 	cur.One(&u)
+	defer cur.Close()
 	return u, nil
 }
 
@@ -136,6 +137,7 @@ func GetIdUser(s *r.Session, id string) (User, error) {
 		return u, err
 	}
 	cur.One(&u)
+	defer cur.Close()
 	return u, nil
 }
 
@@ -233,6 +235,7 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 		return users, err
 	}
 	cur.All(&users)
+	defer cur.Close()
 	return users, nil
 }
 
@@ -246,6 +249,7 @@ func UserExists(s *r.Session, username string) bool {
 	}
 	var count int
 	cur.One(&count)
+	defer cur.Close()
 	if count > 0 {
 		return true
 	}

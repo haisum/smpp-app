@@ -6,6 +6,20 @@ import (
 	"github.com/streadway/amqp"
 )
 
+var (
+	q *Rabbit
+)
+
+// GetQueue returns a Rabbit object. It makes one connection per process life and reuses same rabbitmq connection.
+func GetQueue(url string, ex string, pCount int) (*Rabbit, error) {
+	if q == nil {
+		q = &Rabbit{}
+		err := q.Init(url, ex, pCount)
+		return q, err
+	}
+	return q, nil
+}
+
 // Priority represents priority of a message
 // Higher number means higher priority. Four priorities are supported:
 // priority.Low
@@ -18,35 +32,15 @@ type Priority uint8
 // Handler is a function which accepts deliveries channel and a error channel to indicate when processing is done
 type Handler func(<-chan amqp.Delivery, chan error)
 
-// Channel interface abstracts amqp.Channel for depdendency injection for testing
-type Channel interface {
-	Qos(prefetchCount, prefetchSize int, global bool) error
-	ExchangeDeclare(name, kind string, durable, autoDelete, internal, noWait bool, args amqp.Table) error
-	Publish(exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error
-	QueueDeclare(name string, durable, autoDelete, exclusive, noWait bool, args amqp.Table) (amqp.Queue, error)
-	Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args amqp.Table) (<-chan amqp.Delivery, error)
-	QueueBind(name, key, exchange string, noWait bool, args amqp.Table) error
-}
-
-// Connection interface abstracts amqp.Connection for testing
-type Connection interface {
-	Close() error
-	Channel() (*amqp.Channel, error)
-}
-
 // Rabbit holds host and port to connect to for rabbit mq and other properties for internal use
 type Rabbit struct {
 	url    string
 	ex     string
 	pCount int
-	// In non-test use this should be set to &amqp.Connection{} when declaring Rabbit struct
-	Conn Connection
-	// In non-test use this should be set to &amqp.Channel{} when declaring Rabbit struct
-	Ch Channel
-	// In non-test use this should be set to amqp.Dial when declaring Rabbit struct
-	Dial func(url string) (*amqp.Connection, error)
-	msgs <-chan amqp.Delivery
-	done chan error
+	Conn   *amqp.Connection
+	Ch     *amqp.Channel
+	msgs   <-chan amqp.Delivery
+	done   chan error
 }
 
 // Init takes url, exchange name and burst count as argument and
@@ -81,7 +75,7 @@ func (r *Rabbit) Close() error {
 // Connects and makes channel to given amqp url
 func (r *Rabbit) connect() error {
 	var err error
-	r.Conn, err = r.Dial(r.url)
+	r.Conn, err = amqp.Dial(r.url)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"url": r.url,

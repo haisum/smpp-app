@@ -8,7 +8,8 @@ import (
 	"net/http"
 )
 
-func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token string, p smpp.Permission) bool {
+func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token string, p smpp.Permission) (models.User, bool) {
+	var u models.User
 	resp := Response{
 		Request: req,
 	}
@@ -19,7 +20,7 @@ func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token 
 			"auth": "Couldn't connect db.",
 		}
 		resp.Send(w, r, http.StatusInternalServerError)
-		return false
+		return u, false
 	}
 	t, err := models.GetToken(s, token)
 	if err != nil {
@@ -28,35 +29,35 @@ func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token 
 			"auth": "Invalid token.",
 		}
 		resp.Send(w, r, http.StatusUnauthorized)
-		return false
+		return u, false
 	}
-	u, err := models.GetUser(s, t.Username)
+	u, err = models.GetUser(s, t.Username)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get user.")
 		resp.Errors = ResponseErrors{
 			"auth": "This user no longer exists.",
 		}
 		resp.Send(w, r, http.StatusUnauthorized)
-		return false
+		return u, false
 	}
 	if u.Suspended {
 		resp.Errors = ResponseErrors{
 			"auth": "This user is suspended.",
 		}
 		resp.Send(w, r, http.StatusUnauthorized)
-		return false
+		return u, false
 	}
 	if p != "" {
 		for _, perm := range u.Permissions {
 			if perm == p {
-				return true
+				return u, true
 			}
 		}
 		resp.Errors = ResponseErrors{
 			"auth": "You don't have permissions to access this resource.",
 		}
 		resp.Send(w, r, http.StatusForbidden)
-		return false
+		return u, false
 	}
-	return true
+	return u, true
 }
