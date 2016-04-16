@@ -12,7 +12,7 @@
 - name: Get rabbitmq package
   get_url: url="https://www.rabbitmq.com/releases/rabbitmq-server/v3.6.0/rabbitmq-server-3.6.0-1.noarch.rpm" dest="/tmp/rabbitmq.rpm" 
 
-- name: Download and install rabbitmq package
+- name: Install rabbitmq package
   yum: state=present name="/tmp/rabbitmq.rpm"
 
 - name: Start and make rabbitmq service available on start up

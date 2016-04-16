@@ -9,6 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type messageReq struct {
@@ -72,6 +73,28 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
+
+	m := models.Message{
+		ConnectionGroup: u.ConnectionGroup,
+		Username:        u.Username,
+		Msg:             uReq.Msg,
+		Enc:             uReq.Enc,
+		Dst:             uReq.Dst,
+		Src:             uReq.Src,
+		Priority:        uReq.Priority,
+		QueueudAt:       time.Now().Unix(),
+		Status:          models.MsgSubmitted,
+	}
+	msgId, err := m.Save()
+	if err != nil {
+		log.WithField("err", err).Error("Couldn't insert in db.")
+		resp := routes.Response{
+			Errors:  routes.ResponseErrors{"db": "Couldn't save message in database."},
+			Request: uReq,
+		}
+		resp.Send(w, *r, http.StatusInternalServerError)
+		return
+	}
 	noKey = group.DefaultPfx
 	key := matchKey(keys, uReq.Dst, noKey)
 	qItem := queue.Item{
@@ -80,6 +103,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		Src:      uReq.Src,
 		Msg:      uReq.Msg,
 		Dst:      uReq.Dst,
+		MsgId:    msgId,
 	}
 	respJSON, _ := qItem.ToJSON()
 	err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))

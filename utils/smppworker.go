@@ -5,12 +5,17 @@ import (
 	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.com/codefreak/hsmpp/smpp/queue"
 	"flag"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	smppstatus "github.com/fiorix/go-smpp/smpp"
+	"github.com/fiorix/go-smpp/smpp/pdu"
+	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
+	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
 	"github.com/streadway/amqp"
 	"math"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -46,6 +51,32 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 	done <- nil
 }
 
+func receiver(p pdu.Body) {
+	log.Info("0x0427 incoming")
+	/*var field1 bytes.Buffer
+	p.TLVFields()[0x0427].SerializeTo(&field1)
+	fmt.Println(field1.Bytes())*/
+	fmt.Println(p.TLVFields()[0x001e].Bytes())
+	//fmt.Println(binary.BigEndian.Uint16())
+	/*log.Info(field1.String())*/
+	/*log.Info("0x001e incoming")
+	var field2 bytes.Buffer
+	p.TLVFields()[0x001e].SerializeTo(&field2)
+	fmt.Println(field2.Bytes())*/
+	//fmt.Println(binary.BigEndian.Uint16(p.TLVFields()[0x001e].Bytes()))
+	/*log.Info(field2.String())*/
+	if p.Header().ID == pdu.DeliverSMID {
+		go saveDeliverySM(p.Fields())
+	} else {
+		fields := log.Fields{
+			"pdu":    p.Header().ID.String(),
+			"fields": p.Fields(),
+		}
+		log.WithFields(fields).Info("PDU Received.")
+	}
+
+}
+
 // This is called per job and as a separate go routing
 // This function is responsible for acknowledging the job completion to rabbitmq
 // This function also increments count by ceil of number of characters divided by number of characters per message.
@@ -70,7 +101,7 @@ func send(d amqp.Delivery) {
 	cmutex.Lock()
 	cmutex.Count = cmutex.Count + int32(total)
 	cmutex.Unlock()
-	_, err = s.Send(i.Src, i.Dst, i.Enc, i.Msg)
+	respId, err := s.Send(i.Src, i.Dst, i.Enc, i.Msg)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Src":    i.Src,
@@ -84,6 +115,7 @@ func send(d amqp.Delivery) {
 		} else {
 			d.Nack(false, true)
 		}
+		go updateMessage(i.MsgId, respId, sconn.ID, err.Error(), int(total), s.Fields)
 	} else {
 		log.WithFields(log.Fields{
 			"Src":    i.Src,
@@ -92,18 +124,99 @@ func send(d amqp.Delivery) {
 			"Fields": s.Fields,
 		}).Info("Sent message.")
 		d.Ack(false)
+		go updateMessage(i.MsgId, respId, sconn.ID, "", int(total), s.Fields)
 	}
+	log.WithField("RespId", respId).Info("response id")
+}
+
+func updateMessage(id, respId, con, errMsg string, total int, fields smpp.PduFields) {
+	m, err := models.GetMessage(id)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"id":    id,
+		}).Error("Couldn't find message with id")
+		return
+	}
+	m.RespId = respId
+	m.Connection = con
+	m.Error = errMsg
+	m.Total = total
+	m.Fields = fields
+	if errMsg == "" {
+		m.SubmittedAt = time.Now().Unix()
+		m.Status = models.MsgSent
+	} else {
+		m.Status = models.MsgError
+	}
+	err = m.Update()
+	if err != nil {
+		log.WithError(err).Error("Couldn't update message.")
+	}
+}
+
+func saveDeliverySM(deliverSM pdufield.Map) {
+	var id string
+	log.WithFields(log.Fields{"deliverySM": deliverSM}).Info("Received deliverySM")
+	if val, ok := deliverSM["short_message"]; ok {
+		log.WithField("ucs", string(pdutext.UCS2(deliverSM["short_message"].Bytes()).Decode())).Info("Decoded message")
+		log.WithField("ucs", string(pdutext.Raw(deliverSM["short_message"].Bytes()).Decode())).Info("Decoded message")
+		var err error
+		id, err = splitShortMessage(val.String(), "id:")
+		if err != nil {
+			log.WithError(err).Error("Couldn't find id")
+			return
+		}
+	} else {
+		log.WithField("deliverySM", deliverSM).Error("Couldn't find short_message field")
+		return
+	}
+	criteria := models.MessageCriteria{
+		RespId: id,
+	}
+	ms, err := models.GetMessages(criteria)
+	if err != nil || len(ms) == 0 {
+		log.WithFields(log.Fields{
+			"error":  err,
+			"respId": id,
+		}).Error("Couldn't find message with id")
+		return
+	}
+	ms[0].DeliverySM = deliverSM
+	deliverSM["short_message"].String()
+	status, _ := splitShortMessage(deliverSM["short_message"].String(), "stat:")
+	if status == "DELIVRD" {
+		ms[0].DeliveredAt = time.Now().Unix()
+		ms[0].Status = models.MsgDelivered
+	} else {
+		ms[0].Status = models.MsgNotDelivered
+	}
+	err = ms[0].Update()
+	if err != nil {
+		log.WithError(err).Error("Error saving deliverySM")
+	}
+}
+
+func splitShortMessage(sm, sep string) (string, error) {
+	var id string
+	tokens := strings.Split(sm, sep)
+	if len(tokens) < 2 {
+		return id, fmt.Errorf("Couldn't find enough tokens")
+	}
+	id = strings.Fields(tokens[1])[0]
+	return id, nil
 }
 
 // When SIGTERM or SIGINT is received, this routine will make sure we shutdown our queues and finish in progress jobs
 func gracefulShutdown(r *queue.Rabbit) {
-	s := make(chan os.Signal, 1)
-	signal.Notify(s, os.Interrupt)
-	signal.Notify(s, syscall.SIGTERM)
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+	signal.Notify(sig, syscall.SIGTERM)
 	go func() {
-		<-s
+		<-sig
 		log.Print("Sutting down gracefully.")
 		r.Close()
+		s.Tx.Close()
 		os.Exit(0)
 	}()
 }
@@ -126,7 +239,7 @@ func bind() {
 		"c":      c,
 	}).Info("Dialing")
 	s = &smpp.Sender{}
-	s.Connect(sconn.URL, sconn.User, sconn.Passwd)
+	s.Connect(sconn.URL, sconn.User, sconn.Passwd, receiver)
 	s.Fields = sconn.Fields
 	log.Info("Waiting for smpp connection")
 	<-s.Connected

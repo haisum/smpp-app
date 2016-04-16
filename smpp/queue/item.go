@@ -8,6 +8,7 @@ import (
 // Transmission is in json format
 type Item struct {
 	Msg      string
+	MsgId    string
 	Dst      string
 	Src      string
 	Enc      string

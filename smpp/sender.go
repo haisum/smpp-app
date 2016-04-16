@@ -17,7 +17,7 @@ const (
 // Sender holds smpp transmitter and a channel indicating when smpp connection
 // becomes connected.
 type Sender struct {
-	Tx        *smpp.Transmitter
+	Tx        *smpp.Transceiver
 	Connected chan bool
 	Fields    PduFields
 }
@@ -28,11 +28,12 @@ type Sender struct {
 // Channel Sender.Connected is filled if smpp gets connected. Other routines
 // that depend on smpp connection should wait for Connected channel before
 // proceeding.
-func (s *Sender) Connect(addr, user, passwd string) {
-	s.Tx = &smpp.Transmitter{
-		Addr:   addr,
-		User:   user,
-		Passwd: passwd,
+func (s *Sender) Connect(addr, user, passwd string, handler smpp.HandlerFunc) {
+	s.Tx = &smpp.Transceiver{
+		Addr:    addr,
+		User:    user,
+		Passwd:  passwd,
+		Handler: handler,
 	}
 	log.WithFields(log.Fields{
 		"Addr":   addr,

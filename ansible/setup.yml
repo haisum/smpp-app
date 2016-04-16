@@ -1,11 +1,12 @@
 ---
-- hosts: all
-  become: no
-  roles:
-    - copyfiles
+# - hosts: all
+#   become: no
+#   roles:
+#     - copyfiles
 
 - hosts: all
   become: yes
   roles:
     - rabbitmq
     - supervisor
+    - rethinkdb

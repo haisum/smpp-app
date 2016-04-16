@@ -1,0 +1,53 @@
+package models
+
+import (
+	r "github.com/dancannon/gorethink"
+	"strings"
+)
+
+func filterBetweenInt(fields map[string]map[string]int64, t *r.Term) {
+	for field, vals := range fields {
+		if vals["after"] > 0 && vals["before"] > 0 {
+			*t = t.Between(vals["after"], vals["before"], r.BetweenOpts{
+				Index: field,
+			})
+		}
+		if vals["after"] > 0 {
+			*t = t.Filter(r.Row.Field(field).Gt(vals["after"]))
+		}
+		if vals["before"] > 0 {
+			*t = t.Filter(r.Row.Field(field).Lt(vals["before"]))
+		}
+	}
+}
+
+func filterEqStr(fields map[string]string, t *r.Term) {
+	for field, val := range fields {
+		if val != "" {
+			*t = t.Filter(r.Row.Field(field).Eq(val))
+		}
+	}
+}
+
+func orderBy(key, dir string, from interface{}, t *r.Term) {
+	var order func(args ...interface{}) r.Term
+	if strings.ToUpper(dir) == "ASC" {
+		order = r.Asc
+	} else {
+		order = r.Desc
+	}
+	if from != nil {
+		if dir == "ASC" {
+			*t = t.Between(from, r.MaxVal, r.BetweenOpts{
+				Index:     key,
+				LeftBound: "open",
+			})
+		} else {
+			*t = t.Between(r.MinVal, from, r.BetweenOpts{
+				Index:     key,
+				LeftBound: "open",
+			})
+		}
+	}
+	*t = t.OrderBy(order(key))
+}

@@ -49,6 +49,74 @@ var app = {
 		      twelvehour: true
 		    });
 		    $('select').material_select();
+		    $("#message-form").on("submit", function(e){
+				e.preventDefault();
+				var msgReq = {
+					"Enc" : $("#Enc").prop("checked") ? "ucs" : "latin",
+					"Msg" : $("#Msg").val(),
+					"Dst" : $("#Dst").val(),
+					"Src" : $("#Src").val(),
+					"Token" : localStorage.getItem("auth_token")
+				}
+				$.ajax({
+					"url": "/api/message",
+					"dataType": "json",
+					"type": "POST",
+					"data": msgReq,
+				}).done(function(data){
+					Materialize.toast("Message sent succesfully.", 5000);
+				}).fail(function(xhr, status, errThrone){
+					if(xhr.status == 401) {
+						localStorage.removeItem("auth_token");
+						window.location.reload();
+					}
+					console.error(xhr.responseJSON);
+					var toastContent = '<span class="red-text">Error occured see console for details.</span>';
+		  			Materialize.toast(toastContent, 5000)	
+				});
+			});
+		});
+	},
+	renderServices: function(){
+		$.ajax("/templates/services.html").done(function(data){
+			$("#content").html(data);
+			$(".button-collapse").sideNav();
+		    $('select').material_select();
+		    $.get("/api/services/config", {"Token" : localStorage.getItem("auth_token")}, function(data){
+		    	$("#Config").val(JSON.stringify(data["Response"], null, 4));
+		    	$("#Config").trigger('keyup');
+		    });
+		    $("#services-form").on("submit", function(e){
+				e.preventDefault();
+				var config
+				try {
+					config = $.parseJSON($("#Config").val());
+				} catch(e){
+					Materialize.toast("JSON not valid.", 5000);
+					return;
+				}
+				configReq = {
+					"Config" : config,
+					"Token" : localStorage.getItem("auth_token")
+				};
+				$.ajax({
+					"url": "/api/services/config",
+					"dataType": "json",
+					"type": "POST",
+					"contentType" : "application/json",
+					"data": JSON.stringify(configReq),
+				}).done(function(data){
+					Materialize.toast("Config updated succesfully.", 5000);
+				}).fail(function(xhr, status, errThrone){
+					if(xhr.status == 401) {
+						localStorage.removeItem("auth_token");
+						window.location.reload();
+					}
+					console.error(xhr.responseJSON);
+					var toastContent = '<span class="red-text">Error occured see console for details.</span>';
+		  			Materialize.toast(toastContent, 5000)	
+				});
+			});
 		});
 	}
 }

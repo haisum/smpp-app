@@ -26,7 +26,7 @@
   become: no
   changed_when: supervisord.stderr and supervisord.stderr.find("Error") == -1
 
-- name: Start services
-  command: chdir="{{project_home}}" ./smppctl start all
-  register: started
-  changed_when: started.stdout.find("started") != -1
+# - name: Start services
+#   command: chdir="{{project_home}}" ./smppctl start all
+#   register: started
+#   changed_when: started.stdout.find("started") != -1
