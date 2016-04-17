@@ -6,7 +6,6 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
-	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
 	"strconv"
 )
 
@@ -14,7 +13,7 @@ import (
 type Message struct {
 	Id              string `gorethink:"id,omitempty"`
 	RespId          string
-	DeliverySM      pdufield.Map
+	DeliverySM      map[string]string
 	ConnectionGroup string
 	Connection      string
 	Fields          smpp.PduFields
@@ -143,12 +142,13 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 		"ConnectionGroup": c.ConnectionGroup,
 		"Src":             c.Src,
 		"Dst":             c.Dst,
+		"Enc":             c.Enc,
 		"Status":          string(c.Status),
 		"CampaignId":      c.CampaignId,
 		"Error":           c.Error,
 		"Username":        c.Username,
 	}
-	filterEqStr(strFields, &t)
+	t = filterEqStr(strFields, t)
 	betweenFields := map[string]map[string]int64{
 		"QueuedAt": {
 			"after":  c.QueuedAfter,
@@ -163,7 +163,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 			"before": c.SubmittedBefore,
 		},
 	}
-	filterBetweenInt(betweenFields, &t)
+	t = filterBetweenInt(betweenFields, t)
 	if c.OrderByKey == "" {
 		c.OrderByKey = "SubmittedAt"
 	}
@@ -178,9 +178,9 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 			from = c.From
 		}
 	}
-	orderBy(c.OrderByKey, c.OrderByDir, from, &t)
+	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
 	t.Limit(c.PerPage)
-	log.WithField("query", t.String()).Info("Running query.")
+	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
 	cur, err := t.Run(s)
 	defer cur.Close()
 	err = cur.All(&m)

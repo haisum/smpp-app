@@ -41,6 +41,7 @@ func main() {
 	defer q.Close()
 	r := mux.NewRouter()
 	r.Handle("/api/message", handlers.MethodHandler{"POST": message.MessageHandler})
+	r.Handle("/api/message/filter", handlers.MethodHandler{"GET": message.MessagesHandler})
 	r.Handle("/api/users", handlers.MethodHandler{"GET": users.UsersHandler})
 	r.Handle("/api/users/permissions", handlers.MethodHandler{"GET": users.PermissionsHandler})
 	r.Handle("/api/users/add", handlers.MethodHandler{"POST": users.AddHandler})
