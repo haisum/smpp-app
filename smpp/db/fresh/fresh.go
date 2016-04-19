@@ -36,6 +36,9 @@ func Create(s *r.Session, dbname string) error {
 	if err = tmessage(s, dbname); err != nil {
 		return err
 	}
+	if err = tnumfile(s, dbname); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -117,6 +117,32 @@ func ttoken(s *r.Session, dbname string) error {
 	return err
 }
 
+func tnumfile(s *r.Session, dbname string) error {
+	_, err := r.DB(dbname).TableCreate("NumFile").RunWrite(s)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":   err,
+			"name":  dbname,
+			"table": "NumFile",
+		}).Error("Error occured in creating table.")
+		return err
+	}
+	err = createIndexes(s, dbname, "NumFile", []string{
+		"Username",
+		"LocalName",
+		"UserId",
+		"SubmittedAt",
+		"Type",
+		"Name",
+		"Deleted",
+	})
+	if err != nil {
+		log.WithError(err).Error("Couldn't create indexes.")
+		return err
+	}
+	return err
+}
+
 func tmessage(s *r.Session, dbname string) error {
 	_, err := r.DB(dbname).TableCreate("Message").RunWrite(s)
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Token represents a token given produced against valid authentication request
+// Message represents a smpp message
 type Message struct {
 	Id              string `gorethink:"id,omitempty"`
 	RespId          string

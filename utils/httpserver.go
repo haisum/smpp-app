@@ -3,6 +3,7 @@ package main
 import (
 	"bitbucket.com/codefreak/hsmpp/smpp/db"
 	"bitbucket.com/codefreak/hsmpp/smpp/queue"
+	"bitbucket.com/codefreak/hsmpp/smpp/routes/file"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes/message"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes/services"
 	"bitbucket.com/codefreak/hsmpp/smpp/routes/user"
@@ -49,6 +50,7 @@ func main() {
 	r.Handle("/api/user/auth", handlers.MethodHandler{"POST": user.AuthHandler})
 	r.Handle("/api/user/info", handlers.MethodHandler{"GET": user.InfoHandler})
 	r.Handle("/api/services/config", handlers.MethodHandler{"GET": services.GetConfigHandler, "POST": services.PostConfigHandler})
+	r.Handle("/api/file/upload", handlers.MethodHandler{"POST": file.UploadHandler})
 	ui := http.FileServer(http.Dir("./ui/"))
 	r.PathPrefix("/").Handler(ui)
 	log.Info("Loading message workers.")

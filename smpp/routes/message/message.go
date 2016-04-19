@@ -124,9 +124,6 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		Request: uReq,
 		Ok:      true,
 	}
-	resp.Obj = uResp
-	resp.Ok = true
-	resp.Request = uReq
 	resp.Send(w, *r, http.StatusOK)
 })
 
