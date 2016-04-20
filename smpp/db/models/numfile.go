@@ -80,8 +80,8 @@ func (f *NumFile) Delete() error {
 	return nil
 }
 
-// GetFiles filters files based on criteria
-func GetFiles(c NumFileCriteria) ([]NumFile, error) {
+// GetNumFiles filters files based on criteria
+func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	var f []NumFile
 	s, err := db.GetSession()
 	if err != nil {
@@ -89,26 +89,7 @@ func GetFiles(c NumFileCriteria) ([]NumFile, error) {
 		return f, err
 	}
 	t := r.DB(db.DBName).Table("NumFile")
-	strFields := map[string]string{
-		"Id":        c.Id,
-		"LocalName": c.LocalName,
-		"Username":  c.Username,
-		"UserId":    c.UserId,
-		"Type":      string(c.Type),
-		"Name":      c.Name,
-	}
-	t = filterEqStr(strFields, t)
-	t = t.Filter(map[string]bool{"Deleted": c.Deleted})
-	betweenFields := map[string]map[string]int64{
-		"SubmittedAt": {
-			"after":  c.SubmittedAfter,
-			"before": c.SubmittedBefore,
-		},
-	}
-	t = filterBetweenInt(betweenFields, t)
-	if c.OrderByKey == "" {
-		c.OrderByKey = "SubmittedAt"
-	}
+
 	var from interface{}
 	if c.From != "" {
 		if c.OrderByKey == "SubmittedAt" {
@@ -121,9 +102,34 @@ func GetFiles(c NumFileCriteria) ([]NumFile, error) {
 		}
 	}
 	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
-	t.Limit(c.PerPage)
+	// keep between before Eq
+	betweenFields := map[string]map[string]int64{
+		"SubmittedAt": {
+			"after":  c.SubmittedAfter,
+			"before": c.SubmittedBefore,
+		},
+	}
+	t = filterBetweenInt(betweenFields, t)
+	strFields := map[string]string{
+		"Id":        c.Id,
+		"LocalName": c.LocalName,
+		"Username":  c.Username,
+		"UserId":    c.UserId,
+		"Type":      string(c.Type),
+		"Name":      c.Name,
+	}
+	t = filterEqStr(strFields, t)
+	t = t.Filter(map[string]bool{"Deleted": c.Deleted})
+	if c.OrderByKey == "" {
+		c.OrderByKey = "SubmittedAt"
+	}
+	t = t.Limit(c.PerPage)
 	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
 	cur, err := t.Run(s)
+	if err != nil {
+		log.WithError(err).Error("Couldn't run query.")
+		return f, err
+	}
 	defer cur.Close()
 	err = cur.All(&f)
 	if err != nil {

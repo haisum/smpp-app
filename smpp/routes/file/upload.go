@@ -75,6 +75,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		SubmittedAt: time.Now().Unix(),
 	}
 	f, h, err := r.FormFile("File")
+	uReq.Name = h.Filename
 	if err != nil {
 		log.WithError(err).Error("Error getting file form field.")
 		resp := routes.Response{

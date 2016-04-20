@@ -135,20 +135,20 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 		return m, err
 	}
 	t := r.DB(db.DBName).Table("Message")
-	strFields := map[string]string{
-		"Id":              c.Id,
-		"RespId":          c.RespId,
-		"Connection":      c.Connection,
-		"ConnectionGroup": c.ConnectionGroup,
-		"Src":             c.Src,
-		"Dst":             c.Dst,
-		"Enc":             c.Enc,
-		"Status":          string(c.Status),
-		"CampaignId":      c.CampaignId,
-		"Error":           c.Error,
-		"Username":        c.Username,
+
+	var from interface{}
+	if c.From != "" {
+		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SubmittedAt" {
+			from, err = strconv.ParseInt(c.From, 10, 64)
+			if err != nil {
+				return m, fmt.Errorf("Invalid value for from: %s", from)
+			}
+		} else {
+			from = c.From
+		}
 	}
-	t = filterEqStr(strFields, t)
+	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
+	// note to self: keep between before Eq filters.
 	betweenFields := map[string]map[string]int64{
 		"QueuedAt": {
 			"after":  c.QueuedAfter,
@@ -164,24 +164,30 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 		},
 	}
 	t = filterBetweenInt(betweenFields, t)
+	strFields := map[string]string{
+		"Id":              c.Id,
+		"RespId":          c.RespId,
+		"Connection":      c.Connection,
+		"ConnectionGroup": c.ConnectionGroup,
+		"Src":             c.Src,
+		"Dst":             c.Dst,
+		"Enc":             c.Enc,
+		"Status":          string(c.Status),
+		"CampaignId":      c.CampaignId,
+		"Error":           c.Error,
+		"Username":        c.Username,
+	}
+	t = filterEqStr(strFields, t)
 	if c.OrderByKey == "" {
 		c.OrderByKey = "SubmittedAt"
 	}
-	var from interface{}
-	if c.From != "" {
-		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SubmittedAt" {
-			from, err = strconv.ParseInt(c.From, 10, 64)
-			if err != nil {
-				return m, fmt.Errorf("Invalid value for from: %s", from)
-			}
-		} else {
-			from = c.From
-		}
-	}
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
-	t.Limit(c.PerPage)
+	t = t.Limit(c.PerPage)
 	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
 	cur, err := t.Run(s)
+	if err != nil {
+		log.WithError(err).Error("Couldn't run query.")
+		return m, err
+	}
 	defer cur.Close()
 	err = cur.All(&m)
 	if err != nil {

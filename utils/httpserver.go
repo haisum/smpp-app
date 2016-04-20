@@ -51,6 +51,8 @@ func main() {
 	r.Handle("/api/user/info", handlers.MethodHandler{"GET": user.InfoHandler})
 	r.Handle("/api/services/config", handlers.MethodHandler{"GET": services.GetConfigHandler, "POST": services.PostConfigHandler})
 	r.Handle("/api/file/upload", handlers.MethodHandler{"POST": file.UploadHandler})
+	r.Handle("/api/file/delete", handlers.MethodHandler{"POST": file.DeleteHandler})
+	r.Handle("/api/file/filter", handlers.MethodHandler{"GET": file.FilterHandler})
 	ui := http.FileServer(http.Dir("./ui/"))
 	r.PathPrefix("/").Handler(ui)
 	log.Info("Loading message workers.")
