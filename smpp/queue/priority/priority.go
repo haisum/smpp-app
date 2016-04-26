@@ -1,7 +1,7 @@
 package priority
 
 import (
-	"bitbucket.com/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 )
 
 const (

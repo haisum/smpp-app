@@ -1,10 +1,10 @@
 package services
 
 import (
-	"bitbucket.com/codefreak/hsmpp/smpp"
-	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.com/codefreak/hsmpp/smpp/routes"
-	"bitbucket.com/codefreak/hsmpp/smpp/supervisor"
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/supervisor"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
 )

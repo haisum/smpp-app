@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bitbucket.com/codefreak/hsmpp/smpp"
-	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.com/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"

@@ -1,7 +1,7 @@
 package models
 
 import (
-	"bitbucket.com/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"testing"
 )
 

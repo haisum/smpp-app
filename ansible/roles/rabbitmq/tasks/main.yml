@@ -6,6 +6,13 @@
 - name: Add epel for dependencies
   copy: src='epel-{{ansible_distribution_major_version}}.repo.j2' dest="/etc/yum.repos.d/epel.repo"
 
+- name: Install erlang dependencies
+  yum: state="present" name="{{item}}"
+  items:
+    - wxGTK
+    - wxBase
+    - wxGTK-gl
+
 - name: Install erlang
   yum: state="present" name="erlang" disablerepo="epel"
 

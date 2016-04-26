@@ -1,8 +1,8 @@
 package main
 
 import (
-	hsmpp "bitbucket.com/codefreak/hsmpp/smpp"
-	"bitbucket.com/codefreak/hsmpp/smpp/soap"
+	hsmpp "bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/soap"
 	"encoding/xml"
 	"flag"
 	"fmt"

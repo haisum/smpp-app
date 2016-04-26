@@ -1,14 +1,14 @@
 package main
 
 import (
-	"bitbucket.com/codefreak/hsmpp/smpp/db"
-	"bitbucket.com/codefreak/hsmpp/smpp/queue"
-	"bitbucket.com/codefreak/hsmpp/smpp/routes/file"
-	"bitbucket.com/codefreak/hsmpp/smpp/routes/message"
-	"bitbucket.com/codefreak/hsmpp/smpp/routes/services"
-	"bitbucket.com/codefreak/hsmpp/smpp/routes/user"
-	"bitbucket.com/codefreak/hsmpp/smpp/routes/users"
-	"bitbucket.com/codefreak/hsmpp/smpp/supervisor"
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/file"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/services"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
+	"bitbucket.org/codefreak/hsmpp/smpp/supervisor"
 	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"

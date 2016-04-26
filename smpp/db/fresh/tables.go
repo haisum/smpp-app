@@ -1,7 +1,7 @@
 package fresh
 
 import (
-	"bitbucket.com/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"

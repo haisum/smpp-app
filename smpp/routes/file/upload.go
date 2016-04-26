@@ -1,8 +1,8 @@
 package file
 
 import (
-	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.com/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"time"

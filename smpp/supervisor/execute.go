@@ -1,8 +1,8 @@
 package supervisor
 
 import (
-	"bitbucket.com/codefreak/hsmpp/smpp"
-	"bitbucket.com/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"io/ioutil"

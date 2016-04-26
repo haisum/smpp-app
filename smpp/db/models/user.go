@@ -1,8 +1,8 @@
 package models
 
 import (
-	"bitbucket.com/codefreak/hsmpp/smpp"
-	"bitbucket.com/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"

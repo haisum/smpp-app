@@ -1,7 +1,7 @@
 package db
 
 import (
-	"bitbucket.com/codefreak/hsmpp/smpp/db/fresh"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/fresh"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
