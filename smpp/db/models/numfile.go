@@ -165,6 +165,15 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 		return id, fmt.Errorf("Couldn't create directory %s", numfilePath)
 	}
 	nf.LocalName = secureRandomAlphaString(20)
+	err = ioutil.WriteFile(fmt.Sprintf("%s/%s", numfilePath, nf.LocalName), b, 0600)
+	if err != nil {
+		return id, fmt.Errorf("Couldn't write file to disk at path %s.", fmt.Sprintf("%s/%s", numfilePath, nf.LocalName))
+	}
+	_, err = nf.ToNumbers()
+	if err != nil {
+		log.WithError(err).Info("Couldn't read numbers from file.")
+		return id, err
+	}
 	resp, err := r.DB(db.DBName).Table("NumFile").Insert(nf).RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -173,14 +182,30 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 		}).Error("Error in inserting file in db.")
 		return id, err
 	}
-	err = ioutil.WriteFile(fmt.Sprintf("%s/%s", numfilePath, nf.LocalName), b, 0600)
-	if err != nil {
-		return id, fmt.Errorf("Couldn't write file to disk at path %s.", fmt.Sprintf("%s/%s", numfilePath, nf.LocalName))
-	}
 	id = resp.GeneratedKeys[0]
 	return id, nil
 }
 
-func (nf *NumFile) Read() ([]byte, error) {
-	return ioutil.ReadFile(fmt.Sprintf("%s/%s", NumFilePath, nf.LocalName))
+func (nf *NumFile) ToNumbers() ([]string, error) {
+	var nums []string
+	b, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", NumFilePath, nf.LocalName))
+	if err != nil {
+		return nums, err
+	}
+	if nf.Type == NumFileCSV || nf.Type == NumFileTxt {
+		nums = strings.Split(string(b[:]), ",")
+		for i, num := range nums {
+			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
+			if len(num) > 15 || len(num) < 5 {
+				return nums, fmt.Errorf("Entry number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
+			}
+			nums = append(nums, num)
+		}
+	} else {
+		return nums, fmt.Errorf("This file type isn't supported yet.")
+	}
+	if len(nums) < 1 {
+		return nums, fmt.Errorf("No Numbers given in file.")
+	}
+	return nums, nil
 }

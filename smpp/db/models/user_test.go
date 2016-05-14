@@ -32,7 +32,7 @@ func TestGetUsers(t *testing.T) {
 		t.Fatalf("Failed getting session. %s", err)
 	}
 	users := []User{
-		User{
+		{
 			Username:        "ahaisum1",
 			Password:        "password123",
 			Name:            "Haisum Bhatti",
@@ -43,7 +43,7 @@ func TestGetUsers(t *testing.T) {
 			Permissions:     []Permission{PermSuspendUser},
 			RegisteredAt:    time.Now().Unix(),
 		},
-		User{
+		{
 			Username:        "bhaisum2",
 			Password:        "password123",
 			Name:            "Haisum Bhatti",
@@ -172,7 +172,7 @@ func TestUser_Add(t *testing.T) {
 	}
 	// users for validation check
 	users := []User{
-		User{
+		{
 			Username:        "haisum2",
 			Password:        "123",
 			Name:            "Haisum Bhatti",
@@ -183,7 +183,7 @@ func TestUser_Add(t *testing.T) {
 			Permissions:     []Permission{PermAddUser, PermSuspendUser},
 			RegisteredAt:    time.Now().Unix(),
 		},
-		User{
+		{
 			Username:        "haisum3",
 			Password:        "123",
 			Name:            "Haisum Bhatti",
@@ -193,7 +193,7 @@ func TestUser_Add(t *testing.T) {
 			ConnectionGroup: "myconn",
 			Permissions:     []Permission{PermSuspendUser},
 			RegisteredAt:    time.Now().Unix(),
-		}, User{
+		}, {
 			Username:        "haisum4",
 			Password:        "password123",
 			Name:            "Haisum Bhatti",
@@ -203,7 +203,7 @@ func TestUser_Add(t *testing.T) {
 			ConnectionGroup: "myconn",
 			Permissions:     []Permission{PermAddUser},
 			RegisteredAt:    time.Now().Unix(),
-		}, User{
+		}, {
 			Username:        "haisum5",
 			Password:        "123sadf",
 			Name:            "Haisum Bhatti",
@@ -213,7 +213,7 @@ func TestUser_Add(t *testing.T) {
 			ConnectionGroup: "myconn",
 			Permissions:     []Permission{"perm1", "perm2"},
 			RegisteredAt:    time.Now().Unix(),
-		}, User{
+		}, {
 			Username:        "haisum6",
 			Password:        "123sadf",
 			Name:            "Haisum Bhatti",
@@ -223,7 +223,7 @@ func TestUser_Add(t *testing.T) {
 			ConnectionGroup: "myconn",
 			Permissions:     []Permission{"perm1", "perm2"},
 			RegisteredAt:    time.Now().Unix(),
-		}, User{
+		}, {
 			Username:        "haisum7",
 			Password:        "123sadf",
 			Name:            "Haisum Bhatti",
@@ -233,7 +233,7 @@ func TestUser_Add(t *testing.T) {
 			ConnectionGroup: "myconn",
 			Permissions:     []Permission{"perm1", "perm2"},
 			RegisteredAt:    time.Now().Unix(),
-		}, User{
+		}, {
 			Username:        "haisum1",
 			Password:        "123sadf",
 			Name:            "Haisum Bhatti",

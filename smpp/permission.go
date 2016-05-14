@@ -13,6 +13,7 @@ const (
 	PermListMessages             = "List messages"
 	PermListNumFiles             = "List number files"
 	PermDeleteNumFile            = "Delete a number file"
+	PermStartCampaign            = "Start a campaign"
 )
 
 // GetPermissions returns all valid permissions for a user
@@ -24,6 +25,7 @@ func GetPermissions() []Permission {
 		PermShowConfig,
 		PermEditConfig,
 		PermSendMessage,
+		PermStartCampaign,
 		PermListMessages,
 		PermListNumFiles,
 		PermDeleteNumFile,

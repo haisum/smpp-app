@@ -161,15 +161,38 @@ func tmessage(s *r.Session, dbname string) error {
 		"Enc",
 		"Dst",
 		"Src",
-		"QueuedBefore",
-		"QueuedAfter",
-		"SubmittedBefore",
-		"SubmittedAfter",
-		"DeliveredBefore",
-		"DeliveredAfter",
+		"QueuedAt",
+		"SubmittedAt",
+		"DeliveredAt",
 		"CampaignId",
 		"Status",
 		"Error",
+	})
+	if err != nil {
+		log.WithError(err).Error("Couldn't create indexes.")
+		return err
+	}
+	return err
+}
+
+func tcampaign(s *r.Session, dbname string) error {
+	_, err := r.DB(dbname).TableCreate("Campaign").RunWrite(s)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":   err,
+			"name":  dbname,
+			"table": "Campaign",
+		}).Error("Error occured in creating table.")
+		return err
+	}
+	err = createIndexes(s, dbname, "Campaign", []string{
+		"Username",
+		"Enc",
+		"Dst",
+		"Src",
+		"FileName",
+		"UserId",
+		"SubmittedAt",
 	})
 	if err != nil {
 		log.WithError(err).Error("Couldn't create indexes.")

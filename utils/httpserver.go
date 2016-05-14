@@ -3,6 +3,7 @@ package main
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/campaign"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/file"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/message"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/services"
@@ -43,6 +44,7 @@ func main() {
 	r := mux.NewRouter()
 	r.Handle("/api/message", handlers.MethodHandler{"POST": message.MessageHandler})
 	r.Handle("/api/message/filter", handlers.MethodHandler{"GET": message.MessagesHandler})
+	r.Handle("/api/campaign", handlers.MethodHandler{"POST": campaign.CampaignHandler})
 	r.Handle("/api/users", handlers.MethodHandler{"GET": users.UsersHandler})
 	r.Handle("/api/users/permissions", handlers.MethodHandler{"GET": users.PermissionsHandler})
 	r.Handle("/api/users/add", handlers.MethodHandler{"POST": users.AddHandler})
