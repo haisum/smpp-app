@@ -75,6 +75,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		Src:         uReq.Src,
 		Msg:         uReq.Msg,
 		FileId:      uReq.FileId,
+		SubmittedAt: time.Now().Unix(),
 	}
 	campaignId, err := c.Save()
 	if err != nil {

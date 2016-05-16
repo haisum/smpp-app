@@ -288,6 +288,31 @@ var app = {
             Materialize.toast(toastContent, 5000)
         });
     },
+    renderCampaignList: function(){
+        var data = {
+            Token: localStorage.getItem("auth_token"),
+            Username: app.userInfo.Username
+        }
+        $.ajax({
+            url : "/api/campaign/filter",
+            data : data,
+            dataType: "json",
+            type: "get"
+        }).done(function(data){        
+            var source   = $("#list-campaign-template").html();
+            var template = Handlebars.compile(source);
+            var html    = template(data.Response);
+            $("#list-campaign").html(html);
+        }).error(function(data){
+            if(xhr.status == 401) {
+                localStorage.removeItem("auth_token");
+                window.location.reload();
+            }
+            console.error(xhr.responseJSON);
+            var toastContent = '<span class="red-text">Error occured see console for details.</span>';
+            Materialize.toast(toastContent, 5000)
+        });
+    },
     renderCampaignFiles: function(){
         var data = {
             Token: localStorage.getItem("auth_token"),
@@ -326,6 +351,7 @@ var app = {
         $.ajax("/templates/campaign.html").done(function(data){
             $("#inner-content").html(data);
             app.renderCampaignFiles();
+            app.renderCampaignList();
             $("#campaign-form").on("submit", function(e){
                 e.preventDefault();
                 var campReq = {
@@ -342,7 +368,7 @@ var app = {
                     "data": campReq,
                 }).done(function(data){
                     Materialize.toast("Campaign started succesfully.", 5000);
-                    app.renderMessageList();
+                    app.renderCampaignList();
                 }).fail(function(xhr, status, errThrone){
                     if(xhr.status == 401) {
                         localStorage.removeItem("auth_token");

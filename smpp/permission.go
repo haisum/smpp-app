@@ -13,6 +13,7 @@ const (
 	PermListMessages             = "List messages"
 	PermListNumFiles             = "List number files"
 	PermDeleteNumFile            = "Delete a number file"
+	PermListCampaigns            = "List campaigns"
 	PermStartCampaign            = "Start a campaign"
 )
 
@@ -29,5 +30,6 @@ func GetPermissions() []Permission {
 		PermListMessages,
 		PermListNumFiles,
 		PermDeleteNumFile,
+		PermListCampaigns,
 	}
 }

@@ -8,23 +8,24 @@ import (
 	"net/http"
 )
 
-type messagesRequest struct {
-	models.MessageCriteria
-	Url   string
-	Token string
+type campaignsRequest struct {
+	models.CampaignCriteria
+	Url      string
+	Token    string
+	Username string
 }
 
-type messagesResponse struct {
-	Messages []models.Message
+type campaignsResponse struct {
+	Campaigns []models.Campaign
 }
 
 // MessagesHandler allows adding a user to database
-var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	uResp := messagesResponse{}
-	var uReq messagesRequest
+var CampaignsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	uResp := campaignsResponse{}
+	var uReq campaignsRequest
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
-		log.WithError(err).Error("Error parsing messages list request.")
+		log.WithError(err).Error("Error parsing campaign list request.")
 		resp := routes.Response{
 			Errors: routes.ResponseErrors{
 				http.StatusText(http.StatusBadRequest): "Couldn't parse request",
@@ -42,20 +43,20 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if u.Username != uReq.Username {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermListMessages); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermListCampaigns); !ok {
 			return
 		}
 	}
-	messages, err := models.GetMessages(uReq.MessageCriteria)
+	camps, err := models.GetCampaigns(uReq.CampaignCriteria)
 	resp := routes.Response{}
 	if err != nil {
 		resp.Ok = false
-		resp.Errors = routes.ResponseErrors{"db": "Couldn't get messages."}
+		resp.Errors = routes.ResponseErrors{"db": "Couldn't get campaigns."}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uResp.Messages = messages
+	uResp.Campaigns = camps
 	resp.Obj = uResp
 	resp.Ok = true
 	resp.Request = uReq
