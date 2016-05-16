@@ -24,7 +24,7 @@ type Message struct {
 	Dst             string
 	Src             string
 	Priority        int
-	QueueudAt       int64
+	QueuedAt        int64
 	SubmittedAt     int64
 	DeliveredAt     int64
 	CampaignId      string
@@ -147,6 +147,9 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 			from = c.From
 		}
 	}
+	if c.OrderByKey == "" {
+		c.OrderByKey = "QueuedAt"
+	}
 	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
 	// note to self: keep between before Eq filters.
 	betweenFields := map[string]map[string]int64{
@@ -165,7 +168,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 	}
 	t = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
-		"Id":              c.Id,
+		"id":              c.Id,
 		"RespId":          c.RespId,
 		"Connection":      c.Connection,
 		"ConnectionGroup": c.ConnectionGroup,
@@ -180,6 +183,9 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 	t = filterEqStr(strFields, t)
 	if c.OrderByKey == "" {
 		c.OrderByKey = "SubmittedAt"
+	}
+	if c.PerPage == 0 {
+		c.PerPage = 100
 	}
 	t = t.Limit(c.PerPage)
 	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")

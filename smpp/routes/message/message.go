@@ -82,7 +82,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		Dst:             uReq.Dst,
 		Src:             uReq.Src,
 		Priority:        uReq.Priority,
-		QueueudAt:       time.Now().Unix(),
+		QueuedAt:        time.Now().Unix(),
 		Status:          models.MsgSubmitted,
 	}
 	msgId, err := m.Save()

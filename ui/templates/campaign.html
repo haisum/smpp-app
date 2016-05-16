@@ -1,59 +1,36 @@
 <div class="card-panel">
   <div class="row">
-    <div class="col s12">
-      <ul class="tabs teal-text">
-        <li class="tab col s6 m4 l3"><a class="teal-text text-darken-1" href="#startcampaign">New Campaign</a></li>
-        <li class="tab col s6 m4 l3 teal-text text-darken-2"><a class=" teal-text text-darken-2" href="#mycampaigns">My campaigns</a></li>
-        <li class="tab col s6 m4 l3"><a class="teal-text text-darken-2" href="#controlpanel">Control Panel</a></li>
-      </ul>
-    </div>
-    <div id="startcampaign" class="col s12">
+    <div id="listfiles" class="col s12">
       <div class="row">
-        <form class="col s12">
+        <form class="col s12"  id="campaign-form">
           <div class="row">
-            <div class="input-field col s12">
-              <input id="CampaignDescription" type="text" class="validate">
-              <label for="CampaignDescription">Campaign description</label>
-            </div>
             <div class="input-field col s6">
-              <input id="Source" type="text" class="validate">
-              <label for="Source">Source</label>
+              <input id="Src" type="text" class="validate">
+              <label for="Src">Source</label>
             </div>
-            <div class="input-field col s6">
-              <select>
-                <option value="1">file1.xlsx</option>
-                <option value="2">numebrs.csv</option>
+            <div class="input-field col s6" id="FileIdSelect">
+              <select id="FileId" name="FileId">
+                <option value="1">Option 1</option>
+                <option value="2">Option 2</option>
                 <option value="3">Option 3</option>
               </select>
-              <label>Destination File</label>
+              <label for="FileId">Destination Numbers File</label>
             </div>
-            <div class="input-field col s6">
-                <input id="SendAt_Date" class="datepicker" type="date">
-                <label for="SendAt_Date">Send At - Date</label>
-            </div>
-            <div class="input-field col s6">
-                <input id="SendAt_Time" class="timepicker" type="text">
-                <label for="SendAt_Time">Send At - Time</label>
+            <script id="FileId-template" type="text/x-handlebars-template">
+              <select id="FileId" name="FileId">
+              {{#each NumFiles}}
+                <option value="{{Id}}">{{Name}}</option>
+              {{/each}}
+              </select>
+              <label for="Dst">Destination Numbers File</label>
+            </script>
+            <div class="input-field col s12">
+              <textarea id="Msg" length="500" class="materialize-textarea"></textarea>
+              <label for="Msg">Message</label>
             </div>
             <div class="input-field col s12">
-              <textarea id="message" length="500" class="materialize-textarea"></textarea>
-              <label for="message">Message</label>
-            </div>
-            <div class="input-field col s4">
-              <input type="checkbox" id="Enc" />
+              <input type="checkbox" id="Enc" name="Enc" />
               <label for="Enc">Non-English</label>
-            </div>
-            <div class="input-field col s4">
-              <input type="checkbox" id="NightIgnore" />
-              <label for="NightIgnore">Ignore Night Settings</label>
-            </div>
-            <div class="input-field col s4">
-              <select>
-                <option value="1">Normal</option>
-                <option value="2">Medium</option>
-                <option value="3">High</option>
-              </select>
-              <label>Priority</label>
             </div>
             <div class="input-field col s12">
               <br/>
@@ -64,90 +41,34 @@
           </div>
         </form>
       </div>
-    </div>
-    <div id="mycampaigns" class="col s12">
-      <table class="striped responsive-table">
-        <thead>
-          <tr>
-            <th data-field="id">Description</th>
-            <th data-field="name">Started At</th>
-            <th data-field="price">Source</th>
-            <th data-field="price">Destination File</th>
-            <th data-field="price">Action</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          <tr>
-            <td>Abu Dhabi outage campaign</td>
-            <td>7th June, 2008 02:32 PM</td>
-            <td>+322323</td>
-            <td>file.csv</td>
-            <td><a href="#"><i class="mdi-av-pause"></i></a> <a title="Resume campaign" href="#"><i class="mdi-av-play-arrow"></i></a><a href="#"><i class="mdi-av-stop"></i></a> <a title="Clone this campaign" href="#"><i class="mdi-content-content-copy"></i></a></td>
-          </tr>
-          <tr>
-            <td>Abu Dhabi outage campaign</td>
-            <td>7th June, 2008 02:32 PM</td>
-            <td>+322323</td>
-            <td>file.csv</td>
-            <td><a href="#"><i class="mdi-av-pause"></i></a> <a title="Resume campaign" href="#"><i class="mdi-av-play-arrow"></i></a><a href="#"><i class="mdi-av-stop"></i></a> <a title="Clone this campaign" href="#"><i class="mdi-content-content-copy"></i></a></td>
-          </tr>
-          <tr>
-            <td>Abu Dhabi outage campaign</td>
-            <td>7th June, 2008 02:32 PM</td>
-            <td>+322323</td>
-            <td>file.csv</td>
-            <td><a href="#"><i class="mdi-av-pause"></i></a> <a title="Resume campaign" href="#"><i class="mdi-av-play-arrow"></i></a><a href="#"><i class="mdi-av-stop"></i></a> <a title="Clone this campaign" href="#"><i class="mdi-content-content-copy"></i></a></td>
-          </tr>
-        </tbody>
-      </table>
-      <ul class="pagination right">
-        <li class="waves-effect"><a href="#!"><i class="mdi-navigation-chevron-left"></i></a></li>
-        <li class="waves-effect"><a href="#!"><i class="mdi-navigation-chevron-right"></i></a></li>
-      </ul>
-    </div>
-    <div id="controlpanel" class="col s12">
       <div class="row">
-        <div class="col s12">
-          <h4>Manage campaigns of users</h4>
+        <div class="col s12 right-align">
+          <a href="#!" onclick="app.renderCampaignList();">Reload</a>
         </div>
-        <form class="col s12">
-          <div class="row">
-            <div class="input-field col s12">
-              <input id="Source" type="text" class="validate">
-              <label for="Username">Username</label>
-            </div>
-            <div class="input-field col s4">
-              <button class="btn waves-effect waves-light" type="submit" name="action">Pause All
-              </button>
-            </div>
-            <div class="input-field col s4">
-              <button class="btn waves-effect waves-light" type="submit" name="action">Resume All
-              </button>
-            </div>
-            <div class="input-field col s4">
-              <button class="btn red lighten-1 waves-effect waves-light" type="submit" name="action">Stop All
-              </button>
-            </div>
-          </div>
-        </form>
       </div>
-      <div class="row">
-        <div class="col s12">
-        <h4>Manage all campaigns</h4>
-        </div>
-        <div class="input-field col s4">
-          <button class="btn waves-effect waves-light" type="submit" name="action">Resume All Campaigns
-          </button>
-        </div>
-        <div class="input-field col s4">
-          <button class="btn waves-effect waves-light" type="submit" name="action">Pause All Campaigns
-          </button>
-        </div>
-        <div class="input-field col s4">
-          <button class="btn red lighten-1 waves-effect waves-light" type="submit" name="action">Stop All Campaigns
-          </button>
-        </div>
+      <script id="list-campaign-template" type="text/x-handlebars-template">
+        <table class="striped responsive-table">
+          <thead>
+            <tr>
+                <th data-field="name">Source</th>
+                <th data-field="price">File</th>
+                <th data-field="id">Encoding</th>
+                <th data-field="id">Submitted</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each Campaigns}}
+            <tr>
+              <td>{{Src}}</td>
+              <td>{{FileName}}</td>
+              <td>{{Enc}}</td>
+              <td>{{prettyDate SubmittedAt}}</td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </script>
+      <div id="list-campaign">
       </div>
     </div>
   </div>

@@ -1,6 +1,9 @@
 Handlebars.registerHelper('prettyDate', function(unixDate) {
+    if (unixDate == 0 || isNaN(unixDate) || typeof unixDate === undefined){
+        return "";
+    }
     d = new Date(1000 * unixDate);
-    return d.getDate() + "-" + d.getMonth() + "-" + d.getYear() + " " + d.getHour() + ":" + d.getMinutes() + ":" + d.getSeconds();
+    return d.getDate() + "/" + d.getMonth() + "/" + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes() + ":" + d.getSeconds();
 });
 
 var app = {
@@ -93,6 +96,7 @@ var app = {
               twelvehour: true
             });
             $('select').material_select();
+            app.renderMessageList();
             $("#message-form").on("submit", function(e){
                 e.preventDefault();
                 var msgReq = {
@@ -109,6 +113,7 @@ var app = {
                     "data": msgReq,
                 }).done(function(data){
                     Materialize.toast("Message sent succesfully.", 5000);
+                    app.renderMessageList();
                 }).fail(function(xhr, status, errThrone){
                     if(xhr.status == 401) {
                         localStorage.removeItem("auth_token");
@@ -258,6 +263,57 @@ var app = {
             Materialize.toast(toastContent, 5000)
         });
     },
+    renderMessageList: function(){
+        var data = {
+            Token: localStorage.getItem("auth_token"),
+            Username: app.userInfo.Username
+        }
+        $.ajax({
+            url : "/api/message/filter",
+            data : data,
+            dataType: "json",
+            type: "get"
+        }).done(function(data){        
+            var source   = $("#list-message-template").html();
+            var template = Handlebars.compile(source);
+            var html    = template(data.Response);
+            $("#list-message").html(html);
+        }).error(function(data){
+            if(xhr.status == 401) {
+                localStorage.removeItem("auth_token");
+                window.location.reload();
+            }
+            console.error(xhr.responseJSON);
+            var toastContent = '<span class="red-text">Error occured see console for details.</span>';
+            Materialize.toast(toastContent, 5000)
+        });
+    },
+    renderCampaignFiles: function(){
+        var data = {
+            Token: localStorage.getItem("auth_token"),
+            Username: app.userInfo.Username
+        }
+        $.ajax({
+            url : "/api/file/filter",
+            data : data,
+            dataType: "json",
+            type: "get"
+        }).done(function(data){        
+            var source   = $("#FileId-template").html();
+            var template = Handlebars.compile(source);
+            var html    = template(data.Response);
+            $("#FileIdSelect").html(html);
+            $('select').material_select();
+        }).error(function(data){
+            if(xhr.status == 401) {
+                localStorage.removeItem("auth_token");
+                window.location.reload();
+            }
+            console.error(xhr.responseJSON);
+            var toastContent = '<span class="red-text">Error occured see console for details.</span>';
+            Materialize.toast(toastContent, 5000)
+        });
+    },
     renderCampaign: function(){
         if (!app.headerRendered) {
             app.renderHeader(app.renderCampaign);
@@ -269,6 +325,34 @@ var app = {
         $("#page-title").html("Campaign");
         $.ajax("/templates/campaign.html").done(function(data){
             $("#inner-content").html(data);
+            app.renderCampaignFiles();
+            $("#campaign-form").on("submit", function(e){
+                e.preventDefault();
+                var campReq = {
+                    "Enc" : $("#Enc").prop("checked") ? "ucs" : "latin",
+                    "Msg" : $("#Msg").val(),
+                    "FileId" : $("#FileId").val(),
+                    "Src" : $("#Src").val(),
+                    "Token" : localStorage.getItem("auth_token")
+                }
+                $.ajax({
+                    "url": "/api/campaign",
+                    "dataType": "json",
+                    "type": "POST",
+                    "data": campReq,
+                }).done(function(data){
+                    Materialize.toast("Campaign started succesfully.", 5000);
+                    app.renderMessageList();
+                }).fail(function(xhr, status, errThrone){
+                    if(xhr.status == 401) {
+                        localStorage.removeItem("auth_token");
+                        window.location.reload();
+                    }
+                    console.error(xhr.responseJSON);
+                    var toastContent = '<span class="red-text">Error occured see console for details.</span>';
+                    Materialize.toast(toastContent, 5000)   
+                });
+            });
         });
     },
     renderUsers: function(){

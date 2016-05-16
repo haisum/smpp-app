@@ -53,8 +53,11 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	files, err := models.GetNumFiles(models.NumFileCriteria{
 		Id: uReq.FileId,
 	})
-	if err != nil {
-		resp := routes.Response{}
+	if err != nil || len(files) == 0 {
+		resp := routes.Response{
+			Errors:  routes.ResponseErrors{"FileId": "Couldn't get any file."},
+			Request: uReq,
+		}
 		resp.Send(w, *r, http.StatusBadRequest)
 	}
 	numbers, err := files[0].ToNumbers()
@@ -118,7 +121,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			Dst:             dst,
 			Src:             uReq.Src,
 			Priority:        uReq.Priority,
-			QueueudAt:       time.Now().Unix(),
+			QueuedAt:        time.Now().Unix(),
 			Status:          models.MsgSubmitted,
 			CampaignId:      campaignId,
 		}

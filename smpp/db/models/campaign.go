@@ -86,6 +86,10 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 			from = c.From
 		}
 	}
+
+	if c.OrderByKey == "" {
+		c.OrderByKey = "SubmittedAt"
+	}
 	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
 	// keep between before Eq
 	betweenFields := map[string]map[string]int64{
@@ -96,7 +100,7 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 	}
 	t = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
-		"Id":       c.Id,
+		"id":       c.Id,
 		"Username": c.Username,
 		"UserId":   c.UserId,
 		"FileName": c.FileName,
@@ -105,8 +109,8 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 		"Enc":      c.Enc,
 	}
 	t = filterEqStr(strFields, t)
-	if c.OrderByKey == "" {
-		c.OrderByKey = "SubmittedAt"
+	if c.PerPage == 0 {
+		c.PerPage = 100
 	}
 	t = t.Limit(c.PerPage)
 	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")

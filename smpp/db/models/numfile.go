@@ -101,6 +101,9 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 			from = c.From
 		}
 	}
+	if c.OrderByKey == "" {
+		c.OrderByKey = "SubmittedAt"
+	}
 	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
 	// keep between before Eq
 	betweenFields := map[string]map[string]int64{
@@ -111,7 +114,7 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	}
 	t = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
-		"Id":        c.Id,
+		"id":        c.Id,
 		"LocalName": c.LocalName,
 		"Username":  c.Username,
 		"UserId":    c.UserId,
@@ -122,6 +125,9 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	t = t.Filter(map[string]bool{"Deleted": c.Deleted})
 	if c.OrderByKey == "" {
 		c.OrderByKey = "SubmittedAt"
+	}
+	if c.PerPage == 0 {
+		c.PerPage = 100
 	}
 	t = t.Limit(c.PerPage)
 	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
