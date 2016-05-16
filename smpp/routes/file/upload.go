@@ -9,7 +9,6 @@ import (
 )
 
 type uploadReq struct {
-	Name        string
 	Description string
 	Url         string
 	Token       string
@@ -68,14 +67,12 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	}
 
 	nf := models.NumFile{
-		Name:        uReq.Name,
 		Description: uReq.Description,
 		Username:    u.Username,
 		UserId:      u.Id,
 		SubmittedAt: time.Now().Unix(),
 	}
 	f, h, err := r.FormFile("File")
-	uReq.Name = h.Filename
 	if err != nil {
 		log.WithError(err).Error("Error getting file form field.")
 		resp := routes.Response{

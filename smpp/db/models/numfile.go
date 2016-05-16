@@ -171,7 +171,7 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 	}
 	_, err = nf.ToNumbers()
 	if err != nil {
-		log.WithError(err).Info("Couldn't read numbers from file.")
+		log.WithError(err).Error("Couldn't read numbers from file.")
 		return id, err
 	}
 	resp, err := r.DB(db.DBName).Table("NumFile").Insert(nf).RunWrite(s)
@@ -188,7 +188,8 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 
 func (nf *NumFile) ToNumbers() ([]string, error) {
 	var nums []string
-	b, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", NumFilePath, nf.LocalName))
+	numfilePath := fmt.Sprintf("%s/%s", NumFilePath, nf.UserId)
+	b, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", numfilePath, nf.LocalName))
 	if err != nil {
 		return nums, err
 	}

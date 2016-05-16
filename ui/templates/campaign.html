@@ -1,206 +1,154 @@
-<!doctype html>
-<html lang="en-US">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>SMPP Management</title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-
-        <link rel="stylesheet" href="css/materialize.min.css">
-        <link type="text/css" rel="stylesheet" href="css/materialize.clockpicker.css" media="screen,projection"/>
-        <link rel="stylesheet" href="css/main.css">
-    </head>
-    <body class="teal teal-text">
-        <header>
-          <nav class="top-nav white teal-text">
-            <a href="#" data-activates="slide-out" class="button-collapse teal-text"><i class="mdi-navigation-menu"></i></a>
-            <div class="container">
-              <div class="nav-wrapper"><a class="page-title teal-text">Message</a>
-                <div class="right teal-text" style="line-height: 40px;">
-                  Haisum Mussawir<br/>
-                  <a href="#" class="right teal-text" style="line-height:10px">Logout</a>
-                </div>
-              </div>
+<div class="card-panel">
+  <div class="row">
+    <div class="col s12">
+      <ul class="tabs teal-text">
+        <li class="tab col s6 m4 l3"><a class="teal-text text-darken-1" href="#startcampaign">New Campaign</a></li>
+        <li class="tab col s6 m4 l3 teal-text text-darken-2"><a class=" teal-text text-darken-2" href="#mycampaigns">My campaigns</a></li>
+        <li class="tab col s6 m4 l3"><a class="teal-text text-darken-2" href="#controlpanel">Control Panel</a></li>
+      </ul>
+    </div>
+    <div id="startcampaign" class="col s12">
+      <div class="row">
+        <form class="col s12">
+          <div class="row">
+            <div class="input-field col s12">
+              <input id="CampaignDescription" type="text" class="validate">
+              <label for="CampaignDescription">Campaign description</label>
             </div>
-          </nav>
-          <ul id="slide-out" class="side-nav fixed">
-            <li class="logo"><h4 id="logo-container" class="brand-logo">SMS Manager</h4></li>
-            <li class="bold"><a href="#!">Message</a></li>
-            <li class="bold active"><a href="#!">Campaign</a></li>
-            <li class="bold"><a href="#!">Files</a></li>
-            <li class="bold"><a href="#!">Reports</a></li>
-            <li class="bold"><a href="#!">Services</a></li>
-            <li class="bold"><a href="#!">Account Settings</a></li>
-            <li class="bold"><a href="#!">System Settings</a></li>
-            <li class="bold"><a href="#!">Users</a></li>
-          </ul>
-        </header>
-        <main>
-          <div class="container">
-            <div class="card-panel">
-              <div class="row">
-                <div class="col s12">
-                  <ul class="tabs teal-text">
-                    <li class="tab col s6 m4 l3"><a class="teal-text text-darken-1" href="#startcampaign">New Campaign</a></li>
-                    <li class="tab col s6 m4 l3 teal-text text-darken-2"><a class=" teal-text text-darken-2" href="#mycampaigns">My campaigns</a></li>
-                    <li class="tab col s6 m4 l3"><a class="teal-text text-darken-2" href="#controlpanel">Control Panel</a></li>
-                  </ul>
-                </div>
-                <div id="startcampaign" class="col s12">
-                  <div class="row">
-                    <form class="col s12">
-                      <div class="row">
-                        <div class="input-field col s12">
-                          <input id="CampaignDescription" type="text" class="validate">
-                          <label for="CampaignDescription">Campaign description</label>
-                        </div>
-                        <div class="input-field col s6">
-                          <input id="Source" type="text" class="validate">
-                          <label for="Source">Source</label>
-                        </div>
-                        <div class="input-field col s6">
-                          <select>
-                            <option value="1">file1.xlsx</option>
-                            <option value="2">numebrs.csv</option>
-                            <option value="3">Option 3</option>
-                          </select>
-                          <label>Destination File</label>
-                        </div>
-                        <div class="input-field col s6">
-                            <input id="SendAt_Date" class="datepicker" type="date">
-                            <label for="SendAt_Date">Send At - Date</label>
-                        </div>
-                        <div class="input-field col s6">
-                            <input id="SendAt_Time" class="timepicker" type="text">
-                            <label for="SendAt_Time">Send At - Time</label>
-                        </div>
-                        <div class="input-field col s12">
-                          <textarea id="message" length="500" class="materialize-textarea"></textarea>
-                          <label for="message">Message</label>
-                        </div>
-                        <div class="input-field col s4">
-                          <input type="checkbox" id="Enc" />
-                          <label for="Enc">Non-English</label>
-                        </div>
-                        <div class="input-field col s4">
-                          <input type="checkbox" id="NightIgnore" />
-                          <label for="NightIgnore">Ignore Night Settings</label>
-                        </div>
-                        <div class="input-field col s4">
-                          <select>
-                            <option value="1">Normal</option>
-                            <option value="2">Medium</option>
-                            <option value="3">High</option>
-                          </select>
-                          <label>Priority</label>
-                        </div>
-                        <div class="input-field col s12">
-                          <br/>
-                          <button class="btn teal waves-effect waves-light" type="submit" name="action">Send
-                            <i class="mdi-content-send right"></i>
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-                <div id="mycampaigns" class="col s12">
-                  <table class="striped responsive-table">
-                    <thead>
-                      <tr>
-                        <th data-field="id">Description</th>
-                        <th data-field="name">Started At</th>
-                        <th data-field="price">Source</th>
-                        <th data-field="price">Destination File</th>
-                        <th data-field="price">Action</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      <tr>
-                        <td>Abu Dhabi outage campaign</td>
-                        <td>7th June, 2008 02:32 PM</td>
-                        <td>+322323</td>
-                        <td>file.csv</td>
-                        <td><a href="#"><i class="mdi-av-pause"></i></a> <a title="Resume campaign" href="#"><i class="mdi-av-play-arrow"></i></a><a href="#"><i class="mdi-av-stop"></i></a> <a title="Clone this campaign" href="#"><i class="mdi-content-content-copy"></i></a></td>
-                      </tr>
-                      <tr>
-                        <td>Abu Dhabi outage campaign</td>
-                        <td>7th June, 2008 02:32 PM</td>
-                        <td>+322323</td>
-                        <td>file.csv</td>
-                        <td><a href="#"><i class="mdi-av-pause"></i></a> <a title="Resume campaign" href="#"><i class="mdi-av-play-arrow"></i></a><a href="#"><i class="mdi-av-stop"></i></a> <a title="Clone this campaign" href="#"><i class="mdi-content-content-copy"></i></a></td>
-                      </tr>
-                      <tr>
-                        <td>Abu Dhabi outage campaign</td>
-                        <td>7th June, 2008 02:32 PM</td>
-                        <td>+322323</td>
-                        <td>file.csv</td>
-                        <td><a href="#"><i class="mdi-av-pause"></i></a> <a title="Resume campaign" href="#"><i class="mdi-av-play-arrow"></i></a><a href="#"><i class="mdi-av-stop"></i></a> <a title="Clone this campaign" href="#"><i class="mdi-content-content-copy"></i></a></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <ul class="pagination right">
-                    <li class="waves-effect"><a href="#!"><i class="mdi-navigation-chevron-left"></i></a></li>
-                    <li class="waves-effect"><a href="#!"><i class="mdi-navigation-chevron-right"></i></a></li>
-                  </ul>
-                </div>
-                <div id="controlpanel" class="col s12">
-                  <div class="row">
-                    <div class="col s12">
-                      <h4>Manage campaigns of users</h4>
-                    </div>
-                    <form class="col s12">
-                      <div class="row">
-                        <div class="input-field col s12">
-                          <input id="Source" type="text" class="validate">
-                          <label for="Username">Username</label>
-                        </div>
-                        <div class="input-field col s4">
-                          <button class="btn waves-effect waves-light" type="submit" name="action">Pause All
-                          </button>
-                        </div>
-                        <div class="input-field col s4">
-                          <button class="btn waves-effect waves-light" type="submit" name="action">Resume All
-                          </button>
-                        </div>
-                        <div class="input-field col s4">
-                          <button class="btn red lighten-1 waves-effect waves-light" type="submit" name="action">Stop All
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                  <div class="row">
-                    <div class="col s12">
-                    <h4>Manage all campaigns</h4>
-                    </div>
-                    <div class="input-field col s4">
-                      <button class="btn waves-effect waves-light" type="submit" name="action">Resume All Campaigns
-                      </button>
-                    </div>
-                    <div class="input-field col s4">
-                      <button class="btn waves-effect waves-light" type="submit" name="action">Pause All Campaigns
-                      </button>
-                    </div>
-                    <div class="input-field col s4">
-                      <button class="btn red lighten-1 waves-effect waves-light" type="submit" name="action">Stop All Campaigns
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div class="input-field col s6">
+              <input id="Source" type="text" class="validate">
+              <label for="Source">Source</label>
+            </div>
+            <div class="input-field col s6">
+              <select>
+                <option value="1">file1.xlsx</option>
+                <option value="2">numebrs.csv</option>
+                <option value="3">Option 3</option>
+              </select>
+              <label>Destination File</label>
+            </div>
+            <div class="input-field col s6">
+                <input id="SendAt_Date" class="datepicker" type="date">
+                <label for="SendAt_Date">Send At - Date</label>
+            </div>
+            <div class="input-field col s6">
+                <input id="SendAt_Time" class="timepicker" type="text">
+                <label for="SendAt_Time">Send At - Time</label>
+            </div>
+            <div class="input-field col s12">
+              <textarea id="message" length="500" class="materialize-textarea"></textarea>
+              <label for="message">Message</label>
+            </div>
+            <div class="input-field col s4">
+              <input type="checkbox" id="Enc" />
+              <label for="Enc">Non-English</label>
+            </div>
+            <div class="input-field col s4">
+              <input type="checkbox" id="NightIgnore" />
+              <label for="NightIgnore">Ignore Night Settings</label>
+            </div>
+            <div class="input-field col s4">
+              <select>
+                <option value="1">Normal</option>
+                <option value="2">Medium</option>
+                <option value="3">High</option>
+              </select>
+              <label>Priority</label>
+            </div>
+            <div class="input-field col s12">
+              <br/>
+              <button class="btn teal waves-effect waves-light" type="submit" name="action">Send
+                <i class="mdi-content-send right"></i>
+              </button>
             </div>
           </div>
-        </main>
+        </form>
+      </div>
+    </div>
+    <div id="mycampaigns" class="col s12">
+      <table class="striped responsive-table">
+        <thead>
+          <tr>
+            <th data-field="id">Description</th>
+            <th data-field="name">Started At</th>
+            <th data-field="price">Source</th>
+            <th data-field="price">Destination File</th>
+            <th data-field="price">Action</th>
+          </tr>
+        </thead>
 
-        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.11.2.min.js"><\/script>')</script>
-        <script src="js/vendor/handlebars-v3.0.3.js"></script>
-        <script src="js/vendor/materialize.min.js"></script>
-        <script src="js/materialize.clockpicker.js"></script>
-        <script src="js/main.js"></script>
-
-    </body>
-</html>
+        <tbody>
+          <tr>
+            <td>Abu Dhabi outage campaign</td>
+            <td>7th June, 2008 02:32 PM</td>
+            <td>+322323</td>
+            <td>file.csv</td>
+            <td><a href="#"><i class="mdi-av-pause"></i></a> <a title="Resume campaign" href="#"><i class="mdi-av-play-arrow"></i></a><a href="#"><i class="mdi-av-stop"></i></a> <a title="Clone this campaign" href="#"><i class="mdi-content-content-copy"></i></a></td>
+          </tr>
+          <tr>
+            <td>Abu Dhabi outage campaign</td>
+            <td>7th June, 2008 02:32 PM</td>
+            <td>+322323</td>
+            <td>file.csv</td>
+            <td><a href="#"><i class="mdi-av-pause"></i></a> <a title="Resume campaign" href="#"><i class="mdi-av-play-arrow"></i></a><a href="#"><i class="mdi-av-stop"></i></a> <a title="Clone this campaign" href="#"><i class="mdi-content-content-copy"></i></a></td>
+          </tr>
+          <tr>
+            <td>Abu Dhabi outage campaign</td>
+            <td>7th June, 2008 02:32 PM</td>
+            <td>+322323</td>
+            <td>file.csv</td>
+            <td><a href="#"><i class="mdi-av-pause"></i></a> <a title="Resume campaign" href="#"><i class="mdi-av-play-arrow"></i></a><a href="#"><i class="mdi-av-stop"></i></a> <a title="Clone this campaign" href="#"><i class="mdi-content-content-copy"></i></a></td>
+          </tr>
+        </tbody>
+      </table>
+      <ul class="pagination right">
+        <li class="waves-effect"><a href="#!"><i class="mdi-navigation-chevron-left"></i></a></li>
+        <li class="waves-effect"><a href="#!"><i class="mdi-navigation-chevron-right"></i></a></li>
+      </ul>
+    </div>
+    <div id="controlpanel" class="col s12">
+      <div class="row">
+        <div class="col s12">
+          <h4>Manage campaigns of users</h4>
+        </div>
+        <form class="col s12">
+          <div class="row">
+            <div class="input-field col s12">
+              <input id="Source" type="text" class="validate">
+              <label for="Username">Username</label>
+            </div>
+            <div class="input-field col s4">
+              <button class="btn waves-effect waves-light" type="submit" name="action">Pause All
+              </button>
+            </div>
+            <div class="input-field col s4">
+              <button class="btn waves-effect waves-light" type="submit" name="action">Resume All
+              </button>
+            </div>
+            <div class="input-field col s4">
+              <button class="btn red lighten-1 waves-effect waves-light" type="submit" name="action">Stop All
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="row">
+        <div class="col s12">
+        <h4>Manage all campaigns</h4>
+        </div>
+        <div class="input-field col s4">
+          <button class="btn waves-effect waves-light" type="submit" name="action">Resume All Campaigns
+          </button>
+        </div>
+        <div class="input-field col s4">
+          <button class="btn waves-effect waves-light" type="submit" name="action">Pause All Campaigns
+          </button>
+        </div>
+        <div class="input-field col s4">
+          <button class="btn red lighten-1 waves-effect waves-light" type="submit" name="action">Stop All Campaigns
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

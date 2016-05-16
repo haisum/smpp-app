@@ -1,70 +1,34 @@
-<header>
-  <nav class="top-nav white teal-text">
-    <a href="#" data-activates="slide-out" class="button-collapse teal-text"><i class="mdi-navigation-menu"></i></a>
-    <div class="container">
-      <div class="nav-wrapper"><a class="page-title teal-text">Message</a>
-        <div class="right teal-text" style="line-height: 40px;">
-          Haisum Mussawir<br/>
-          <a href="#" class="right teal-text" style="line-height:10px">Logout</a>
-        </div>
-      </div>
-    </div>
-  </nav>
-  <ul id="slide-out" class="side-nav fixed">
-    <li class="logo"><h4 id="logo-container" class="brand-logo">SMS Manager</h4></li>
-    <li class="bold active"><a href="#!">Message</a></li>
-    <li class="bold"><a href="#!">Campaign</a></li>
-    <li class="bold"><a href="#!">Files</a></li>
-    <li class="bold"><a href="#!">Reports</a></li>
-    <li class="bold"><a href="#!services" onclick="app.renderServices()">Services</a></li>
-    <li class="bold"><a href="#!">Account Settings</a></li>
-    <li class="bold"><a href="#!">System Settings</a></li>
-    <li class="bold"><a href="#!">Users</a></li>
-  </ul>
-</header>
-<main>
-  <div class="container">
-    <div class="card-panel">
+<div class="card-panel">
+  <div class="row">
+    <div id="listfiles" class="col s12">
       <div class="row">
-        <div id="listfiles" class="col s12">
+        <form class="col s12"  id="message-form">
           <div class="row">
-            <form class="col s12"  id="message-form">
-              <div class="row">
-                <div class="input-field col s6">
-                  <input id="Src" type="text" class="validate">
-                  <label for="Src">Source</label>
-                </div>
-                <div class="input-field col s6">
-                  <input id="Dst" type="text" class="validate">
-                  <label for="Dst">Destination</label>
-                </div>
-                <div class="input-field col s6">
-                    <input id="SendAt_Date" class="datepicker" type="date">
-                    <label for="SendAt_Date">Send At - Date</label>
-                </div>
-                <div class="input-field col s6">
-                    <input id="SendAt_Time" class="timepicker" type="text">
-                    <label for="SendAt_Time">Send At - Time</label>
-                </div>
-                <div class="input-field col s12">
-                  <textarea id="Msg" length="500" class="materialize-textarea"></textarea>
-                  <label for="Msg">Message</label>
-                </div>
-                <div class="input-field col s12">
-                  <input type="checkbox" id="Enc" name="Enc" />
-                  <label for="Enc">Non-English</label>
-                </div>
-                <div class="input-field col s12">
-                  <br/>
-                  <button class="btn teal waves-effect waves-light" type="submit" name="action">Send
-                    <i class="mdi-content-send right"></i>
-                  </button>
-                </div>
-              </div>
-            </form>
+            <div class="input-field col s6">
+              <input id="Src" type="text" class="validate">
+              <label for="Src">Source</label>
+            </div>
+            <div class="input-field col s6">
+              <input id="Dst" type="text" class="validate">
+              <label for="Dst">Destination</label>
+            </div>
+            <div class="input-field col s12">
+              <textarea id="Msg" length="500" class="materialize-textarea"></textarea>
+              <label for="Msg">Message</label>
+            </div>
+            <div class="input-field col s12">
+              <input type="checkbox" id="Enc" name="Enc" />
+              <label for="Enc">Non-English</label>
+            </div>
+            <div class="input-field col s12">
+              <br/>
+              <button class="btn teal waves-effect waves-light" type="submit" name="action">Send
+                <i class="mdi-content-send right"></i>
+              </button>
+            </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   </div>
-</main>
+</div>

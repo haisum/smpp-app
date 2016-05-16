@@ -1,132 +1,55 @@
-<!doctype html>
-<html lang="en-US">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>SMPP Management</title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-
-        <link rel="stylesheet" href="css/materialize.min.css">
-        <link rel="stylesheet" href="css/main.css">
-    </head>
-    <body class="teal teal-text">
-        <header>
-          <nav class="top-nav white teal-text">
-            <a href="#" data-activates="slide-out" class="button-collapse teal-text"><i class="mdi-navigation-menu"></i></a>
-            <div class="container">
-              <div class="nav-wrapper"><a class="page-title teal-text">Files</a>
-                <div class="right teal-text" style="line-height: 40px;">
-                  Haisum Mussawir<br/>
-                  <a href="#" class="right teal-text" style="line-height:10px">Logout</a>
+<div class="card-panel">
+  <div class="row">
+    <div id="listfiles" class="col s12">
+      <div class="row">
+        <form class="col s12" id="files-form" action="javascript:;" enctype="multipart/form-data">
+          <div class="row">
+            <div class="input-field col s12">
+              <div class="file-field input-field">
+                <div class="btn">
+                  <span>Numbers File</span>
+                  <input name="File" type="file">
+                </div>
+                <div class="file-path-wrapper">
+                  <input disabled="disabled" class="file-path validate" type="text">
                 </div>
               </div>
             </div>
-          </nav>
-          <ul id="slide-out" class="side-nav fixed">
-            <li class="logo"><h4 id="logo-container" class="brand-logo">SMS Manager</h4></li>
-            <li class="bold"><a href="#!">SMS</a></li>
-            <li class="bold"><a href="#!">Campaign</a></li>
-            <li class="bold active"><a href="#!">Files</a></li>
-            <li class="bold"><a href="#!">Reports</a></li>
-            <li class="bold"><a href="#!">Services</a></li>
-            <li class="bold"><a href="#!">Account Settings</a></li>
-            <li class="bold"><a href="#!">System Settings</a></li>
-            <li class="bold"><a href="#!">Users</a></li>
-          </ul>
-        </header>
-        <main>
-          <div class="container">
-            <div class="card-panel">
-              <div class="row">
-                <div id="listfiles" class="col s12">
-                  <div class="row">
-                    <form class="col s12">
-                      <div class="row">
-                        <div class="input-field col s12">
-                          <div class="file-field input-field">
-                            <div class="btn">
-                              <span>Numbers File</span>
-                              <input type="file">
-                            </div>
-                            <div class="file-path-wrapper">
-                              <input disabled="disabled" class="file-path validate" type="text">
-                            </div>
-                          </div>
-                        </div>
-                        <div class="input-field col s12">
-                          <input id="Description" type="text" class="validate">
-                          <label for="Description">Description</label>
-                        </div>
-                        <div class="input-field col s12">
-                          <br/>
-                          <button class="btn teal waves-effect waves-light" type="submit" name="action">Upload
-                            <i class="mdi-file-cloud-upload right"></i>
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                  <table class="striped responsive-table">
-                    <thead>
-                      <tr>
-                          <th data-field="id">Name</th>
-                          <th data-field="name">Description</th>
-                          <th data-field="price">Added On</th>
-                          <th data-field="price">Delete</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      <tr>
-                        <td>abudhabi.csv</td>
-                        <td>All Abu Dhabi Numbers</td>
-                        <td>27th May, 2014</td>
-                        <td><a href="">delete</a></td>
-                      </tr>
-                      <tr>
-                        <td>dubai.csv</td>
-                        <td>All Dubai Numbers</td>
-                        <td>27th May, 2014</td>
-                        <td><a href="">delete</a></td>
-                      </tr>
-                      <tr>
-                        <td>abudhabi.csv</td>
-                        <td>All Abu Dhabi Numbers</td>
-                        <td>27th May, 2014</td>
-                        <td><a href="">delete</a></td>
-                      </tr>
-                      <tr>
-                        <td>abudhabi.csv</td>
-                        <td>All Abu Dhabi Numbers</td>
-                        <td>27th May, 2014</td>
-                        <td><a href="">delete</a></td>
-                      </tr>
-                      <tr>
-                        <td>dubai.csv</td>
-                        <td>All Dubai Numbers</td>
-                        <td>27th May, 2014</td>
-                        <td><a href="">delete</a></td>
-                      </tr>
-                      <tr>
-                        <td>abudhabi.csv</td>
-                        <td>All Abu Dhabi Numbers</td>
-                        <td>27th May, 2014</td>
-                        <td><a href="">delete</a></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+            <div class="input-field col s12">
+              <input id="Description" type="text" class="validate">
+              <label for="Description">Description</label>
+            </div>
+            <div class="input-field col s12">
+              <br/>
+              <button class="btn teal waves-effect waves-light" type="submit">Upload
+                <i class="mdi-file-cloud-upload right"></i>
+              </button>
             </div>
           </div>
-        </main>
-
-        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.11.2.min.js"><\/script>')</script>
-        <script src="js/vendor/handlebars-v3.0.3.js"></script>
-        <script src="js/vendor/materialize.min.js"></script>
-        <script src="js/main.js"></script>
-
-    </body>
-</html>
+        </form>
+      </div>
+      <script id="list-files-template" type="text/x-handlebars-template">
+        <table class="striped responsive-table">
+          <thead>
+            <tr>
+                <th data-field="id">Name</th>
+                <th data-field="name">Description</th>
+                <th data-field="price">Added At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each NumFiles}}
+            <tr>
+              <td>{{Name}}</td>
+              <td>{{Description}}</td>
+              <td>{{prettyDate SubmittedAt}}</td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </script>
+      <div id="list-files">
+      </div>
+    </div>
+  </div>
+</div>

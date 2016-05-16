@@ -1,0 +1,27 @@
+<header>
+  <nav class="top-nav white teal-text">
+    <a href="#" data-activates="slide-out" class="button-collapse teal-text"><i class="mdi-navigation-menu"></i></a>
+    <div class="container">
+      <div class="nav-wrapper"><a class="page-title teal-text" id="page-title">Message</a>
+        <div class="right teal-text" style="line-height: 40px;">
+          <span id="user-fullname">Batman</span><br/>
+          <a href="#!logout" class="right teal-text" id="logout" onclick="utils.logout();" style="line-height:10px">Logout</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <ul id="slide-out" class="side-nav fixed">
+    <li class="logo"><h4 id="logo-container" class="brand-logo">SMS Manager</h4></li>
+    <li class="bold menuitem message"><a href="#!message" onclick="app.renderSMS();">Message</a></li>
+    <li class="bold menuitem campaign"><a href="#!campaign" onclick="app.renderCampaign();">Campaign</a></li>
+    <li class="bold menuitem files"><a href="#!files" onclick="app.renderFiles();">Files</a></li>
+    <li class="bold menuitem reports"><a href="#!reports" onclick="app.renderReports();">Reports</a></li>
+    <li class="bold menuitem services"><a href="#!services" onclick="app.renderServices()">Services</a></li>
+    <li class="bold menuitem users"><a href="#!users" onclick="app.renderUsers()">Users</a></li>
+  </ul>
+</header>
+
+<main>
+  <div class="container" id="inner-content">
+  </div>
+</main>
