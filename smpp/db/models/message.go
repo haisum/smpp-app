@@ -147,10 +147,6 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 			from = c.From
 		}
 	}
-	if c.OrderByKey == "" {
-		c.OrderByKey = "QueuedAt"
-	}
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
 	// note to self: keep between before Eq filters.
 	betweenFields := map[string]map[string]int64{
 		"QueuedAt": {
@@ -181,12 +177,14 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 		"Username":        c.Username,
 	}
 	t = filterEqStr(strFields, t)
-	if c.OrderByKey == "" {
-		c.OrderByKey = "SubmittedAt"
-	}
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}
+
+	if c.OrderByKey == "" {
+		c.OrderByKey = "QueuedAt"
+	}
+	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
 	t = t.Limit(c.PerPage)
 	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
 	cur, err := t.Run(s)

@@ -101,10 +101,6 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 			from = c.From
 		}
 	}
-	if c.OrderByKey == "" {
-		c.OrderByKey = "SubmittedAt"
-	}
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
 	// keep between before Eq
 	betweenFields := map[string]map[string]int64{
 		"SubmittedAt": {
@@ -126,6 +122,10 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	if c.OrderByKey == "" {
 		c.OrderByKey = "SubmittedAt"
 	}
+	if c.OrderByKey == "" {
+		c.OrderByKey = "SubmittedAt"
+	}
+	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}

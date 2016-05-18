@@ -50,6 +50,7 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	resp := routes.Response{}
 	if err != nil {
 		resp.Ok = false
+		log.WithError(err).Error("Couldn't get message.")
 		resp.Errors = routes.ResponseErrors{"db": "Couldn't get messages."}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusBadRequest)

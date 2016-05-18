@@ -1,72 +1,166 @@
 <div class="card-panel">
   <div class="row">
-    <div id="listfiles" class="col s12">
+    <div id="reports" class="col s12">
       <div class="row">
         <form class="col s12"  id="reports-form">
           <div class="row">
             <div class="input-field col s6">
-              <input id="Src" type="text" class="validate">
+              <input id="Src" name="Src" type="text" class="validate">
               <label for="Src">Source</label>
             </div>
             <div class="input-field col s6">
-              <input id="Dst" type="text" class="validate">
+              <input id="Dst" name="Dst" type="text" class="validate">
               <label for="Dst">Destination</label>
             </div>
             <div class="input-field col s6">
-              <input id="ConnectionGroup" type="text" class="validate">
-              <label for="ConnectionGroup">ConnectionGroup</label>
+              <input id="ConnectionGroup" name="ConnectionGroup" type="text" class="validate">
+              <label for="ConnectionGroup">Connection Group</label>
             </div>
             <div class="input-field col s6">
-              <input id="Username" type="text" class="validate">
+              <input id="Connection" name="Connection" type="text" class="validate">
+              <label for="Connection">Connection</label>
+            </div>
+            <div class="input-field col s6">
+              <select id="Status" name="Status">
+                <option value="">--Choose One--</option>
+                <option value="Submitted">Submitted</option>
+                <option value="Sent">Sent</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Not Delivered">Not Delivered</option>
+                <option value="Error">Error</option>
+              </select>
+              <label for="Status">Status</label>
+            </div>
+            <div class="input-field col s6">
+              <input id="Username" name="Username" type="text" class="validate">
               <label for="Username">Username</label>
             </div>
             <div class="input-field col s6">
-              <input id="Enc" type="text" class="validate">
-              <label for="Enc">Enc</label>
+              <select id="Enc" name="Enc">
+                <option value="">--Choose One--</option>
+                <option value="latin">Latin</option>
+                <option value="ucs">UCS</option>
+              </select>
+              <label for="Enc">Encoding</label>
+            </div>
+            <div class="input-field col s6" id="CampaignIdSelect">
+              <select id="CampaignId" name="CampaignId">
+                <option value="1">Option 1</option>
+                <option value="2">Option 2</option>
+                <option value="3">Option 3</option>
+              </select>
+              <label for="CampaignId">Campaign</label>
+            </div>
+            <script id="CampaignId-template" type="text/x-handlebars-template">
+              <select id="CampaignId" name="CampaignId">
+                <option value="">--Choose One--</option>
+              {{#each Campaigns}}
+                <option value="{{Id}}">{{Description}}</option>
+              {{/each}}
+              </select>
+              <label for="CampaignId">Campaign</label>
+            </script>
+            <div class="input-field col s6">
+              <div class="row">
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="QueuedBefore_date" name="QueuedBefore_date" type="text" class="datepicker">
+                  <label class="active" for="QueuedBefore_date">Queued Before</label>
+                </div>
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="QueuedBefore_time" name="QueuedBefore_time" type="text" class="timepicker"">
+                </div>
+              </div>
             </div>
             <div class="input-field col s6">
-              <input id="QueuedBefore" type="text" class="validate">
-              <label for="QueuedBefore">QueuedBefore</label>
+              <div class="row">
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="QueuedAfter_date" name="QueuedAfter_date" type="text" class="datepicker">
+                  <label class="active" for="QueuedAfter_date">Queued After</label>
+                </div>
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="QueuedAfter_time" name="QueuedAfter_time" type="text" class="timepicker"">
+                </div>
+              </div>
             </div>
             <div class="input-field col s6">
-              <input id="QueuedAfter" type="text" class="validate">
-              <label for="QueuedAfter">QueuedAfter</label>
+              <div class="row">
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="SubmittedBefore_date" name="SubmittedBefore_date" type="text" class="datepicker">
+                  <label class="active" for="SubmittedBefore_date">Submitted Before</label>
+                </div>
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="SubmittedBefore_time" name="SubmittedBefore_time" type="text" class="timepicker"">
+                </div>
+              </div>
             </div>
             <div class="input-field col s6">
-              <input id="SubmittedBefore" type="text" class="validate">
-              <label for="SubmittedBefore">SubmittedBefore</label>
+              <div class="row">
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="SubmittedAfter_date" name="SubmittedAfter_date" type="text" class="datepicker">
+                  <label class="active" for="SubmittedAfter_date">Submitted After</label>
+                </div>
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="SubmittedAfter_time" name="SubmittedAfter_time" type="text" class="timepicker"">
+                </div>
+              </div>
             </div>
             <div class="input-field col s6">
-              <input id="SubmittedAfter" type="text" class="validate">
-              <label for="SubmittedAfter">SubmittedAfter</label>
+              <div class="row">
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="DeliveredBefore_date" name="DeliveredBefore_date" type="text" class="datepicker">
+                  <label class="active" for="DeliveredBefore_date">Delivered Before</label>
+                </div>
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="DeliveredBefore_time" name="DeliveredBefore_time" type="text" class="timepicker"">
+                </div>
+              </div>
             </div>
             <div class="input-field col s6">
-              <input id="DeliveredBefore" type="text" class="validate">
-              <label for="DeliveredBefore">DeliveredBefore</label>
+              <div class="row">
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="DeliveredAfter_date" name="DeliveredAfter_date" type="text" class="datepicker">
+                  <label class="active" for="DeliveredAfter_date">Delivered After</label>
+                </div>
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="DeliveredAfter_time" name="DeliveredAfter_time" type="text" class="timepicker"">
+                </div>
+              </div>
             </div>
             <div class="input-field col s6">
-              <input id="CampaignId" type="number" class="validate">
-              <label for="CampaignId">CampaignId</label>
+              <input id="Error" type="text" name="Error" class="validate">
+              <label for="Error">Error Message</label>
             </div>
             <div class="input-field col s6">
-              <input id="Error" type="text" class="validate">
-              <label for="Error">Error</label>
+              <select id="OrderByKey" name="OrderByKey">
+                <option value="">--Choose One--</option>
+                <option value="RespId">SMPP Response ID</option>
+                <option value="ConnectionGroup">Connection Group</option>
+                <option value="Connection">Connection</option>
+                <option value="Username">Username</option>
+                <option value="Enc">Encoding</option>
+                <option value="Dst">Destination</option>
+                <option value="Src">Source</option>
+                <option value="Priority">Priority</option>
+                <option selected value="QueuedAt">Queued Time</option>
+                <option value="SubmittedAt">Submitted Time</option>
+                <option value="DeliveredAt">Delivery Time</option>
+              </select>
+              <label for="OrderByKey">Sort By</label>
             </div>
             <div class="input-field col s6">
-              <input id="OrderByKey" type="text" class="validate">
-              <label for="OrderByKey">OrderByKey</label>
-            </div>
-            <div class="input-field col s6">
-              <input id="OrderByDir" type="text" class="validate">
-              <label for="OrderByDir">OrderByDir</label>
+              <select id="OrderByDir" name="OrderByDir">
+                <option value="DESC">Descending</option>
+                <option value="ASC">Ascending</option>
+              </select>
+              <label for="OrderByDir">Order Direction</label>
             </div>
             <div class="input-field col s6">
               <input id="From" type="text" class="validate">
               <label for="From">From</label>
             </div>
             <div class="input-field col s6">
-              <input id="PerPage" type="number" class="validate">
-              <label for="PerPage">PerPage</label>
+              <input id="PerPage" type="number" value="100" class="validate">
+              <label class="active" for="PerPage">Limit</label>
             </div>
             <div class="input-field col s12">
               <br/>
@@ -77,6 +171,38 @@
           </div>
         </form>
       </div>
+    </div>
+    <script id="report-template" type="text/x-handlebars-template">
+      <table class="striped responsive-table">
+        <thead>
+          <tr>
+              <th data-field="name">Source</th>
+              <th data-field="price">Destination</th>
+              <th data-field="id">Status</th>
+              <th data-field="id">Error</th>
+              <th data-field="id">Queued</th>
+              <th data-field="id">Submitted</th>
+              <th data-field="id">Delivered</th>
+              <th data-field="id">Encoding</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each Messages}}
+          <tr>
+            <td>{{Src}}</td>
+            <td>{{Dst}}</td>
+            <td>{{Status}}</td>
+            <td>{{Error}}</td>
+            <td>{{prettyDate QueuedAt}}</td>
+            <td>{{prettyDate SubmittedAt}}</td>
+            <td>{{prettyDate DeliveredAt}}</td>
+            <td>{{Enc}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </script>
+    <div id="report">
     </div>
   </div>
 </div>

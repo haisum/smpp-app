@@ -195,6 +195,44 @@ var app = {
         $("#page-title").html("Reports");
         $.ajax("/templates/reports.html").done(function(data){
             $("#inner-content").html(data);
+            $('select').material_select();
+            app.renderCampaignSelect();
+            $('.datepicker').pickadate({
+               selectMonths: true, // Creates a dropdown to control month
+               selectYears: 15 // Creates a dropdown of 15 years to control year
+            });
+            $('.timepicker').pickatime({
+               twelvehour: false
+            });
+
+            $("#reports-form").on("submit", function(e){
+                e.preventDefault();
+                var reportData = utils.getReportData();
+                reportData["Token"] = localStorage.getItem("auth_token");
+                $.ajax({
+                    url : "/api/message/filter",
+                    data : reportData,
+                    dataType : "json",
+                    type : "get"
+                }).done(function(data){
+                    Materialize.toast("Report generated.", 5000);
+                    var source   = $("#report-template").html();
+                    var template = Handlebars.compile(source);
+                    var html    = template(data.Response);
+                    $("#report").html(html);
+                }).fail(function(xhr, status, errThrone){
+                    if(xhr.status == 401) {
+                        localStorage.removeItem("auth_token");
+                        window.location.reload();
+                    }
+                    console.error(xhr.responseJSON);
+                    var toastContent = '<span class="red-text">Error occured see console for details.</span>';
+                    Materialize.toast(toastContent, 5000)   
+                });
+                return false;
+            });
+
+            $.get("/api/message/filter?Token="+ localStorage.getItem("auth_token") + "&" + $.param(utils.getReportData()));
         });
     },
     renderFiles: function(){
@@ -313,6 +351,32 @@ var app = {
             Materialize.toast(toastContent, 5000)
         });
     },
+    renderCampaignSelect: function(){
+        var data = {
+            Token: localStorage.getItem("auth_token"),
+            Username: app.userInfo.Username
+        }
+        $.ajax({
+            url : "/api/campaign/filter",
+            data : data,
+            dataType: "json",
+            type: "get"
+        }).done(function(data){        
+            var source   = $("#CampaignId-template").html();
+            var template = Handlebars.compile(source);
+            var html    = template(data.Response);
+            $("#CampaignIdSelect").html(html);
+            $('select').material_select();
+        }).error(function(data){
+            if(xhr.status == 401) {
+                localStorage.removeItem("auth_token");
+                window.location.reload();
+            }
+            console.error(xhr.responseJSON);
+            var toastContent = '<span class="red-text">Error occured see console for details.</span>';
+            Materialize.toast(toastContent, 5000)
+        });
+    },
     renderCampaignFiles: function(){
         var data = {
             Token: localStorage.getItem("auth_token"),
@@ -350,6 +414,7 @@ var app = {
         $("#page-title").html("Campaign");
         $.ajax("/templates/campaign.html").done(function(data){
             $("#inner-content").html(data);
+            $('.materialize-textarea').characterCounter();
             app.renderCampaignFiles();
             app.renderCampaignList();
             $("#campaign-form").on("submit", function(e){
@@ -359,7 +424,8 @@ var app = {
                     "Msg" : $("#Msg").val(),
                     "FileId" : $("#FileId").val(),
                     "Src" : $("#Src").val(),
-                    "Token" : localStorage.getItem("auth_token")
+                    "Token" : localStorage.getItem("auth_token"),
+                    "Description": $("#Description").val(),
                 }
                 $.ajax({
                     "url": "/api/campaign",
@@ -400,6 +466,41 @@ var utils = {
     logout: function() {
         localStorage.removeItem("auth_token");
         window.location.reload();
+    },
+    getReportData: function (){
+        var $form = $("#reports-form");
+        var data = {
+            ConnectionGroup : $("#ConnectionGroup").val(),
+            Connection      : $("#Connection").val(),
+            Username        : $("#Username").val(),
+            Enc             : $("#Enc").val(),
+            Dst             : $("#Dst").val(),
+            Src             : $("#Src").val(),
+            QueuedBefore    : utils.dateFieldToEpoch("QueuedBefore"),
+            QueuedAfter     : utils.dateFieldToEpoch("QueuedAfter"),
+            SubmittedBefore : utils.dateFieldToEpoch("SubmittedBefore"),
+            SubmittedAfter  : utils.dateFieldToEpoch("SubmittedAfter"),
+            DeliveredBefore : utils.dateFieldToEpoch("DeliveredBefore"),
+            DeliveredAfter  : utils.dateFieldToEpoch("DeliveredAfter"),
+            CampaignId      : $("#CampaignId").val(),
+            Status          : $("#Status").val(),
+            Error           : $("#Error").val(),
+            OrderByKey      : $("#OrderByKey").val(),
+            OrderByDir      : $("#OrderByDir").val(),
+            From            : $("#From").val(),
+            PerPage         : $("#PerPage").val(),
+        };
+        return data;
+
+    },
+    dateFieldToEpoch : function (fieldName){
+        var date = $("#" + fieldName + "_date").val();
+        var time = $("#" + fieldName + "_time").val();
+        if (date == "") return 0;
+        if (time == "") time = "00:00";
+        var datetime = Date.parse(date + " " + time);
+        var d = new Date(datetime);
+        return d.getTime() / 1000;
     }
 }
 

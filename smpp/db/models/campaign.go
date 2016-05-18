@@ -9,12 +9,13 @@ import (
 )
 
 type Campaign struct {
-	Id            string
+	Id            string `gorethink:"id,omitempty"`
 	Description   string
 	Src           string
 	Msg           string
 	Enc           string
 	FileName      string
+	Priority      int
 	FileLocalName string
 	FileId        string
 	UserId        string
@@ -87,10 +88,6 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 		}
 	}
 
-	if c.OrderByKey == "" {
-		c.OrderByKey = "SubmittedAt"
-	}
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
 	// keep between before Eq
 	betweenFields := map[string]map[string]int64{
 		"SubmittedAt": {
@@ -109,6 +106,11 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 		"Enc":      c.Enc,
 	}
 	t = filterEqStr(strFields, t)
+
+	if c.OrderByKey == "" {
+		c.OrderByKey = "SubmittedAt"
+	}
+	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}
