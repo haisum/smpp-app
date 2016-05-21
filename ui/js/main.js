@@ -2,8 +2,18 @@ Handlebars.registerHelper('prettyDate', function(unixDate) {
     if (unixDate == 0 || isNaN(unixDate) || typeof unixDate === undefined){
         return "";
     }
+    var months = "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec";
+    function nth(d) {
+      if(d>3 && d<21) return 'th'; // thanks kennebec
+      switch (d % 10) {
+            case 1:  return "st";
+            case 2:  return "nd";
+            case 3:  return "rd";
+            default: return "th";
+        }
+    } 
     d = new Date(1000 * unixDate);
-    return d.getDate() + "/" + d.getMonth() + "/" + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes() + ":" + d.getSeconds();
+    return d.getDate() + nth(d.getDate()) + " " + months.split(",")[d.getMonth()] + ", " + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes() + ":" + d.getSeconds();
 });
 
 var app = {
@@ -26,7 +36,7 @@ var app = {
                     "#!campaign" : app.renderCampaign,
                     "#!files" : app.renderFiles,
                     "#!reports": app.renderReports,
-                    "#!users": app.renderReports,
+                    "#!users": app.renderUsers,
                     "#!services": app.renderServices
                 };
                 if (routes[window.location.hash]){
@@ -69,6 +79,7 @@ var app = {
                     var toastContent = '<span class="red-text">' + xhr.responseJSON.Errors.auth + '</span>';
                     Materialize.toast(toastContent, 5000)   
                 });
+                return false;
             });
         }).fail(function(xhr, status, errThrone){
             console.error(xhr);
@@ -123,6 +134,7 @@ var app = {
                     var toastContent = '<span class="red-text">Error occured see console for details.</span>';
                     Materialize.toast(toastContent, 5000)   
                 });
+                return false;
             });
         });
     },
@@ -444,6 +456,7 @@ var app = {
                     var toastContent = '<span class="red-text">Error occured see console for details.</span>';
                     Materialize.toast(toastContent, 5000)   
                 });
+                return false;
             });
         });
     },
@@ -454,10 +467,11 @@ var app = {
             return;
         }
         $(".menuitem").removeClass("active");
-        $(".menuitem.files").addClass("active");
+        $(".menuitem.users").addClass("active");
         $("#page-title").html("Users");
         $.ajax("/templates/users.html").done(function(data){
             $("#inner-content").html(data);
+            $('ul.tabs').tabs();
         });
     },
 }

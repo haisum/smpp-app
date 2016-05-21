@@ -9,30 +9,30 @@
     </div>
     <div id="listusers" class="col s12">
       <div class="row">
-        <form class="col s12">
+        <form class="col s12" id="userfilter-form">
           <div class="row">
             <div class="input-field col s6 m4 l3">
-              <input id="Username" type="text" class="validate">
+              <input id="Username" name="Username" type="text" class="validate">
               <label for="Username">Username</label>
             </div>
             <div class="input-field col s6 m4 l3">
-              <input id="Email" type="text" class="validate">
+              <input id="Email" name="Email" type="text" class="validate">
               <label for="Email">Email</label>
             </div>
             <div class="input-field col s6 m4 l3">
-              <input id="Name" type="text" class="validate">
+              <input id="Name" name="Name" type="text" class="validate">
               <label for="Name">Name</label>
             </div>
             <div class="input-field col s6 m4 l3">
-              <input id="ConnectionGroup" type="text" class="validate">
+              <input id="ConnectionGroup" name="ConnectionGroup" type="text" class="validate">
               <label for="ConnectionGroup">Connection Group</label>
             </div>
             <div class="input-field col s6 m4 l3">
-              <input id="RegisteredAfter" type="date" class="datepicker">
+              <input id="RegisteredAfter" type="text" class="datepicker">
               <label for="RegisteredAfter">Registered After</label>
             </div>
             <div class="input-field col s6 m4 l3">
-              <input id="RegisteredBefore" type="date" class="datepicker">
+              <input id="RegisteredBefore" type="text" class="datepicker">
               <label for="RegisteredBefore">Registered Before</label>
             </div>
             <div class="input-field col s6 m4 l3">
@@ -40,12 +40,16 @@
               <label for="Suspended">Suspended</label>
             </div>
             <div class="input-field col s6 m4 l3">
-              <input id="Permission" type="text" class="validate">
-              <label for="Permission">Permission</label>
+              <input id="Permissions" name="Permissions" type="text" class="validate">
+              <label for="Permissions">Permissions</label>
             </div>
             <div class="input-field col s6 m4 l3">
-              <input id="PerPage" type="text" class="validate">
-              <label for="PerPage">Records Per Page</label>
+              <input value="100" id="PerPage" name="PerPage" type="text" class="validate">
+              <label for="PerPage" class="active">Limit</label>
+            </div>
+            <div class="input-field col s6 m4 l3">
+              <input value="100" id="From" name="From" type="text" class="validate">
+              <label for="From" class="active">From</label>
             </div>
             <div class="input-field col s12">
               <br/>
