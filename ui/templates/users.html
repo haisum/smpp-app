@@ -1,7 +1,7 @@
 <div class="card-panel">
   <div class="row">
     <div class="col s12">
-      <ul class="tabs teal-text">
+      <ul class="tabs teal-text"  style="overflow:hidden;">
         <li class="tab col s6 m4 l3"><a class="teal-text text-darken-1" href="#listusers">Users</a></li>
         <li class="tab col s6 m4 l3 teal-text text-darken-2"><a class=" teal-text text-darken-2" href="#adduser">Add User</a></li>
         <li class="tab col s6 m4 l3"><a class="teal-text text-darken-2" href="#edituser">Edit User</a></li>
@@ -16,7 +16,7 @@
               <label for="Username">Username</label>
             </div>
             <div class="input-field col s6 m4 l3">
-              <input id="Email" name="Email" type="text" class="validate">
+              <input id="Email" name="Email" type="email" class="validate">
               <label for="Email">Email</label>
             </div>
             <div class="input-field col s6 m4 l3">
@@ -27,29 +27,71 @@
               <input id="ConnectionGroup" name="ConnectionGroup" type="text" class="validate">
               <label for="ConnectionGroup">Connection Group</label>
             </div>
-            <div class="input-field col s6 m4 l3">
-              <input id="RegisteredAfter" type="text" class="datepicker">
-              <label for="RegisteredAfter">Registered After</label>
-            </div>
-            <div class="input-field col s6 m4 l3">
-              <input id="RegisteredBefore" type="text" class="datepicker">
-              <label for="RegisteredBefore">Registered Before</label>
-            </div>
-            <div class="input-field col s6 m4 l3">
-              <input type="checkbox" id="Suspended" />
-              <label for="Suspended">Suspended</label>
-            </div>
-            <div class="input-field col s6 m4 l3">
-              <input id="Permissions" name="Permissions" type="text" class="validate">
+            <script id="Permissions-template" type="text/x-handlebars-template">
+              <select multiple class="Permissions" name="Permissions">
+                <option disabled value="">--Choose--</option>
+              {{#each Permissions}}
+                <option value="{{.}}">{{.}}</option>
+              {{/each}}
+              </select>
               <label for="Permissions">Permissions</label>
+            </script>
+            <div class="input-field col s6 PermissionsSelect">
             </div>
-            <div class="input-field col s6 m4 l3">
+            <div class="input-field col s12">
+              <div class="row">
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="RegisteredAfter_date" name="RegisteredAfter_date" type="text" class="datepicker">
+                  <label class="active" for="RegisteredAfter_date">Registered After</label>
+                </div>
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="RegisteredAfter_time" name="RegisteredAfter_time" type="text" class="timepicker"">
+                </div>
+              </div>
+            </div>
+            <div class="input-field col s12">
+              <div class="row">
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="RegisteredBefore_date" name="RegisteredBefore_date" type="text" class="datepicker">
+                  <label class="active" for="RegisteredBefore_date">Registered Before</label>
+                </div>
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="RegisteredBefore_time" name="RegisteredBefore_time" type="text" class="timepicker"">
+                </div>
+              </div>
+            </div>
+            <div class="input-field col s6">
+              <select id="OrderByKey" name="OrderByKey">
+                <option value="Username">Username</option>
+                <option value="Name">Name</option>
+                <option value="Email">Email</option>
+                <option value="ConnectionGroup">ConnectionGroup</option>
+                <option value="RegisteredAt" selected>RegisteredAt</option>
+              </select>
+              <label for="Suspended">Sort By</label>
+            </div>
+            <div class="input-field col s6">
+              <select id="OrderByDir" name="OrderByDir">
+                <option value="DESC" selected>Descending</option>
+                <option value="ASC">Ascending</option>
+              </select>
+              <label for="Suspended">Sort By Direction</label>
+            </div>
+
+            <div class="input-field col s6">
               <input value="100" id="PerPage" name="PerPage" type="text" class="validate">
               <label for="PerPage" class="active">Limit</label>
             </div>
-            <div class="input-field col s6 m4 l3">
-              <input value="100" id="From" name="From" type="text" class="validate">
-              <label for="From" class="active">From</label>
+            <div class="input-field col s6">
+              <input id="From" name="From" type="text" class="validate">
+              <label for="From">From</label>
+            </div>
+            <div class="input-field col s6">
+              <select id="Suspended" name="Suspended">
+                <option value="false" selected>Active</option>
+                <option value="true">Suspended</option>
+              </select>
+              <label for="Suspended">Status</label>
             </div>
             <div class="input-field col s12">
               <br/>
@@ -60,52 +102,39 @@
           </div>
         </form>
       </div>
-      <table class="striped responsive-table">
-        <thead>
-          <tr>
-              <th data-field="id">Username</th>
-              <th data-field="name">Name</th>
-              <th data-field="price">Email</th>
-              <th data-field="price">Connection Group</th>
-              <th data-field="price">Permissions</th>
-              <th data-field="price">Registered At</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          <tr>
-            <td>hmussawir</td>
-            <td>Eclair</td>
-            <td>eclair@yahoo.com</td>
-            <td>Default</td>
-            <td>AddUser, SuspendUser</td>
-            <td>27th July, 2015</td>
-          </tr>
-          <tr>
-            <td>hmussawir</td>
-            <td>Eclair</td>
-            <td>eclair@yahoo.com</td>
-            <td>Default</td>
-            <td>AddUser, SuspendUser</td>
-            <td>27th July, 2015</td>
-          </tr>
-          <tr>
-            <td>hmussawir2</td>
-            <td>Haisum</td>
-            <td>eclair@gmail.com</td>
-            <td>Default</td>
-            <td>AddUser, SuspendUser</td>
-            <td>27th July, 2015</td>
-          </tr>
-        </tbody>
-      </table>
-      <ul class="pagination right">
-        <li class="waves-effect"><a href="#!"><i class="mdi-navigation-chevron-left"></i></a></li>
-        <li class="waves-effect"><a href="#!"><i class="mdi-navigation-chevron-right"></i></a></li>
-      </ul>
+      <script id="users-template" type="text/x-handlebars-template">
+        <table class="striped responsive-table">
+          <thead>
+            <tr>
+                <th>Username</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Group</th>
+                <th>Permissions</th>
+                <th>RegisteredAt</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each Users}}
+            <tr>
+              <td>{{Username}}</td>
+              <td>{{Name}}</td>
+              <td>{{Email}}</td>
+              <td>{{ConnectionGroup}}</td>
+              <td>
+                {{#each Permissions}}{{.}} {{/each}}
+              </td>
+              <td>{{prettyDate RegisteredAt}}</td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </script>
+      <div id="users">
+      </div>
     </div>
     <div id="adduser" class="col s12">
-      <form class="col s12">
+      <form class="col s12" id="useradd-form">
         <div class="row">
           <div class="input-field col s6 m4 l3">
             <input id="addUsername" type="text" class="validate">
@@ -116,7 +145,7 @@
             <label for="addPassword">Password</label>
           </div>
           <div class="input-field col s6 m4 l3">
-            <input id="addEmail" type="text" class="validate">
+            <input id="addEmail" type="email" class="validate">
             <label for="addEmail">Email</label>
           </div>
           <div class="input-field col s6 m4 l3">
@@ -124,20 +153,20 @@
             <label for="addName">Name</label>
           </div>
           <div class="input-field col s6 m4 l3">
-            <input id="addConnectionGroup" type="text" class="validate">
-            <label for="addConnectionGroup">Connection Group</label>
+            <input value="Default" id="addConnectionGroup" type="text" class="validate">
+            <label class="active" for="addConnectionGroup">Connection Group</label>
           </div>
-          <div class="input-field col s6 m4 l3">
-            <input id="addPermission" type="text" class="validate">
-            <label for="addPermission">Permission</label>
-          </div>
-          <div class="input-field col s6 m4 l3">
-            <input id="addNightStartAt" type="text" class="validate">
-            <label for="addNightStartAt">Don't Send After</label>
-          </div>
-          <div class="input-field col s6 m4 l3">
-            <input id="addNightEndAt" type="text" class="validate">
-            <label for="addNightEndAt">Don't Send Before</label>
+
+          <script id="Permissions-template" type="text/x-handlebars-template">
+            <select multiple class="Permissions" name="Permissions">
+              <option disabled value="">--Choose--</option>
+            {{#each Permissions}}
+              <option value="{{.}}">{{.}}</option>
+            {{/each}}
+            </select>
+            <label for="Permissions">Permissions</label>
+          </script>
+          <div class="input-field col s4 PermissionsSelect">
           </div>
           <div class="input-field col s6 m4 l3">
             <input type="checkbox" id="addSuspended" />
@@ -153,11 +182,11 @@
       </form>
     </div>
     <div id="edituser" class="col s12">
-      <form class="col s12">
+      <form class="col s12" id="finduser-form">
         <div class="row">
           <div class="input-field col s6 m4 l3">
-            <input id="editUsername" type="text" class="validate">
-            <label for="editUsername">Username</label>
+            <input id="findUsername" type="text" class="validate">
+            <label for="findUsername">Username</label>
           </div>
           <div class="input-field col s9">
             <button class="btn teal waves-effect waves-light" type="submit" name="action">Find
@@ -166,39 +195,38 @@
           </div>
         </div>
       </form>
-      <form class="col s12">
+      <form class="col s12" id="useredit-form">
         <div class="row">
           <div class="input-field col s6 m4 l3">
-            <input id="addPassword" type="password" class="validate">
-            <label for="addPassword">Password</label>
+            <input id="editPassword" type="password" class="validate">
+            <label for="editPassword">Password</label>
           </div>
           <div class="input-field col s6 m4 l3">
-            <input id="addEmail" type="text" class="validate">
-            <label for="addEmail">Email</label>
+            <input id="editEmail" type="email" class="validate">
+            <label for="editEmail">Email</label>
           </div>
           <div class="input-field col s6 m4 l3">
-            <input id="addName" type="text" class="validate">
-            <label for="addName">Name</label>
+            <input id="editName" type="text" class="validate">
+            <label for="editName">Name</label>
           </div>
           <div class="input-field col s6 m4 l3">
-            <input id="addConnectionGroup" type="text" class="validate">
-            <label for="addConnectionGroup">Connection Group</label>
+            <input id="editConnectionGroup" type="text" class="validate">
+            <label for="editConnectionGroup">Connection Group</label>
+          </div>
+          <script id="Permissions-template" type="text/x-handlebars-template">
+            <select multiple class="Permissions" name="Permissions">
+              <option disabled value="">--Choose--</option>
+            {{#each Permissions}}
+              <option value="{{.}}">{{.}}</option>
+            {{/each}}
+            </select>
+            <label for="Permissions">Permissions</label>
+          </script>
+          <div class="input-field col s4 PermissionsSelect">
           </div>
           <div class="input-field col s6 m4 l3">
-            <input id="addPermission" type="text" class="validate">
-            <label for="addPermission">Permission</label>
-          </div>
-          <div class="input-field col s6 m4 l3">
-            <input id="addNightStartAt" type="text" class="validate">
-            <label for="addNightStartAt">Don't Send After</label>
-          </div>
-          <div class="input-field col s6 m4 l3">
-            <input id="addNightEndAt" type="text" class="validate">
-            <label for="addNightEndAt">Don't Send Before</label>
-          </div>
-          <div class="input-field col s6 m4 l3">
-            <input type="checkbox" id="addSuspended" />
-            <label for="addSuspended">Suspended</label>
+            <input type="checkbox" id="editSuspended" />
+            <label for="editSuspended">Suspended</label>
           </div>
           <div class="input-field col s12">
             <button class="btn teal waves-effect waves-light" type="submit" name="action">Update User

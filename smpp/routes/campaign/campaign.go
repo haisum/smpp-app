@@ -78,15 +78,6 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		SubmittedAt: time.Now().Unix(),
 		Priority:    uReq.Priority,
 	}
-	campaignId, err := c.Save()
-	if err != nil {
-		log.WithError(err).Error("Couldn't save campaign.")
-		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"db": "Couldn't save campaign in db."},
-			Request: uReq,
-		}
-		resp.Send(w, *r, http.StatusInternalServerError)
-	}
 
 	errors := make(routes.ResponseErrors)
 	if errors = validateCampaign(uReq); len(errors) != 0 {
@@ -97,6 +88,15 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
+	}
+	campaignId, err := c.Save()
+	if err != nil {
+		log.WithError(err).Error("Couldn't save campaign.")
+		resp := routes.Response{
+			Errors:  routes.ResponseErrors{"db": "Couldn't save campaign in db."},
+			Request: uReq,
+		}
+		resp.Send(w, *r, http.StatusInternalServerError)
 	}
 	q, err := queue.GetQueue("", "", 0)
 	config, err := models.GetConfig()
@@ -178,6 +178,9 @@ func validateCampaign(c campaignRequest) routes.ResponseErrors {
 	}
 	if c.Msg == "" {
 		errors["Msg"] = "Can't send empty message"
+	}
+	if c.Description == "" {
+		errors["Description"] = "Description must be provided for campaign"
 	}
 	if c.Src == "" {
 		errors["Src"] = "Source address can't be empty."

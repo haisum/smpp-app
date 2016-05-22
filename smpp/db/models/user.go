@@ -234,8 +234,15 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 		log.WithError(err).Error("Error in filtering")
 		return users, err
 	}
-	cur.All(&users)
+	err = cur.All(&users)
+	if err != nil {
+		log.WithError(err).Error("Error in loading users")
+		return users, err
+	}
 	defer cur.Close()
+	for i, _ := range users {
+		users[i].Password = ""
+	}
 	return users, nil
 }
 
@@ -270,10 +277,10 @@ func (u *User) Validate() (map[string]string, error) {
 		errors["Email"] = "Invalid email address"
 	}
 	re := regexp.MustCompile("[0-9][0-9]:[0-9][0-9](AM)|(PM)")
-	if !re.Match([]byte(u.NightStartAt)) {
+	if u.NightStartAt != "" && !re.Match([]byte(u.NightStartAt)) {
 		errors["NightStartAt"] = "Time should be in format hh:mmAM|PM"
 	}
-	if !re.Match([]byte(u.NightEndAt)) {
+	if u.NightEndAt != "" && !re.Match([]byte(u.NightEndAt)) {
 		errors["NightEndAt"] = "Time should be in format hh:mmAM|PM"
 	}
 	for _, x := range u.Permissions {
