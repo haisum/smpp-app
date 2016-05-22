@@ -67,6 +67,7 @@ func ParseRequest(r http.Request, v interface{}) error {
 			return err
 		}
 		decoder := schema.NewDecoder()
+		decoder.IgnoreUnknownKeys(true)
 		err = decoder.Decode(v, r.Form)
 		if err != nil {
 			log.WithError(err).Error("Couldn't decode form in struct.")

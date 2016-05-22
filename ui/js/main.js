@@ -15,7 +15,8 @@ Handlebars.registerHelper('prettyDate', function(unixDate) {
     d = new Date(1000 * unixDate);
     return d.getDate() + nth(d.getDate()) + " " + months.split(",")[d.getMonth()] + ", " + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes() + ":" + d.getSeconds();
 });
-
+// for stupid IE
+$.ajaxSetup({ cache: false });
 var app = {
     userInfo : {
         Username : ""
@@ -323,7 +324,7 @@ var app = {
             data : data,
             dataType: "json",
             type: "get"
-        }).done(function(data){        
+        }).done(function(data){
             var source   = $("#list-message-template").html();
             var template = Handlebars.compile(source);
             var html    = template(data.Response);
