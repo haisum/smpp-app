@@ -34,9 +34,11 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing campaign request.")
-		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse request",
+		resp := routes.Response{}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeRequest,
+				Message: "Couldn't parse request.",
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -54,18 +56,26 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		Id: uReq.FileId,
 	})
 	if err != nil || len(files) == 0 {
-		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"FileId": "Couldn't get any file."},
-			Request: uReq,
+		resp := routes.Response{}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeForm,
+				Message: "Couldn't get any file.",
+				Field:   "FileId",
+			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
 	}
 	numbers, err := files[0].ToNumbers()
 	if err != nil {
 		log.WithError(err).Error("Couldn't read numbers from file.")
-		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"FileId": "Couldn't read numbers from file."},
-			Request: uReq,
+		resp := routes.Response{}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeForm,
+				Message: "Couldn't read numbers from file.",
+				Field:   "FileId",
+			},
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)
 	}
@@ -79,8 +89,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		Priority:    uReq.Priority,
 	}
 
-	errors := make(routes.ResponseErrors)
-	if errors = validateCampaign(uReq); len(errors) != 0 {
+	if errors := validateCampaign(uReq); len(errors) != 0 {
 		log.WithField("errors", errors).Error("Validation failed.")
 		resp := routes.Response{
 			Errors:  errors,
@@ -93,7 +102,12 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		log.WithError(err).Error("Couldn't save campaign.")
 		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"db": "Couldn't save campaign in db."},
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeDB,
+					Message: "Couldn't save campaign in db.",
+				},
+			},
 			Request: uReq,
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)
@@ -106,7 +120,12 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
 		log.WithField("ConnectionGroup", u.ConnectionGroup).Error("User's connection group doesn't exist in configuration.")
 		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"ConnectionGroup": "User's connection group doesn't exist in configuration."},
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeConfig,
+					Message: "User's connection group doesn't exist in configuration.",
+				},
+			},
 			Request: uReq,
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)
@@ -131,7 +150,12 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			log.WithField("err", err).Error("Couldn't insert in db.")
 			resp := routes.Response{
-				Errors:  routes.ResponseErrors{"db": "Couldn't save message in database."},
+				Errors: []routes.ResponseError{
+					{
+						Type:    routes.ErrorTypeDB,
+						Message: "Couldn't save message in database.",
+					},
+				},
 				Request: uReq,
 			}
 			resp.Send(w, *r, http.StatusInternalServerError)
@@ -155,7 +179,12 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				"uReq":  uReq,
 			}).Error("Couldn't publish message.")
 			resp := routes.Response{
-				Errors:  routes.ResponseErrors{"message": "Couldn't send message."},
+				Errors: []routes.ResponseError{
+					{
+						Type:    routes.ErrorTypeQueue,
+						Message: "Couldn't queue message.",
+					},
+				},
 				Request: uReq,
 			}
 			resp.Send(w, *r, http.StatusInternalServerError)
@@ -171,22 +200,42 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 
 })
 
-func validateCampaign(c campaignRequest) routes.ResponseErrors {
-	errors := make(routes.ResponseErrors)
+func validateCampaign(c campaignRequest) []routes.ResponseError {
+	errors := make([]routes.ResponseError, 0)
 	if c.FileId == "" {
-		errors["FileId"] = "File can't be empty."
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "FileId",
+			Message: "File can't be empty.",
+		})
 	}
 	if c.Msg == "" {
-		errors["Msg"] = "Can't send empty message"
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "Msg",
+			Message: "Can't send empty message.",
+		})
 	}
 	if c.Description == "" {
-		errors["Description"] = "Description must be provided for campaign"
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "Description",
+			Message: "Description must be provided for campaign.",
+		})
 	}
 	if c.Src == "" {
-		errors["Src"] = "Source address can't be empty."
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "Src",
+			Message: "Source address can't be empty.",
+		})
 	}
 	if c.Enc != "ucs" && c.Enc != "latin" {
-		errors["Enc"] = "Encoding can either be latin or UCS"
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "Enc",
+			Message: "Encoding can either be latin or UCS.",
+		})
 	}
 	return errors
 }

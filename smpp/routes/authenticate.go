@@ -16,8 +16,11 @@ func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token 
 	s, err := db.GetSession()
 	if err != nil {
 		log.WithError(err).Error("Couldn't get session.")
-		resp.Errors = ResponseErrors{
-			"auth": "Couldn't connect db.",
+		resp.Errors = []ResponseError{
+			{
+				Type:    ErrorTypeDB,
+				Message: "Couldn't connect database.",
+			},
 		}
 		resp.Send(w, r, http.StatusInternalServerError)
 		return u, false
@@ -25,8 +28,11 @@ func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token 
 	t, err := models.GetToken(s, token)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get token.")
-		resp.Errors = ResponseErrors{
-			"auth": "Invalid token.",
+		resp.Errors = []ResponseError{
+			{
+				Type:    ErrorTypeAuth,
+				Message: "Invalid token.",
+			},
 		}
 		resp.Send(w, r, http.StatusUnauthorized)
 		return u, false
@@ -34,15 +40,21 @@ func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token 
 	u, err = models.GetUser(s, t.Username)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get user.")
-		resp.Errors = ResponseErrors{
-			"auth": "This user no longer exists.",
+		resp.Errors = []ResponseError{
+			{
+				Type:    ErrorTypeAuth,
+				Message: "This user no longer exists.",
+			},
 		}
 		resp.Send(w, r, http.StatusUnauthorized)
 		return u, false
 	}
 	if u.Suspended {
-		resp.Errors = ResponseErrors{
-			"auth": "This user is suspended.",
+		resp.Errors = []ResponseError{
+			{
+				Type:    ErrorTypeAuth,
+				Message: "This user is suspended.",
+			},
 		}
 		resp.Send(w, r, http.StatusUnauthorized)
 		return u, false
@@ -53,8 +65,11 @@ func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token 
 				return u, true
 			}
 		}
-		resp.Errors = ResponseErrors{
-			"auth": "You don't have permissions to access this resource.",
+		resp.Errors = []ResponseError{
+			{
+				Type:    ErrorTypeAuth,
+				Message: "You don't have permissions to access this resource.",
+			},
 		}
 		resp.Send(w, r, http.StatusForbidden)
 		return u, false

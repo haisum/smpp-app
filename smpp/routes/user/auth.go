@@ -25,8 +25,11 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse auth request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request.",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -38,7 +41,12 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		resp := routes.Response{}
 		resp.Ok = false
 		log.WithError(err).Error("Error in getting session.")
-		resp.Errors = routes.ResponseErrors{"db": "Couldn't connect to database."}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeDB,
+				Message: "Couldn't connect to database.",
+			},
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
@@ -51,7 +59,12 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	u, err := models.GetUser(s, uReq.Username)
 	if err != nil {
 		resp.Ok = false
-		resp.Errors = routes.ResponseErrors{"auth": "Username/Password pair is wrong."}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeAuth,
+				Message: "Username/Password pair is wrong.",
+			},
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
@@ -59,8 +72,11 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	if !u.Auth(uReq.Password) {
 		log.WithError(err).Error("Couldn't authenticate user.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				"auth": "Username/Password pair is wrong.",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeAuth,
+					Message: "Username/password pair is wrong.",
+				},
 			},
 			Request: uReq,
 		}
@@ -69,8 +85,11 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	}
 	if u.Suspended {
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				"auth": "User is suspended.",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeAuth,
+					Message: "User is suspended.",
+				},
 			},
 			Request: uReq,
 		}

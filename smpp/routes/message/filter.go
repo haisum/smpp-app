@@ -26,8 +26,11 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		log.WithError(err).Error("Error parsing messages list request.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request.",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -51,7 +54,12 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		resp.Ok = false
 		log.WithError(err).Error("Couldn't get message.")
-		resp.Errors = routes.ResponseErrors{"db": "Couldn't get messages."}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeDB,
+				Message: "Couldn't get messages.",
+			},
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusBadRequest)
 		return

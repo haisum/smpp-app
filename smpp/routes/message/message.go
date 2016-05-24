@@ -34,8 +34,11 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		log.WithError(err).Error("Error parsing user message request.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request.",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -49,8 +52,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermSendMessage); !ok {
 		return
 	}
-	errors := make(routes.ResponseErrors)
-	if errors = validateMsg(uReq); len(errors) != 0 {
+	if errors := validateMsg(uReq); len(errors) != 0 {
 		log.WithField("errors", errors).Error("Validation failed.")
 		resp := routes.Response{
 			Errors:  errors,
@@ -67,7 +69,12 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
 		log.WithField("ConnectionGroup", u.ConnectionGroup).Error("User's connection group doesn't exist in configuration.")
 		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"ConnectionGroup": "User's connection group doesn't exist in configuration."},
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeConfig,
+					Message: "User's connection group doesn't exist in configuration.",
+				},
+			},
 			Request: uReq,
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)
@@ -89,7 +96,12 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		log.WithField("err", err).Error("Couldn't insert in db.")
 		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"db": "Couldn't save message in database."},
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeDB,
+					Message: "Couldn't save message in database.",
+				},
+			},
 			Request: uReq,
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)
@@ -113,7 +125,12 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 			"uReq":  uReq,
 		}).Error("Couldn't publish message.")
 		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"message": "Couldn't send message."},
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeQueue,
+					Message: "Couldn't send message.",
+				},
+			},
 			Request: uReq,
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)
@@ -127,19 +144,35 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	resp.Send(w, *r, http.StatusOK)
 })
 
-func validateMsg(msg messageReq) routes.ResponseErrors {
-	errors := make(routes.ResponseErrors)
+func validateMsg(msg messageReq) []routes.ResponseError {
+	errors := make([]routes.ResponseError, 0)
 	if msg.Dst == "" {
-		errors["Dst"] = "Destination can't be empty."
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "Dst",
+			Message: "Destination can't be empty.",
+		})
 	}
 	if msg.Msg == "" {
-		errors["Msg"] = "Can't send empty message"
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "Msg",
+			Message: "Can't send empty message",
+		})
 	}
 	if msg.Src == "" {
-		errors["Src"] = "Source address can't be empty."
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "Src",
+			Message: "Source address can't be empty.",
+		})
 	}
 	if msg.Enc != "ucs" && msg.Enc != "latin" {
-		errors["Enc"] = "Encoding can either be latin or UCS"
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "Enc",
+			Message: "Encoding can either be latin or UCS",
+		})
 	}
 	return errors
 }

@@ -18,8 +18,6 @@ type addRequest struct {
 	Permissions     []smpp.Permission
 	Name            string
 	Email           string
-	NightStartAt    string
-	NightEndAt      string
 	ConnectionGroup string
 	Suspended       bool
 }
@@ -36,8 +34,11 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.WithError(err).Error("Error parsing user add request.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -52,7 +53,12 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.WithError(err).Error("Error in getting session.")
 		resp := routes.Response{}
 		resp.Ok = false
-		resp.Errors = routes.ResponseErrors{"db": "Couldn't connect to database."}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeDB,
+				Message: "Couldn't connect to database.",
+			},
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
@@ -60,8 +66,6 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	u := models.User{
 		Email:           uReq.Email,
 		ConnectionGroup: uReq.ConnectionGroup,
-		NightEndAt:      uReq.NightEndAt,
-		NightStartAt:    uReq.NightStartAt,
 		Username:        uReq.Username,
 		Password:        uReq.Password,
 		Name:            uReq.Name,
@@ -78,7 +82,14 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	verrs, err := u.Validate()
 	if err != nil {
 		resp.Ok = false
-		resp.Errors = verrs
+		resp.Errors = make([]routes.ResponseError, len(verrs))
+		for k, v := range verrs {
+			resp.Errors = append(resp.Errors, routes.ResponseError{
+				Type:    routes.ErrorTypeForm,
+				Message: v,
+				Field:   k,
+			})
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
@@ -87,9 +98,11 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.WithError(err).Error("Couldn't add user.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusInternalServerError): "Couldn't add user",
-				"db": err.Error(),
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeDB,
+					Message: "Couldn't add user",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)

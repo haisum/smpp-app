@@ -25,8 +25,11 @@ var DeleteHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		log.WithError(err).Error("Error parsing delete request.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				"request": "Couldn't parse request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request.",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -46,7 +49,13 @@ var DeleteHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	resp := routes.Response{}
 	if len(files) == 0 {
 		resp.Ok = false
-		resp.Errors = routes.ResponseErrors{"db": "Couldn't get files."}
+		log.WithError(err).Error("Couldn't get files.")
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeDB,
+				Message: "Couldn't get files.",
+			},
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
@@ -57,8 +66,14 @@ var DeleteHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	}
 	err = files[0].Delete()
 	if err != nil {
+		log.WithError(err).Error("Couldn't delete file")
 		resp.Ok = false
-		resp.Errors = routes.ResponseErrors{"db": "Couldn't delete file."}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeDB,
+				Message: "Couldn't delete file.",
+			},
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return

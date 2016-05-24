@@ -22,8 +22,11 @@ var PostConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse auth request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request.",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -37,7 +40,12 @@ var PostConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		log.WithError(err).Error("Couldn't set config.")
 		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"config": "Couldn't set config."},
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeConfig,
+					Message: "Couldn't set configuration.",
+				},
+			},
 			Request: uReq,
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -47,7 +55,12 @@ var PostConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		log.WithError(err).Error("Couldn't reload supervisor.")
 		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"config": "Couldn't reload supervisor."},
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeConfig,
+					Message: "Couldn't reload supervisor.",
+				},
+			},
 			Request: uReq,
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)

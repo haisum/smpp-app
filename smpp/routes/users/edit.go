@@ -17,8 +17,6 @@ type editRequest struct {
 	Permissions     []smpp.Permission
 	Name            string
 	Email           string
-	NightStartAt    string
-	NightEndAt      string
 	ConnectionGroup string
 	Suspended       bool
 }
@@ -35,8 +33,11 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		log.WithError(err).Error("Error parsing user edit request.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -51,8 +52,11 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		log.WithError(err).Error("Error getting user.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't get user",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't get user.",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -63,17 +67,11 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	if uReq.Name != "" {
 		u.Name = uReq.Name
 	}
-	if uReq.NightEndAt != "" {
-		u.NightEndAt = uReq.NightEndAt
-	}
 	if uReq.Email != "" {
 		u.Email = uReq.Email
 	}
 	if uReq.ConnectionGroup != "" {
 		u.ConnectionGroup = uReq.ConnectionGroup
-	}
-	if uReq.NightStartAt != "" {
-		u.NightStartAt = uReq.NightStartAt
 	}
 	if uReq.Password != "" {
 		u.Password = uReq.Password
@@ -96,7 +94,14 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	verrs, err := u.Validate()
 	if err != nil {
 		resp.Ok = false
-		resp.Errors = verrs
+		resp.Errors = make([]routes.ResponseError, len(verrs))
+		for k, v := range verrs {
+			resp.Errors = append(resp.Errors, routes.ResponseError{
+				Type:    routes.ErrorTypeForm,
+				Message: v,
+				Field:   k,
+			})
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
@@ -105,9 +110,11 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		log.WithError(err).Error("Couldn't update user.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusInternalServerError): "Couldn't update user",
-				"db": err.Error(),
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeDB,
+					Message: "Couldn't update user",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)

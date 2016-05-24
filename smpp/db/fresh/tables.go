@@ -226,8 +226,6 @@ func tuser(s *r.Session, dbname string) error {
 		Password        string
 		Email           string
 		Username        string
-		NightStartAt    string
-		NightEndAt      string
 		ConnectionGroup string
 		Permissions     []smpp.Permission
 		RegisteredAt    int64
@@ -236,8 +234,6 @@ func tuser(s *r.Session, dbname string) error {
 		Password:        "admin123",
 		Email:           "admin@localhost.dev",
 		Username:        "admin",
-		NightEndAt:      "00:00AM",
-		NightStartAt:    "00:00AM",
 		ConnectionGroup: "Default",
 		Permissions:     smpp.GetPermissions(),
 		RegisteredAt:    time.Now().Unix(),

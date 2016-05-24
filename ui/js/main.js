@@ -46,13 +46,11 @@ var app = {
                     app.renderSMS();
                 }
             }).fail(function(xhr, status, errThrone){
-                console.error(xhr);
                 if (xhr.status == 401){
                     localStorage.removeItem("auth_token");
                     app.renderLogin();
                 } else {
-                    var toastContent = '<span class="red-text">' + xhr.responseText + '</span>';
-                    Materialize.toast(toastContent, 5000);
+                    utils.showErrors(xhr.responseJSON.Errors);
                 }
             });
         }
@@ -76,16 +74,12 @@ var app = {
                     localStorage.setItem("auth_token", data.Response.Token);
                     app.init();
                 }).fail(function(xhr, status, errThrone){
-                    console.error(xhr);
-                    var toastContent = '<span class="red-text">' + xhr.responseJSON.Errors.auth + '</span>';
-                    Materialize.toast(toastContent, 5000)   
+                    utils.showErrors(xhr.responseJSON.Errors);        
                 });
                 return false;
             });
         }).fail(function(xhr, status, errThrone){
-            console.error(xhr);
-            var toastContent = '<span class="red-text">Getting templates/login.html. ' + xhr.responseText + '</span>';
-            Materialize.toast(toastContent, 5000)
+            utils.showErrors(xhr.responseJSON.Errors);
         });
     },
     renderSMS: function(){
@@ -131,9 +125,7 @@ var app = {
                         localStorage.removeItem("auth_token");
                         window.location.reload();
                     }
-                    console.error(xhr.responseJSON);
-                    var toastContent = '<span class="red-text">Error occured see console for details.</span>';
-                    Materialize.toast(toastContent, 5000)   
+                    utils.showErrors(xhr.responseJSON.Errors);
                 });
                 return false;
             });
@@ -182,9 +174,7 @@ var app = {
                         localStorage.removeItem("auth_token");
                         window.location.reload();
                     }
-                    console.error(xhr.responseJSON);
-                    var toastContent = '<span class="red-text">Error occured see console for details.</span>';
-                    Materialize.toast(toastContent, 5000)  
+                    utils.showErrors(xhr.responseJSON.Errors);
                 });
                 return false;
             });
@@ -238,9 +228,7 @@ var app = {
                         localStorage.removeItem("auth_token");
                         window.location.reload();
                     }
-                    console.error(xhr.responseJSON);
-                    var toastContent = '<span class="red-text">Error occured see console for details.</span>';
-                    Materialize.toast(toastContent, 5000)   
+                    utils.showErrors(xhr.responseJSON.Errors);
                 });
                 return false;
             });
@@ -281,9 +269,7 @@ var app = {
                         localStorage.removeItem("auth_token");
                         window.location.reload();
                     }
-                    console.error(xhr);
-                    var toastContent = '<span class="red-text">' + xhr.responseJSON.Errors.request + '</span>';
-                    Materialize.toast(toastContent, 5000)   
+                    utils.showErrors(xhr.responseJSON.Errors);
                 });
                 return false;
             });
@@ -309,9 +295,7 @@ var app = {
                 localStorage.removeItem("auth_token");
                 window.location.reload();
             }
-            console.error(xhr.responseJSON);
-            var toastContent = '<span class="red-text">Error occured see console for details.</span>';
-            Materialize.toast(toastContent, 5000)
+            utils.showErrors(xhr.responseJSON.Errors);
         });
     },
     renderMessageList: function(){
@@ -334,9 +318,7 @@ var app = {
                 localStorage.removeItem("auth_token");
                 window.location.reload();
             }
-            console.error(xhr.responseJSON);
-            var toastContent = '<span class="red-text">Error occured see console for details.</span>';
-            Materialize.toast(toastContent, 5000)
+            utils.showErrors(xhr.responseJSON.Errors);
         });
     },
 }
@@ -379,5 +361,16 @@ var utils = {
         var datetime = Date.parse(date + " " + time);
         var d = new Date(datetime);
         return d.getTime() / 1000;
+    },
+    showErrors : function(errors) {
+        console.log("Following errors occured:");
+        console.log(errors);
+        var errHtml = "<ul>";
+        for (i=0; i<errors.length;i++){
+            errHtml +=  "<li>" + errors[i].Message  + "</li>";
+        }
+        errHtml += "</ul>"
+        var toastContent = '<div class="red-text">' + errHtml + '</div>';
+        Materialize.toast(toastContent, 5000)
     }
 }

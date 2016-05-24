@@ -52,19 +52,6 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 }
 
 func receiver(p pdu.Body) {
-	log.Info("0x0427 incoming")
-	/*var field1 bytes.Buffer
-	p.TLVFields()[0x0427].SerializeTo(&field1)
-	fmt.Println(field1.Bytes())*/
-	fmt.Println(p.TLVFields()[0x001e].Bytes())
-	//fmt.Println(binary.BigEndian.Uint16())
-	/*log.Info(field1.String())*/
-	/*log.Info("0x001e incoming")
-	var field2 bytes.Buffer
-	p.TLVFields()[0x001e].SerializeTo(&field2)
-	fmt.Println(field2.Bytes())*/
-	//fmt.Println(binary.BigEndian.Uint16(p.TLVFields()[0x001e].Bytes()))
-	/*log.Info(field2.String())*/
 	if p.Header().ID == pdu.DeliverSMID {
 		go saveDeliverySM(p.Fields())
 	} else {
@@ -74,7 +61,6 @@ func receiver(p pdu.Body) {
 		}
 		log.WithFields(fields).Info("PDU Received.")
 	}
-
 }
 
 // This is called per job and as a separate go routing

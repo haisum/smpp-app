@@ -16,8 +16,6 @@ type infoResponse struct {
 	Username        string
 	Name            string
 	Email           string
-	NightStartAt    string
-	NightEndAt      string
 	ConnectionGroup string
 	Permissions     []smpp.Permission
 	RegisteredAt    int64
@@ -31,8 +29,11 @@ var InfoHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse auth request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -50,9 +51,6 @@ var InfoHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 
 	uResp.ConnectionGroup = u.ConnectionGroup
 	uResp.Permissions = u.Permissions
-	uResp.NightEndAt = u.NightEndAt
-	uResp.NightStartAt = u.NightStartAt
-	uResp.NightEndAt = u.NightEndAt
 	uResp.Suspended = u.Suspended
 	uResp.RegisteredAt = u.RegisteredAt
 	uResp.Username = u.Username

@@ -26,8 +26,11 @@ var FilterHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		log.WithError(err).Error("Error parsing files list request.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request.",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -50,7 +53,12 @@ var FilterHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	resp := routes.Response{}
 	if err != nil {
 		resp.Ok = false
-		resp.Errors = routes.ResponseErrors{"db": "Couldn't get files."}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeDB,
+				Message: "Couldn't get files.",
+			},
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusBadRequest)
 		return

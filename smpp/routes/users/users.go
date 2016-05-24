@@ -27,8 +27,11 @@ var UsersHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		log.WithError(err).Error("Error parsing users list request.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -43,7 +46,12 @@ var UsersHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 		log.WithError(err).Error("Error in getting session.")
 		resp := routes.Response{}
 		resp.Ok = false
-		resp.Errors = routes.ResponseErrors{"db": "Couldn't connect to database."}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeDB,
+				Message: "Couldn't connect to database.",
+			},
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
@@ -52,7 +60,12 @@ var UsersHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	resp := routes.Response{}
 	if err != nil {
 		resp.Ok = false
-		resp.Errors = routes.ResponseErrors{"db": "Couldn't get users."}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeDB,
+				Message: "Couldn't get users.",
+			},
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusBadRequest)
 		return

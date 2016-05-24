@@ -20,8 +20,11 @@ var GetConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse auth request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request.",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -35,7 +38,12 @@ var GetConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		log.WithError(err).Error("Couldn't get config")
 		resp := routes.Response{
-			Errors:  routes.ResponseErrors{"db": "Couldn't get config."},
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeConfig,
+					Message: "Couldn't get config.",
+				},
+			},
 			Request: uReq,
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)

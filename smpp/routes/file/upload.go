@@ -24,8 +24,11 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	if r.ContentLength > maxPostSize {
 		log.Error("Upload request too large.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				"request": "File size is too large. Upto 5 MB files are allowed.",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "File size is too large. Upto 5 MB files are allowed.",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusExpectationFailed)
@@ -38,8 +41,11 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		log.WithError(err).Error("Error parsing multipart form.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				"request": "Couldn't parse request form. Was it submitted as multipart?",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request form. Was it submitted as multipart?",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -49,8 +55,11 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		log.WithError(err).Error("Error parsing file upload request.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				"request": "Couldn't parse request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request",
+				},
 			},
 			Request: uReq,
 		}
@@ -76,8 +85,11 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		log.WithError(err).Error("Error getting file form field.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				"request": "Couldn't get File.",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't get file.",
+				},
 			},
 			Request: uReq,
 		}
@@ -88,8 +100,11 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		log.WithError(err).Error("Error saving file.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				"request": err.Error(),
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: err.Error(),
+				},
 			},
 			Request: uReq,
 		}

@@ -9,7 +9,6 @@ import (
 	r "github.com/dancannon/gorethink"
 	"golang.org/x/crypto/bcrypt"
 	"net/mail"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -21,8 +20,6 @@ type User struct {
 	Password        string
 	Name            string
 	Email           string
-	NightStartAt    string
-	NightEndAt      string
 	ConnectionGroup string
 	Permissions     []smpp.Permission
 	RegisteredAt    int64
@@ -275,13 +272,6 @@ func (u *User) Validate() (map[string]string, error) {
 	_, err := mail.ParseAddress(u.Email)
 	if err != nil {
 		errors["Email"] = "Invalid email address"
-	}
-	re := regexp.MustCompile("[0-9][0-9]:[0-9][0-9](AM)|(PM)")
-	if u.NightStartAt != "" && !re.Match([]byte(u.NightStartAt)) {
-		errors["NightStartAt"] = "Time should be in format hh:mmAM|PM"
-	}
-	if u.NightEndAt != "" && !re.Match([]byte(u.NightEndAt)) {
-		errors["NightEndAt"] = "Time should be in format hh:mmAM|PM"
 	}
 	for _, x := range u.Permissions {
 		var isValidPerm bool

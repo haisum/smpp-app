@@ -27,8 +27,11 @@ var CampaignsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		log.WithError(err).Error("Error parsing campaign list request.")
 		resp := routes.Response{
-			Errors: routes.ResponseErrors{
-				http.StatusText(http.StatusBadRequest): "Couldn't parse request",
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeRequest,
+					Message: "Couldn't parse request.",
+				},
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -51,7 +54,12 @@ var CampaignsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 	resp := routes.Response{}
 	if err != nil {
 		resp.Ok = false
-		resp.Errors = routes.ResponseErrors{"db": "Couldn't get campaigns."}
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeDB,
+				Message: "Couldn't get campaigns.",
+			},
+		}
 		resp.Request = uReq
 		resp.Send(w, *r, http.StatusBadRequest)
 		return

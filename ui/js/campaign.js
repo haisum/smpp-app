@@ -19,9 +19,7 @@ $.extend(app, {
                 localStorage.removeItem("auth_token");
                 window.location.reload();
             }
-            console.error(xhr.responseJSON);
-            var toastContent = '<span class="red-text">Error occured see console for details.</span>';
-            Materialize.toast(toastContent, 5000)
+            utils.showErrors(xhr.responseJSON.Errors);
         });
     },
     renderCampaignSelect: function(){
@@ -45,9 +43,7 @@ $.extend(app, {
                 localStorage.removeItem("auth_token");
                 window.location.reload();
             }
-            console.error(xhr.responseJSON);
-            var toastContent = '<span class="red-text">Error occured see console for details.</span>';
-            Materialize.toast(toastContent, 5000)
+            utils.showErrors(xhr.responseJSON.Errors);
         });
     },
     renderCampaignFiles: function(){
@@ -71,9 +67,7 @@ $.extend(app, {
                 localStorage.removeItem("auth_token");
                 window.location.reload();
             }
-            console.error(xhr.responseJSON);
-            var toastContent = '<span class="red-text">Error occured see console for details.</span>';
-            Materialize.toast(toastContent, 5000)
+            utils.showErrors(xhr.responseJSON.Errors);
         });
     },
     renderCampaign: function(){
@@ -113,9 +107,7 @@ $.extend(app, {
                         localStorage.removeItem("auth_token");
                         window.location.reload();
                     }
-                    console.error(xhr.responseJSON);
-                    var toastContent = '<span class="red-text">Error occured see console for details.</span>';
-                    Materialize.toast(toastContent, 5000)   
+                    utils.showErrors(xhr.responseJSON.Errors);   
                 });
                 return false;
             });
