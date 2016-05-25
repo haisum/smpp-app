@@ -69,6 +69,16 @@ const (
 	MsgNotDelivered MessageStatus = "Not Delivered"
 )
 
+// MessageStats records number of messages in different statuses.
+type MessageStats struct {
+	Delivered    int64
+	Submitted    int64
+	Sent         int64
+	Error        int64
+	NotDelivered int64
+	Total        int64
+}
+
 // Save saves a message struct in Message table
 func (m *Message) Save() (string, error) {
 	var id string
@@ -134,8 +144,6 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 		log.WithError(err).Error("Couldn't get session.")
 		return m, err
 	}
-	t := r.DB(db.DBName).Table("Message")
-
 	var from interface{}
 	if c.From != "" {
 		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SubmittedAt" {
@@ -147,6 +155,81 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 			from = c.From
 		}
 	}
+	t := prepareMsgTerm(c, from)
+	if c.PerPage == 0 {
+		c.PerPage = 100
+	}
+	t = t.Limit(c.PerPage)
+	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
+	cur, err := t.Run(s)
+	if err != nil {
+		log.WithError(err).Error("Couldn't run query.")
+		return m, err
+	}
+	defer cur.Close()
+	err = cur.All(&m)
+	if err != nil {
+		log.WithError(err).Error("Couldn't load messages.")
+	}
+	return m, err
+}
+
+// GetMessagesStats filters messages based on criteria and finds total number of messages in different statuses
+func GetMessageStats(c MessageCriteria) (MessageStats, error) {
+	var m MessageStats
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Error("Couldn't get session.")
+		return m, err
+	}
+	var from interface{}
+	if c.From != "" {
+		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SubmittedAt" {
+			from, err = strconv.ParseInt(c.From, 10, 64)
+			if err != nil {
+				return m, fmt.Errorf("Invalid value for from: %s", from)
+			}
+		} else {
+			from = c.From
+		}
+	}
+	t := prepareMsgTerm(c, from)
+	t = t.Group("Status").Count()
+
+	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
+	cur, err := t.Run(s)
+	if err != nil {
+		log.WithError(err).Error("Couldn't run query.")
+		return m, err
+	}
+	defer cur.Close()
+	stats := make([]map[string]string, 5)
+	err = cur.All(&stats)
+	if err != nil {
+		log.WithError(err).Error("Couldn't load messages.")
+	}
+	for _, v := range stats {
+		switch MessageStatus(v["group"]) {
+		case MsgDelivered:
+			m.Delivered, _ = strconv.ParseInt(v["reduction"], 10, 64)
+		case MsgError:
+			m.Error, _ = strconv.ParseInt(v["reduction"], 10, 64)
+		case MsgSent:
+			m.Sent, _ = strconv.ParseInt(v["reduction"], 10, 64)
+		case MsgSubmitted:
+			m.Submitted, _ = strconv.ParseInt(v["reduction"], 10, 64)
+		case MsgNotDelivered:
+			m.NotDelivered, _ = strconv.ParseInt(v["reduction"], 10, 64)
+		}
+	}
+	m.Total = m.Delivered + m.Error + m.Sent + m.Submitted + m.NotDelivered
+	return m, err
+}
+
+func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
+
+	t := r.DB(db.DBName).Table("Message")
+
 	// note to self: keep between before Eq filters.
 	betweenFields := map[string]map[string]int64{
 		"QueuedAt": {
@@ -177,25 +260,10 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 		"Username":        c.Username,
 	}
 	t = filterEqStr(strFields, t)
-	if c.PerPage == 0 {
-		c.PerPage = 100
-	}
 
 	if c.OrderByKey == "" {
 		c.OrderByKey = "QueuedAt"
 	}
 	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
-	t = t.Limit(c.PerPage)
-	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
-	cur, err := t.Run(s)
-	if err != nil {
-		log.WithError(err).Error("Couldn't run query.")
-		return m, err
-	}
-	defer cur.Close()
-	err = cur.All(&m)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load messages.")
-	}
-	return m, err
+	return t
 }
