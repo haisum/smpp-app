@@ -14,6 +14,7 @@ import (
 	"github.com/streadway/amqp"
 	"math"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -49,18 +50,6 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
-}
-
-func receiver(p pdu.Body) {
-	if p.Header().ID == pdu.DeliverSMID {
-		go saveDeliverySM(p.Fields())
-	} else {
-		fields := log.Fields{
-			"pdu":    p.Header().ID.String(),
-			"fields": p.Fields(),
-		}
-		log.WithFields(fields).Info("PDU Received.")
-	}
 }
 
 // This is called per job and as a separate go routing
@@ -141,6 +130,18 @@ func updateMessage(id, respId, con, errMsg string, total int, fields smpp.PduFie
 	}
 }
 
+func receiver(p pdu.Body) {
+	if p.Header().ID == pdu.DeliverSMID {
+		go saveDeliverySM(p.Fields())
+	} else {
+		fields := log.Fields{
+			"pdu":    p.Header().ID.String(),
+			"fields": p.Fields(),
+		}
+		log.WithFields(fields).Info("PDU Received.")
+	}
+}
+
 func saveDeliverySM(deliverSM pdufield.Map) {
 	var id string
 	log.WithFields(log.Fields{"deliverySM": deliverSM}).Info("Received deliverySM")
@@ -149,7 +150,8 @@ func saveDeliverySM(deliverSM pdufield.Map) {
 		var err error
 		id, err = splitShortMessage(val.String(), "id:")
 		if err != nil {
-			log.WithError(err).Error("Couldn't find id")
+			log.Info("Couldn't find id, executing receiver")
+			callReceiver(deliverSM)
 			return
 		}
 	} else {
@@ -186,6 +188,23 @@ func saveDeliverySM(deliverSM pdufield.Map) {
 	err = ms[0].Update()
 	if err != nil {
 		log.WithError(err).Error("Error saving deliverySM")
+	}
+}
+
+func callReceiver(deliverSM pdufield.Map) {
+	if sconn.Receiver != "" {
+		log.WithFields(log.Fields{
+			"Receiver":      sconn.Receiver,
+			"source_addr":   deliverSM[pdufield.SourceAddr].String(),
+			"dest_addr":     deliverSM[pdufield.DestinationAddr].String(),
+			"short_message": deliverSM[pdufield.ShortMessage].String(),
+		}).Info("Executing Receiver")
+		err := exec.Command(sconn.Receiver, deliverSM[pdufield.SourceAddr].String(), deliverSM[pdufield.DestinationAddr].String(), deliverSM[pdufield.ShortMessage].String(), *connid, *group).Run()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"Error": err,
+			}).Error("Couldn't execute receiver command.")
+		}
 	}
 }
 

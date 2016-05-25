@@ -134,7 +134,7 @@ func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message) {
 			v.Src,
 			v.CampaignId,
 			strconv.Itoa(v.Priority),
-			time.Unix(v.QueuedAt, 0).Format("02-01-2006 03:04:05 MST"),
+			time.Unix(v.QueuedAt, 0).UTC().Format("02-01-2006 03:04:05 MST"),
 			time.Unix(v.SubmittedAt, 0).UTC().Format("02-01-2006 03:04:05 MST"),
 			time.Unix(v.DeliveredAt, 0).UTC().Format("02-01-2006 03:04:05 MST"),
 		})

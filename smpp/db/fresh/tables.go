@@ -47,7 +47,8 @@ func tconfig(s *r.Session, dbname string) error {
                         "ScheduleDeliveryTime" : "",
                         "ReplaceIfPresentFlag" : 0,
                         "SMDefaultMsgID"       :0
-                    }
+                    },
+                    "Receiver": ""
                 },
                 {
                     "ID": "du-2",
@@ -59,7 +60,8 @@ func tconfig(s *r.Session, dbname string) error {
                         "+97108"
                     ],
                     "Size": 5,
-                    "Time": 1
+                    "Time": 1,
+                    "Receiver": ""
                 }
             ],
           "DefaultPfx": "+97105"
@@ -77,7 +79,8 @@ func tconfig(s *r.Session, dbname string) error {
                         "+97108"
                     ],
                     "Size": 5,
-                    "Time": 1
+                    "Time": 1,
+                    "Receiver": ""
                 }
             ],
           "DefaultPfx": "+97105"

@@ -18,14 +18,15 @@ type ConnGroup struct {
 
 // Conn represents configuration specific to a single smpp connection
 type Conn struct {
-	ID     string
-	URL    string
-	User   string
-	Size   int32
-	Time   int
-	Passwd string
-	Pfxs   []string
-	Fields PduFields
+	ID       string
+	URL      string
+	User     string
+	Size     int32
+	Time     int
+	Passwd   string
+	Pfxs     []string
+	Fields   PduFields
+	Receiver string
 }
 
 // PduFields are fields that may be sent to smpp server
