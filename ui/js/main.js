@@ -232,6 +232,14 @@ var app = {
                 });
                 return false;
             });
+            $("#reports-csv").on("click", function(e){
+                e.preventDefault();
+                var reportData = utils.getReportData();
+                reportData["Token"] = localStorage.getItem("auth_token");
+                reportData["CSV"] = true;
+                window.open("/api/message/filter?" + $.param(reportData));
+                return false;
+            });
 
             $.get("/api/message/filter?Token="+ localStorage.getItem("auth_token") + "&" + $.param(utils.getReportData()));
         });

@@ -4,14 +4,19 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bytes"
+	"encoding/csv"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 type messagesRequest struct {
 	models.MessageCriteria
 	Url   string
 	Token string
+	CSV   bool
 }
 
 type messagesResponse struct {
@@ -79,10 +84,63 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-	uResp.Messages = messages
-	uResp.Stats = stats
-	resp.Obj = uResp
-	resp.Ok = true
-	resp.Request = uReq
-	resp.Send(w, *r, http.StatusOK)
+	if uReq.CSV == true {
+		toCsv(w, r, messages)
+	} else {
+		uResp.Messages = messages
+		uResp.Stats = stats
+		resp.Obj = uResp
+		resp.Ok = true
+		resp.Request = uReq
+		resp.Send(w, *r, http.StatusOK)
+	}
 })
+
+func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message) {
+	b := &bytes.Buffer{}
+	wr := csv.NewWriter(b)
+	wr.Write([]string{
+		"Id",
+		"Connection",
+		"ConnectionGroup",
+		"Status",
+		"Error",
+		"RespId",
+		"Total",
+		"Username",
+		"Msg",
+		"Enc",
+		"Dst",
+		"Src",
+		"CampaignId",
+		"Priority",
+		"QueuedAt",
+		"SubmittedAt",
+		"DeliveredAt",
+	})
+	for _, v := range m {
+		wr.Write([]string{
+			v.Id,
+			v.Connection,
+			v.ConnectionGroup,
+			string(v.Status),
+			v.Error,
+			v.RespId,
+			strconv.Itoa(v.Total),
+			v.Username,
+			v.Msg,
+			v.Enc,
+			v.Dst,
+			v.Src,
+			v.CampaignId,
+			strconv.Itoa(v.Priority),
+			time.Unix(v.QueuedAt, 0).Format("02-01-2006 03:04:05 MST"),
+			time.Unix(v.SubmittedAt, 0).UTC().Format("02-01-2006 03:04:05 MST"),
+			time.Unix(v.DeliveredAt, 0).UTC().Format("02-01-2006 03:04:05 MST"),
+		})
+	}
+	wr.Flush()
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", "attachment;filename=SMSReport.csv")
+	w.Write(b.Bytes())
+}
