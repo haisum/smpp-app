@@ -90,6 +90,7 @@ $.extend(app, {
                     "Enc" : $("#Enc").prop("checked") ? "ucs" : "latin",
                     "Msg" : $("#Msg").val(),
                     "FileId" : $("#FileId").val(),
+                    "Priority" : parseInt($("#Priority").val()) > 0 ? parseInt($("#Priority").val()) : 0,
                     "Src" : $("#Src").val(),
                     "Token" : localStorage.getItem("auth_token"),
                     "Description": $("#Description").val(),

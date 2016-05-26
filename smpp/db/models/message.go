@@ -1,12 +1,13 @@
 package models
 
 import (
+	"fmt"
+	"strconv"
+
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
-	"strconv"
 )
 
 // Message represents a smpp message
@@ -25,7 +26,7 @@ type Message struct {
 	Src             string
 	Priority        int
 	QueuedAt        int64
-	SubmittedAt     int64
+	SentAt          int64
 	DeliveredAt     int64
 	CampaignId      string
 	Status          MessageStatus
@@ -44,8 +45,8 @@ type MessageCriteria struct {
 	Src             string
 	QueuedBefore    int64
 	QueuedAfter     int64
-	SubmittedBefore int64
-	SubmittedAfter  int64
+	SentBefore      int64
+	SentAfter       int64
 	DeliveredBefore int64
 	DeliveredAfter  int64
 	CampaignId      string
@@ -62,7 +63,7 @@ type MessageCriteria struct {
 type MessageStatus string
 
 const (
-	MsgSubmitted    MessageStatus = "Submitted"
+	MsgQueued       MessageStatus = "Queued"
 	MsgError        MessageStatus = "Error"
 	MsgSent         MessageStatus = "Sent"
 	MsgDelivered    MessageStatus = "Delivered"
@@ -71,10 +72,10 @@ const (
 
 // MessageStats records number of messages in different statuses.
 type MessageStats struct {
-	Delivered    int64
-	Submitted    int64
+	Queued       int64
 	Sent         int64
 	Error        int64
+	Delivered    int64
 	NotDelivered int64
 	Total        int64
 }
@@ -146,7 +147,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 	}
 	var from interface{}
 	if c.From != "" {
-		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SubmittedAt" {
+		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" {
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return m, fmt.Errorf("Invalid value for from: %s", from)
@@ -184,7 +185,7 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 	}
 	var from interface{}
 	if c.From != "" {
-		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SubmittedAt" {
+		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" {
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return m, fmt.Errorf("Invalid value for from: %s", from)
@@ -216,13 +217,13 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 			m.Error, _ = strconv.ParseInt(v["reduction"], 10, 64)
 		case MsgSent:
 			m.Sent, _ = strconv.ParseInt(v["reduction"], 10, 64)
-		case MsgSubmitted:
-			m.Submitted, _ = strconv.ParseInt(v["reduction"], 10, 64)
+		case MsgQueued:
+			m.Queued, _ = strconv.ParseInt(v["reduction"], 10, 64)
 		case MsgNotDelivered:
 			m.NotDelivered, _ = strconv.ParseInt(v["reduction"], 10, 64)
 		}
 	}
-	m.Total = m.Delivered + m.Error + m.Sent + m.Submitted + m.NotDelivered
+	m.Total = m.Delivered + m.Error + m.Sent + m.Queued + m.NotDelivered
 	return m, err
 }
 
@@ -240,9 +241,9 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 			"after":  c.DeliveredAfter,
 			"before": c.DeliveredBefore,
 		},
-		"SubmittedAt": {
-			"after":  c.SubmittedAfter,
-			"before": c.SubmittedBefore,
+		"SentAt": {
+			"after":  c.SentAfter,
+			"before": c.SentBefore,
 		},
 	}
 	t = filterBetweenInt(betweenFields, t)

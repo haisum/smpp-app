@@ -131,65 +131,66 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-
+	errCh := make(chan error, 1)
+	okCh := make(chan bool, len(numbers))
 	for _, dst := range numbers {
+		go func() {
+			m := models.Message{
+				ConnectionGroup: u.ConnectionGroup,
+				Username:        u.Username,
+				Msg:             uReq.Msg,
+				Enc:             uReq.Enc,
+				Dst:             dst,
+				Src:             uReq.Src,
+				Priority:        uReq.Priority,
+				QueuedAt:        time.Now().Unix(),
+				Status:          models.MsgQueued,
+				CampaignId:      campaignId,
+			}
+			msgId, err := m.Save()
+			if err != nil {
+				errCh <- err
+				return
+			}
+			noKey = group.DefaultPfx
+			key := matchKey(keys, dst, noKey)
+			qItem := queue.Item{
+				Priority: uReq.Priority,
+				Enc:      uReq.Enc,
+				Src:      uReq.Src,
+				Msg:      uReq.Msg,
+				Dst:      dst,
+				MsgId:    msgId,
+			}
+			respJSON, _ := qItem.ToJSON()
+			err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
+			if err != nil {
+				errCh <- err
+			} else {
+				okCh <- true
+			}
+		}()
+	}
 
-		m := models.Message{
-			ConnectionGroup: u.ConnectionGroup,
-			Username:        u.Username,
-			Msg:             uReq.Msg,
-			Enc:             uReq.Enc,
-			Dst:             dst,
-			Src:             uReq.Src,
-			Priority:        uReq.Priority,
-			QueuedAt:        time.Now().Unix(),
-			Status:          models.MsgSubmitted,
-			CampaignId:      campaignId,
-		}
-		msgId, err := m.Save()
-		if err != nil {
-			log.WithField("err", err).Error("Couldn't insert in db.")
-			resp := routes.Response{
-				Errors: []routes.ResponseError{
-					{
-						Type:    routes.ErrorTypeDB,
-						Message: "Couldn't save message in database.",
-					},
+	select {
+	case <-errCh:
+		log.WithFields(log.Fields{
+			"error": err,
+			"uReq":  uReq,
+		}).Error("Couldn't publish message.")
+		resp := routes.Response{
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeQueue,
+					Message: "Couldn't queue message.",
 				},
-				Request: uReq,
-			}
-			resp.Send(w, *r, http.StatusInternalServerError)
-			return
+			},
+			Request: uReq,
 		}
-		noKey = group.DefaultPfx
-		key := matchKey(keys, dst, noKey)
-		qItem := queue.Item{
-			Priority: uReq.Priority,
-			Enc:      uReq.Enc,
-			Src:      uReq.Src,
-			Msg:      uReq.Msg,
-			Dst:      dst,
-			MsgId:    msgId,
-		}
-		respJSON, _ := qItem.ToJSON()
-		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-				"uReq":  uReq,
-			}).Error("Couldn't publish message.")
-			resp := routes.Response{
-				Errors: []routes.ResponseError{
-					{
-						Type:    routes.ErrorTypeQueue,
-						Message: "Couldn't queue message.",
-					},
-				},
-				Request: uReq,
-			}
-			resp.Send(w, *r, http.StatusInternalServerError)
-			return
-		}
+		resp.Send(w, *r, http.StatusInternalServerError)
+		return
+	case <-okCh:
+		log.Info("All campaign messages queued")
 	}
 	resp := routes.Response{
 		Obj:     uResp,

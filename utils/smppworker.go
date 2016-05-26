@@ -118,10 +118,9 @@ func updateMessage(id, respId, con, errMsg string, total int, fields smpp.PduFie
 	m.Error = errMsg
 	m.Total = total
 	m.Fields = fields
-	if errMsg == "" {
-		m.SubmittedAt = time.Now().Unix()
-		m.Status = models.MsgSent
-	} else {
+	m.SentAt = time.Now().Unix()
+	m.Status = models.MsgSent
+	if errMsg != "" {
 		m.Status = models.MsgError
 	}
 	err = m.Update()

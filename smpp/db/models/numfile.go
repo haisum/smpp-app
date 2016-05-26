@@ -1,10 +1,7 @@
 package models
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	r "github.com/dancannon/gorethink"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -12,6 +9,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	log "github.com/Sirupsen/logrus"
+	r "github.com/dancannon/gorethink"
 )
 
 // NumFile represents file uploaded to system for saving
@@ -200,8 +201,7 @@ func (nf *NumFile) ToNumbers() ([]string, error) {
 		return nums, err
 	}
 	if nf.Type == NumFileCSV || nf.Type == NumFileTxt {
-		nums = strings.Split(string(b[:]), ",")
-		for i, num := range nums {
+		for i, num := range strings.Split(string(b[:]), ",") {
 			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
 			if len(num) > 15 || len(num) < 5 {
 				return nums, fmt.Errorf("Entry number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)

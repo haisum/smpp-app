@@ -90,7 +90,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		Src:             uReq.Src,
 		Priority:        uReq.Priority,
 		QueuedAt:        time.Now().Unix(),
-		Status:          models.MsgSubmitted,
+		Status:          models.MsgQueued,
 	}
 	msgId, err := m.Save()
 	if err != nil {
@@ -136,6 +136,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
+	uResp.Id = msgId
 	resp := routes.Response{
 		Obj:     uResp,
 		Request: uReq,

@@ -11,7 +11,7 @@ Handlebars.registerHelper('prettyDate', function(unixDate) {
             case 3:  return "rd";
             default: return "th";
         }
-    } 
+    }
     d = new Date(1000 * unixDate);
     return d.getDate() + nth(d.getDate()) + " " + months.split(",")[d.getMonth()] + ", " + d.getFullYear() + " " + d.getHours() + ":" + d.getMinutes() + ":" + d.getSeconds();
 });
@@ -74,7 +74,7 @@ var app = {
                     localStorage.setItem("auth_token", data.Response.Token);
                     app.init();
                 }).fail(function(xhr, status, errThrone){
-                    utils.showErrors(xhr.responseJSON.Errors);        
+                    utils.showErrors(xhr.responseJSON.Errors);
                 });
                 return false;
             });
@@ -110,6 +110,7 @@ var app = {
                     "Msg" : $("#Msg").val(),
                     "Dst" : $("#Dst").val(),
                     "Src" : $("#Src").val(),
+                    "Priority" : parseInt($("#Priority").val()) > 0 ? parseInt($("#Priority").val()) : 0,
                     "Token" : localStorage.getItem("auth_token")
                 }
                 $.ajax({
@@ -293,7 +294,7 @@ var app = {
             data : data,
             dataType: "json",
             type: "get"
-        }).done(function(data){        
+        }).done(function(data){
             var source   = $("#list-files-template").html();
             var template = Handlebars.compile(source);
             var html    = template(data.Response);
@@ -346,8 +347,8 @@ var utils = {
             Src             : $("#Src").val(),
             QueuedBefore    : utils.dateFieldToEpoch("QueuedBefore"),
             QueuedAfter     : utils.dateFieldToEpoch("QueuedAfter"),
-            SubmittedBefore : utils.dateFieldToEpoch("SubmittedBefore"),
-            SubmittedAfter  : utils.dateFieldToEpoch("SubmittedAfter"),
+            SentBefore : utils.dateFieldToEpoch("SentBefore"),
+            SentAfter  : utils.dateFieldToEpoch("SentAfter"),
             DeliveredBefore : utils.dateFieldToEpoch("DeliveredBefore"),
             DeliveredAfter  : utils.dateFieldToEpoch("DeliveredAfter"),
             CampaignId      : $("#CampaignId").val(),

@@ -23,7 +23,7 @@
             <div class="input-field col s6">
               <select id="Status" name="Status">
                 <option value="">--Choose One--</option>
-                <option value="Submitted">Submitted</option>
+                <option value="Queued">Queued</option>
                 <option value="Sent">Sent</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Not Delivered">Not Delivered</option>
@@ -85,22 +85,22 @@
             <div class="input-field col s6">
               <div class="row">
                 <div class="input-field col s6" style="margin-top:0px;">
-                  <input id="SubmittedBefore_date" name="SubmittedBefore_date" type="text" class="datepicker">
-                  <label class="active" for="SubmittedBefore_date">Submitted Before</label>
+                  <input id="SentBefore_date" name="SentBefore_date" type="text" class="datepicker">
+                  <label class="active" for="SentBefore_date">Sent Before</label>
                 </div>
                 <div class="input-field col s6" style="margin-top:0px;">
-                  <input id="SubmittedBefore_time" name="SubmittedBefore_time" type="text" class="timepicker"">
+                  <input id="SentBefore_time" name="SentBefore_time" type="text" class="timepicker"">
                 </div>
               </div>
             </div>
             <div class="input-field col s6">
               <div class="row">
                 <div class="input-field col s6" style="margin-top:0px;">
-                  <input id="SubmittedAfter_date" name="SubmittedAfter_date" type="text" class="datepicker">
-                  <label class="active" for="SubmittedAfter_date">Submitted After</label>
+                  <input id="SentAfter_date" name="SentAfter_date" type="text" class="datepicker">
+                  <label class="active" for="SentAfter_date">Sent After</label>
                 </div>
                 <div class="input-field col s6" style="margin-top:0px;">
-                  <input id="SubmittedAfter_time" name="SubmittedAfter_time" type="text" class="timepicker"">
+                  <input id="SentAfter_time" name="SentAfter_time" type="text" class="timepicker"">
                 </div>
               </div>
             </div>
@@ -142,7 +142,7 @@
                 <option value="Src">Source</option>
                 <option value="Priority">Priority</option>
                 <option selected value="QueuedAt">Queued Time</option>
-                <option value="SubmittedAt">Submitted Time</option>
+                <option value="SentAt">Sent Time</option>
                 <option value="DeliveredAt">Delivery Time</option>
               </select>
               <label for="OrderByKey">Sort By</label>
@@ -178,7 +178,7 @@
     <script id="report-template" type="text/x-handlebars-template">
       <div class="row">
         <div class="col s12 right-align">
-          <b>Total: </b>{{Stats.Total}} <b>Sent: </b>{{Stats.Sent}} <b>Submitted: </b>{{Stats.Submitted}} <b>Error: </b>{{Stats.Error}} <b>Delivered: </b>{{Stats.Delivered}} <b>Not Delivered: </b>{{Stats.NotDelivered}}
+          <b>Total: </b>{{Stats.Total}} <b>Queued: </b>{{Stats.Queued}} <b>Sent: </b>{{Stats.Sent}} <b>Error: </b>{{Stats.Error}} <b>Delivered: </b>{{Stats.Delivered}} <b>Not Delivered: </b>{{Stats.NotDelivered}}
         </div>
       </div>
       <table class="striped responsive-table">
@@ -189,7 +189,7 @@
               <th data-field="id">Status</th>
               <th data-field="id">Error</th>
               <th data-field="id">Queued</th>
-              <th data-field="id">Submitted</th>
+              <th data-field="id">Sent</th>
               <th data-field="id">Delivered</th>
               <th data-field="id">Connection</th>
           </tr>
@@ -202,7 +202,7 @@
             <td>{{Status}}</td>
             <td>{{Error}}</td>
             <td>{{prettyDate QueuedAt}}</td>
-            <td>{{prettyDate SubmittedAt}}</td>
+            <td>{{prettyDate SentAt}}</td>
             <td>{{prettyDate DeliveredAt}}</td>
             <td>{{Connection}}</td>
           </tr>
