@@ -35,18 +35,29 @@ var (
 // This function should wait for done channel before terminating so that all
 // pending jobs should be finished and rabbitmq should be notified about disconnect
 func handler(deliveries <-chan amqp.Delivery, done chan error) {
-	for d := range deliveries {
-		// multiple threads may race to read/write this, so we need atomic operation
-		cmutex.Lock()
-		cur := cmutex.Count
-		if cur >= sconn.Size {
-			log.Info("Waiting one second before proceeding")
-			time.Sleep(time.Second * time.Duration(sconn.Time))
-			log.Info("Resuming messages")
-			cmutex.Count = 0
+	msgCh := make(chan int, sconn.Size)
+	tick := make(chan int, 1)
+	go func() {
+		for {
+			<-time.After(time.Second * time.Duration(sconn.Time))
+			tick <- 1
 		}
-		cmutex.Unlock()
-		go send(d)
+	}()
+	for d := range deliveries {
+		select {
+		//Try putting stuff in channel, if this fails, channel is full
+		case msgCh <- 1:
+			<-msgCh
+			go send(d, msgCh)
+		default:
+			go log.Info("Waiting for second to complete before proceeding")
+			<-tick
+			for i := 0; i < int(sconn.Size); i++ {
+				<-msgCh
+			}
+			go send(d, msgCh)
+		}
+
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
@@ -56,7 +67,7 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 // This function is responsible for acknowledging the job completion to rabbitmq
 // This function also increments count by ceil of number of characters divided by number of characters per message.
 // When count reaches a certain number defined per connection, worker waits for time t defined in configuration before resuming operations.
-func send(d amqp.Delivery) {
+func send(d amqp.Delivery, msgCh chan int) {
 	var i queue.Item
 	err := i.FromJSON(d.Body)
 	if err != nil {
@@ -73,9 +84,9 @@ func send(d amqp.Delivery) {
 	}
 	res := float64(float64(len(i.Msg)) / float64(charLimit))
 	total := math.Ceil(res)
-	cmutex.Lock()
-	cmutex.Count = cmutex.Count + int32(total)
-	cmutex.Unlock()
+	for i := 0; i < int(total); i++ {
+		msgCh <- 1
+	}
 	respId, err := s.Send(i.Src, i.Dst, i.Enc, i.Msg)
 	if err != nil {
 		log.WithFields(log.Fields{
