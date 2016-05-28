@@ -129,7 +129,7 @@ func updateMessage(id, respId, con, errMsg string, total int, fields smpp.PduFie
 	m.Error = errMsg
 	m.Total = total
 	m.Fields = fields
-	m.SentAt = time.Now().Unix()
+	m.SentAt = time.Now().UTC().Unix()
 	m.Status = models.MsgSent
 	if errMsg != "" {
 		m.Status = models.MsgError
@@ -153,12 +153,10 @@ func receiver(p pdu.Body) {
 }
 
 func saveDeliverySM(deliverSM pdufield.Map) {
-	var id string
 	log.WithFields(log.Fields{"deliverySM": deliverSM}).Info("Received deliverySM")
 	if val, ok := deliverSM["short_message"]; ok {
 		log.WithField("ucs", string(pdutext.Raw(deliverSM["short_message"].Bytes()).Decode())).Info("Decoded message")
-		var err error
-		id, err = splitShortMessage(val.String(), "id:")
+		_, err := splitShortMessage(val.String(), "id:")
 		if err != nil {
 			log.Info("Couldn't find id, executing receiver")
 			callReceiver(deliverSM)
@@ -168,37 +166,8 @@ func saveDeliverySM(deliverSM pdufield.Map) {
 		log.WithField("deliverySM", deliverSM).Error("Couldn't find short_message field")
 		return
 	}
-	criteria := models.MessageCriteria{
-		RespId: id,
-		// note: dst and src are swapped in deliverSM
-		Dst: deliverSM["source_addr"].String(),
-		Src: deliverSM["destination_addr"].String(),
-	}
-	ms, err := models.GetMessages(criteria)
-	if err != nil || len(ms) == 0 {
-		log.WithFields(log.Fields{
-			"error":  err,
-			"respId": id,
-		}).Error("Couldn't find message with id")
-		return
-	}
-	deliveryMap := make(map[string]string, len(deliverSM))
-	for k, v := range deliverSM {
-		deliveryMap[string(k)] = v.String()
-	}
-	ms[0].DeliverySM = deliveryMap
-	deliverSM["short_message"].String()
-	status, _ := splitShortMessage(deliverSM["short_message"].String(), "stat:")
-	if status == "DELIVRD" {
-		ms[0].DeliveredAt = time.Now().Unix()
-		ms[0].Status = models.MsgDelivered
-	} else {
-		ms[0].Status = models.MsgNotDelivered
-	}
-	err = ms[0].Update()
-	if err != nil {
-		log.WithError(err).Error("Error saving deliverySM")
-	}
+	log.Info("Skipping deliver msg due to a bug now. Will save it later.")
+	return
 }
 
 func callReceiver(deliverSM pdufield.Map) {

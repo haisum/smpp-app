@@ -56,6 +56,7 @@ type MessageCriteria struct {
 	OrderByDir      string
 	From            string
 	PerPage         int
+	DisableOrder    bool
 }
 
 // MessageStatus represents current state of message in
@@ -146,7 +147,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 		return m, err
 	}
 	var from interface{}
-	if c.From != "" {
+	if c.From != "" && !c.DisableOrder {
 		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" {
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
@@ -265,6 +266,8 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 	if c.OrderByKey == "" {
 		c.OrderByKey = "QueuedAt"
 	}
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
+	if !c.DisableOrder {
+		t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
+	}
 	return t
 }

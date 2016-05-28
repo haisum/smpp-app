@@ -165,7 +165,7 @@ func tmessage(s *r.Session, dbname string) error {
 		"Dst",
 		"Src",
 		"QueuedAt",
-		"SubmittedAt",
+		"SentAt",
 		"DeliveredAt",
 		"CampaignId",
 		"Status",
