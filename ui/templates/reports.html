@@ -28,6 +28,8 @@
                 <option value="Delivered">Delivered</option>
                 <option value="Not Delivered">Not Delivered</option>
                 <option value="Error">Error</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Stopped">Stopped</option>
               </select>
               <label for="Status">Status</label>
             </div>
@@ -127,6 +129,17 @@
               </div>
             </div>
             <div class="input-field col s6">
+              <div class="row">
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="ScheduledAt_date" name="ScheduledAt_date" type="text" class="datepicker">
+                  <label class="active" for="ScheduledAt_date">Delivered After</label>
+                </div>
+                <div class="input-field col s6" style="margin-top:0px;">
+                  <input id="ScheduledAt_time" name="ScheduledAt_time" type="text" class="timepicker"">
+                </div>
+              </div>
+            </div>
+            <div class="input-field col s6">
               <input id="Error" type="text" name="Error" class="validate">
               <label for="Error">Error Message</label>
             </div>
@@ -144,6 +157,7 @@
                 <option selected value="QueuedAt">Queued Time</option>
                 <option value="SentAt">Sent Time</option>
                 <option value="DeliveredAt">Delivery Time</option>
+                <option value="ScheduledAt">Schedule Time</option>
               </select>
               <label for="OrderByKey">Sort By</label>
             </div>
@@ -178,7 +192,7 @@
     <script id="report-template" type="text/x-handlebars-template">
       <div class="row">
         <div class="col s12 right-align">
-          <b>Total: </b>{{Stats.Total}} <b>Queued: </b>{{Stats.Queued}} <b>Sent: </b>{{Stats.Sent}} <b>Error: </b>{{Stats.Error}} <b>Delivered: </b>{{Stats.Delivered}} <b>Not Delivered: </b>{{Stats.NotDelivered}}
+          <b>Total: </b>{{Stats.Total}} <b>Queued: </b>{{Stats.Queued}} <b>Sent: </b>{{Stats.Sent}} <b>Error: </b>{{Stats.Error}} <b>Delivered: </b>{{Stats.Delivered}} <b>Not Delivered: </b>{{Stats.NotDelivered}} <b>Stopped: </b>{{Stats.Stopped}} <b>Scheduled: </b>{{Stats.Scheduled}}
         </div>
       </div>
       <table class="striped responsive-table">

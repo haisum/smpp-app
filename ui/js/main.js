@@ -109,6 +109,9 @@ var app = {
                     "Enc" : $("#Enc").prop("checked") ? "ucs" : "latin",
                     "Msg" : $("#Msg").val(),
                     "Dst" : $("#Dst").val(),
+                    "SendAfter" : $("#SendAfter").val(),
+                    "SendBefore" : $("#SendBefore").val(),
+                    "ScheduledAt" : utils.dateFieldToEpoch("ScheduledAt"),
                     "Src" : $("#Src").val(),
                     "Priority" : parseInt($("#Priority").val()) > 0 ? parseInt($("#Priority").val()) : 0,
                     "Token" : localStorage.getItem("auth_token")
@@ -347,17 +350,18 @@ var utils = {
             Src             : $("#Src").val(),
             QueuedBefore    : utils.dateFieldToEpoch("QueuedBefore"),
             QueuedAfter     : utils.dateFieldToEpoch("QueuedAfter"),
-            SentBefore : utils.dateFieldToEpoch("SentBefore"),
-            SentAfter  : utils.dateFieldToEpoch("SentAfter"),
+            SentBefore      : utils.dateFieldToEpoch("SentBefore"),
+            SentAfter       : utils.dateFieldToEpoch("SentAfter"),
             DeliveredBefore : utils.dateFieldToEpoch("DeliveredBefore"),
             DeliveredAfter  : utils.dateFieldToEpoch("DeliveredAfter"),
+            ScheduledAt     : utils.dateFieldToEpoch("ScheduledAt"),
             CampaignId      : $("#CampaignId").val(),
             Status          : $("#Status").val(),
             Error           : $("#Error").val(),
             OrderByKey      : $("#OrderByKey").val(),
             OrderByDir      : $("#OrderByDir").val(),
             From            : $("#From").val(),
-            PerPage         : $("#PerPage").val()
+            PerPage         : $("#PerPage").val(),
         };
         return data;
 

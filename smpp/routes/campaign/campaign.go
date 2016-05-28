@@ -8,6 +8,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -21,6 +22,9 @@ type campaignRequest struct {
 	Src         string
 	Msg         string
 	Enc         string
+	ScheduledAt int64
+	SendBefore  string
+	SendAfter   string
 }
 
 type campaignResponse struct {
@@ -87,6 +91,9 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		FileId:      uReq.FileId,
 		SubmittedAt: time.Now().Unix(),
 		Priority:    uReq.Priority,
+		SendBefore:  uReq.SendBefore,
+		SendAfter:   uReq.SendAfter,
+		ScheduledAt: uReq.ScheduledAt,
 	}
 
 	if errors := validateCampaign(uReq); len(errors) != 0 {
@@ -146,6 +153,9 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				QueuedAt:        time.Now().Unix(),
 				Status:          models.MsgQueued,
 				CampaignId:      campaignId,
+				SendBefore:      uReq.SendBefore,
+				SendAfter:       uReq.SendAfter,
+				ScheduledAt:     uReq.ScheduledAt,
 			}
 			msgId, err := m.Save()
 			if err != nil {
@@ -155,12 +165,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			noKey = group.DefaultPfx
 			key := matchKey(keys, dst, noKey)
 			qItem := queue.Item{
-				Priority: uReq.Priority,
-				Enc:      uReq.Enc,
-				Src:      uReq.Src,
-				Msg:      uReq.Msg,
-				Dst:      dst,
-				MsgId:    msgId,
+				MsgId: msgId,
 			}
 			respJSON, _ := qItem.ToJSON()
 			err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
@@ -236,6 +241,34 @@ func validateCampaign(c campaignRequest) []routes.ResponseError {
 			Type:    routes.ErrorTypeForm,
 			Field:   "Enc",
 			Message: "Encoding can either be latin or UCS.",
+		})
+	}
+	if (c.SendAfter == "" && c.SendBefore != "") || (c.SendBefore == "" && c.SendAfter != "") {
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeRequest,
+			Message: "Send before time and Send after time, both should be provided at a time.",
+		})
+	}
+	re := regexp.MustCompile("[0-9][0-9]:[0-9][0-9](AM)|(PM)")
+	if c.SendAfter != "" && !re.Match([]byte(c.SendAfter)) {
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "SendAfter",
+			Message: "Send after must be of 24 hour format such as \"09:00\".",
+		})
+	}
+	if c.SendBefore != "" && !re.Match([]byte(c.SendBefore)) {
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "SendBefore",
+			Message: "Send before must be of 24 hour format such as \"22:00\".",
+		})
+	}
+	if c.ScheduledAt != 0 && c.ScheduledAt < time.Now().UTC().Unix() {
+		errors = append(errors, routes.ResponseError{
+			Type:    routes.ErrorTypeForm,
+			Field:   "ScheduledAt",
+			Message: "Schedule time must be in future.",
 		})
 	}
 	return errors

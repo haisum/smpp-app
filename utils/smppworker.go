@@ -78,22 +78,31 @@ func send(d amqp.Delivery, msgCh chan int) {
 		d.Nack(false, true)
 		return
 	}
+	m, err := models.GetMessage(i.MsgId)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+			"id":  i.MsgId,
+		}).Error("Failed in fetching message from db.")
+		d.Nack(false, true)
+		return
+	}
 	charLimit := smpp.MaxLatinChars
-	if i.Enc == "UCS" {
+	if m.Enc == "UCS" {
 		charLimit = smpp.MaxUCSChars
 	}
-	res := float64(float64(len(i.Msg)) / float64(charLimit))
+	res := float64(float64(len(m.Msg)) / float64(charLimit))
 	total := math.Ceil(res)
 	for i := 0; i < int(total); i++ {
 		msgCh <- 1
 	}
-	respId, err := s.Send(i.Src, i.Dst, i.Enc, i.Msg)
+	respId, err := s.Send(m.Src, m.Dst, m.Enc, m.Msg)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"Src":    i.Src,
-			"Dst":    i.Dst,
+			"Src":    m.Src,
+			"Dst":    m.Dst,
 			"err":    err,
-			"Enc":    i.Enc,
+			"Enc":    m.Enc,
 			"Fields": s.Fields,
 		}).Error("Couldn't send message.")
 		if err != smppstatus.ErrNotConnected {
@@ -101,29 +110,21 @@ func send(d amqp.Delivery, msgCh chan int) {
 		} else {
 			d.Nack(false, true)
 		}
-		go updateMessage(i.MsgId, respId, sconn.ID, err.Error(), int(total), s.Fields)
+		go updateMessage(m, respId, sconn.ID, err.Error(), int(total), s.Fields)
 	} else {
 		log.WithFields(log.Fields{
-			"Src":    i.Src,
-			"Dst":    i.Dst,
-			"Enc":    i.Enc,
+			"Src":    m.Src,
+			"Dst":    m.Dst,
+			"Enc":    m.Enc,
 			"Fields": s.Fields,
 		}).Info("Sent message.")
 		d.Ack(false)
-		go updateMessage(i.MsgId, respId, sconn.ID, "", int(total), s.Fields)
+		go updateMessage(m, respId, sconn.ID, "", int(total), s.Fields)
 	}
 	log.WithField("RespId", respId).Info("response id")
 }
 
-func updateMessage(id, respId, con, errMsg string, total int, fields smpp.PduFields) {
-	m, err := models.GetMessage(id)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"id":    id,
-		}).Error("Couldn't find message with id")
-		return
-	}
+func updateMessage(m models.Message, respId, con, errMsg string, total int, fields smpp.PduFields) {
 	m.RespId = respId
 	m.Connection = con
 	m.Error = errMsg
@@ -134,7 +135,7 @@ func updateMessage(id, respId, con, errMsg string, total int, fields smpp.PduFie
 	if errMsg != "" {
 		m.Status = models.MsgError
 	}
-	err = m.Update()
+	err := m.Update()
 	if err != nil {
 		log.WithError(err).Error("Couldn't update message.")
 	}

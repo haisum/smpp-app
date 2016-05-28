@@ -20,6 +20,9 @@ type Campaign struct {
 	FileId        string
 	UserId        string
 	Username      string
+	SendBefore    string
+	SendAfter     string
+	ScheduledAt   int64
 	SubmittedAt   int64
 }
 
@@ -34,6 +37,10 @@ type CampaignCriteria struct {
 	UserId          string
 	SubmittedAfter  int64
 	SubmittedBefore int64
+	ScheduledAfter  int64
+	ScheduledBefore int64
+	SendBefore      string
+	SendAfter       string
 	OrderByKey      string
 	OrderByDir      string
 	From            string
@@ -78,7 +85,7 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 
 	var from interface{}
 	if c.From != "" {
-		if c.OrderByKey == "SubmittedAt" {
+		if c.OrderByKey == "SubmittedAt" || c.OrderByKey == "ScheduledAt" {
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return camps, fmt.Errorf("Invalid value for from: %s", from)
@@ -94,16 +101,22 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 			"after":  c.SubmittedAfter,
 			"before": c.SubmittedBefore,
 		},
+		"ScheduledAt": {
+			"after":  c.ScheduledAfter,
+			"before": c.ScheduledBefore,
+		},
 	}
 	t = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
-		"id":       c.Id,
-		"Username": c.Username,
-		"UserId":   c.UserId,
-		"FileName": c.FileName,
-		"Src":      c.Src,
-		"Msg":      c.Msg,
-		"Enc":      c.Enc,
+		"id":         c.Id,
+		"Username":   c.Username,
+		"UserId":     c.UserId,
+		"FileName":   c.FileName,
+		"Src":        c.Src,
+		"Msg":        c.Msg,
+		"Enc":        c.Enc,
+		"SendBefore": c.SendBefore,
+		"SendAfter":  c.SendAfter,
 	}
 	t = filterEqStr(strFields, t)
 

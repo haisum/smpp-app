@@ -31,6 +31,9 @@ type Message struct {
 	CampaignId      string
 	Status          MessageStatus
 	Error           string
+	SendBefore      string
+	SendAfter       string
+	ScheduledAt     int64
 }
 
 // MessageCriteria represents filters we can give to GetMessages method.
@@ -52,6 +55,8 @@ type MessageCriteria struct {
 	CampaignId      string
 	Status          MessageStatus
 	Error           string
+	ScheduledAfer   int64
+	ScheduledBefore int64
 	OrderByKey      string
 	OrderByDir      string
 	From            string
@@ -69,6 +74,8 @@ const (
 	MsgSent         MessageStatus = "Sent"
 	MsgDelivered    MessageStatus = "Delivered"
 	MsgNotDelivered MessageStatus = "Not Delivered"
+	MsgScheduled    MessageStatus = "Scheduled"
+	MsgStopped      MessageStatus = "Stopped"
 )
 
 // MessageStats records number of messages in different statuses.
@@ -78,6 +85,8 @@ type MessageStats struct {
 	Error        int64
 	Delivered    int64
 	NotDelivered int64
+	Scheduled    int64
+	Stopped      int64
 	Total        int64
 }
 
@@ -148,7 +157,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 	}
 	var from interface{}
 	if c.From != "" && !c.DisableOrder {
-		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" {
+		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" || c.OrderByKey == "ScheduledAt" {
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return m, fmt.Errorf("Invalid value for from: %s", from)
@@ -222,9 +231,13 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 			m.Queued, _ = strconv.ParseInt(v["reduction"], 10, 64)
 		case MsgNotDelivered:
 			m.NotDelivered, _ = strconv.ParseInt(v["reduction"], 10, 64)
+		case MsgScheduled:
+			m.Scheduled, _ = strconv.ParseInt(v["reduction"], 10, 64)
+		case MsgStopped:
+			m.Stopped, _ = strconv.ParseInt(v["reduction"], 10, 64)
 		}
 	}
-	m.Total = m.Delivered + m.Error + m.Sent + m.Queued + m.NotDelivered
+	m.Total = m.Delivered + m.Error + m.Sent + m.Queued + m.NotDelivered + m.Stopped + m.Scheduled
 	return m, err
 }
 
@@ -245,6 +258,10 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		"SentAt": {
 			"after":  c.SentAfter,
 			"before": c.SentBefore,
+		},
+		"ScheduledAt": {
+			"after":  c.ScheduledAfer,
+			"before": c.ScheduledBefore,
 		},
 	}
 	t = filterBetweenInt(betweenFields, t)
