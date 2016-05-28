@@ -84,6 +84,13 @@ $.extend(app, {
             $('.materialize-textarea').characterCounter();
             app.renderCampaignFiles();
             app.renderCampaignList();
+            $('.datepicker').pickadate({
+                selectMonths: true, // Creates a dropdown to control month
+                selectYears: 15 // Creates a dropdown of 15 years to control year
+            });
+            $('.timepicker').pickatime({
+              twelvehour: false
+            });
             $("#campaign-form").on("submit", function(e){
                 e.preventDefault();
                 var campReq = {
@@ -94,6 +101,9 @@ $.extend(app, {
                     "Src" : $("#Src").val(),
                     "Token" : localStorage.getItem("auth_token"),
                     "Description": $("#Description").val(),
+                    "SendAfter" : $("#SendAfter").val(),
+                    "SendBefore" : $("#SendBefore").val(),
+                    "ScheduledAt" : utils.dateFieldToEpoch("ScheduledAt"),
                 }
                 $.ajax({
                     "url": "/api/campaign",

@@ -117,12 +117,16 @@ func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message) {
 		"QueuedAt",
 		"SentAt",
 		"DeliveredAt",
+		"ScheduledAt",
+		"SendBefore",
+		"SendAfter",
 	})
 	for _, v := range m {
 		var (
 			queued    string
 			sent      string
 			delivered string
+			scheduled string
 		)
 		if v.QueuedAt > 0 {
 			queued = time.Unix(v.QueuedAt, 0).UTC().Format("02-01-2006 03:04:05 MST")
@@ -132,6 +136,9 @@ func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message) {
 		}
 		if v.DeliveredAt > 0 {
 			delivered = time.Unix(v.DeliveredAt, 0).UTC().Format("02-01-2006 03:04:05 MST")
+		}
+		if v.ScheduledAt > 0 {
+			scheduled = time.Unix(v.ScheduledAt, 0).UTC().Format("02-01-2006 03:04:05 MST")
 		}
 		wr.Write([]string{
 			v.Id,
@@ -151,6 +158,9 @@ func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message) {
 			queued,
 			sent,
 			delivered,
+			scheduled,
+			v.SendBefore,
+			v.SendAfter,
 		})
 	}
 	wr.Flush()

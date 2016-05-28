@@ -7,12 +7,7 @@ import (
 // Item holds a message that's parsed to/from rabbitmq queue
 // Transmission is in json format
 type Item struct {
-	Msg      string
-	MsgId    string
-	Dst      string
-	Src      string
-	Enc      string
-	Priority int
+	MsgId string
 }
 
 // FromJSON parses json and sets attributes in Item struct
