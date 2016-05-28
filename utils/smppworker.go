@@ -108,7 +108,8 @@ func send(d amqp.Delivery, msgCh chan int) {
 		if err != smppstatus.ErrNotConnected {
 			d.Reject(false)
 		} else {
-			d.Nack(false, true)
+			log.Error("SMPP not connected. Aborting worker.")
+			os.Exit(1)
 		}
 		go updateMessage(m, respId, sconn.ID, err.Error(), int(total), s.Fields)
 	} else {
@@ -233,7 +234,12 @@ func bind() {
 	s.Connect(sconn.URL, sconn.User, sconn.Passwd, receiver)
 	s.Fields = sconn.Fields
 	log.Info("Waiting for smpp connection")
-	<-s.Connected
+	select {
+	case <-s.Connected:
+	case <-time.After(time.Duration(time.Second * 5)):
+		log.Error("Timed out waiting for smpp connection. Exiting.")
+		os.Exit(1)
+	}
 	cmutex = smpp.CountMutex{}
 	log.WithField("conn", sconn).Info("Binding")
 	if err != nil {

@@ -140,6 +140,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	}
 	errCh := make(chan error, 1)
 	okCh := make(chan bool, len(numbers))
+	burstCh := make(chan int, 1000)
 	for _, dst := range numbers {
 		go func() {
 			m := models.Message{
@@ -174,29 +175,34 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			} else {
 				okCh <- true
 			}
+			//free one burst
+			<-burstCh
 		}()
+		//proceed if you can feed the burst channel
+		burstCh <- 1
 	}
-
-	select {
-	case <-errCh:
-		log.WithFields(log.Fields{
-			"error": err,
-			"uReq":  uReq,
-		}).Error("Couldn't publish message.")
-		resp := routes.Response{
-			Errors: []routes.ResponseError{
-				{
-					Type:    routes.ErrorTypeQueue,
-					Message: "Couldn't queue message.",
+	for i := 0; i < len(numbers); i++ {
+		select {
+		case <-errCh:
+			log.WithFields(log.Fields{
+				"error": err,
+				"uReq":  uReq,
+			}).Error("Couldn't publish message.")
+			resp := routes.Response{
+				Errors: []routes.ResponseError{
+					{
+						Type:    routes.ErrorTypeQueue,
+						Message: "Couldn't queue message.",
+					},
 				},
-			},
-			Request: uReq,
+				Request: uReq,
+			}
+			resp.Send(w, *r, http.StatusInternalServerError)
+			return
+		case <-okCh:
 		}
-		resp.Send(w, *r, http.StatusInternalServerError)
-		return
-	case <-okCh:
-		log.Info("All campaign messages queued")
 	}
+	log.Info("All campaign messages queued")
 	resp := routes.Response{
 		Obj:     uResp,
 		Request: uReq,
