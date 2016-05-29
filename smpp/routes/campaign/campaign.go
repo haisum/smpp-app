@@ -2,6 +2,7 @@ package campaign
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"regexp"
 	"strings"
@@ -142,6 +143,12 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	errCh := make(chan error, 1)
 	okCh := make(chan bool, len(numbers))
 	burstCh := make(chan int, 1000)
+	charLimit := smpp.MaxLatinChars
+	if uReq.Enc == "ucs" {
+		charLimit = smpp.MaxUCSChars
+	}
+	res := float64(float64(len(uReq.Msg)) / float64(charLimit))
+	total := int(math.Ceil(res))
 	for _, dst := range numbers {
 		go func(dst string) {
 			m := models.Message{
@@ -158,6 +165,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				SendBefore:      uReq.SendBefore,
 				SendAfter:       uReq.SendAfter,
 				ScheduledAt:     uReq.ScheduledAt,
+				Total:           total,
 			}
 			msgId, err := m.Save()
 			if err != nil {
@@ -168,6 +176,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			key := matchKey(keys, dst, noKey)
 			qItem := queue.Item{
 				MsgId: msgId,
+				Total: total,
 			}
 			respJSON, _ := qItem.ToJSON()
 			err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))

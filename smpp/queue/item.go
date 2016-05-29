@@ -8,6 +8,7 @@ import (
 // Transmission is in json format
 type Item struct {
 	MsgId string
+	Total int
 }
 
 // FromJSON parses json and sets attributes in Item struct

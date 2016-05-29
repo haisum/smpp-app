@@ -1,24 +1,24 @@
 package main
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"flag"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	smppstatus "github.com/fiorix/go-smpp/smpp"
-	"github.com/fiorix/go-smpp/smpp/pdu"
-	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
-	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
-	"github.com/streadway/amqp"
-	"math"
 	"os"
 	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	log "github.com/Sirupsen/logrus"
+	smppstatus "github.com/fiorix/go-smpp/smpp"
+	"github.com/fiorix/go-smpp/smpp/pdu"
+	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
+	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
+	"github.com/streadway/amqp"
 )
 
 var (
@@ -27,7 +27,6 @@ var (
 	sconn  *smpp.Conn
 	connid = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
 	group  = flag.String("group", "", "Group name of connection.")
-	cmutex smpp.CountMutex
 )
 
 // Handler is called by rabbitmq library after a queue has been bound/
@@ -35,29 +34,20 @@ var (
 // This function should wait for done channel before terminating so that all
 // pending jobs should be finished and rabbitmq should be notified about disconnect
 func handler(deliveries <-chan amqp.Delivery, done chan error) {
-	msgCh := make(chan int, sconn.Size)
-	tick := make(chan int, 1)
-	go func() {
-		for {
-			<-time.After(time.Second * time.Duration(sconn.Time))
-			tick <- 1
-		}
-	}()
 	for d := range deliveries {
-		select {
-		//Try putting stuff in channel, if this fails, channel is full
-		case msgCh <- 1:
-			<-msgCh
-			go send(d, msgCh)
-		default:
-			go log.Info("Waiting for second to complete before proceeding")
-			<-tick
-			for i := 0; i < int(sconn.Size); i++ {
-				<-msgCh
-			}
-			go send(d, msgCh)
+		var i queue.Item
+		err := i.FromJSON(d.Body)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"err":  err,
+				"body": d.Body,
+			}).Error("Failed in parsing json.")
+			d.Nack(false, true)
+			return
 		}
-
+		go send(i)
+		<-time.After((time.Second * time.Duration(sconn.Time)) / (time.Duration(sconn.Size) / time.Duration(i.Total)))
+		d.Ack(false)
 	}
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
@@ -67,36 +57,17 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 // This function is responsible for acknowledging the job completion to rabbitmq
 // This function also increments count by ceil of number of characters divided by number of characters per message.
 // When count reaches a certain number defined per connection, worker waits for time t defined in configuration before resuming operations.
-func send(d amqp.Delivery, msgCh chan int) {
-	var i queue.Item
-	err := i.FromJSON(d.Body)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err":  err,
-			"body": d.Body,
-		}).Error("Failed in parsing json.")
-		d.Nack(false, true)
-		return
-	}
+func send(i queue.Item) {
 	m, err := models.GetMessage(i.MsgId)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
 			"id":  i.MsgId,
 		}).Error("Failed in fetching message from db.")
-		d.Nack(false, true)
 		return
 	}
-	charLimit := smpp.MaxLatinChars
-	if m.Enc == "UCS" {
-		charLimit = smpp.MaxUCSChars
-	}
-	res := float64(float64(len(m.Msg)) / float64(charLimit))
-	total := math.Ceil(res)
-	for i := 0; i < int(math.Min(total, float64(int(sconn.Size)-len(msgCh)))); i++ {
-		msgCh <- 1
-	}
 	respId, err := s.Send(m.Src, m.Dst, m.Enc, m.Msg)
+	sent := time.Now().UTC().Unix()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Src":    m.Src,
@@ -105,14 +76,12 @@ func send(d amqp.Delivery, msgCh chan int) {
 			"Enc":    m.Enc,
 			"Fields": s.Fields,
 		}).Error("Couldn't send message.")
-		if err != smppstatus.ErrNotConnected {
-			d.Ack(false)
-		} else {
+		if err == smppstatus.ErrNotConnected {
 			log.Error("SMPP not connected. Aborting worker.")
 			//exit code 2, because supervisord wont restart this
 			os.Exit(2)
 		}
-		go updateMessage(m, respId, sconn.ID, err.Error(), int(total), s.Fields)
+		go updateMessage(m, respId, sconn.ID, err.Error(), s.Fields, sent)
 	} else {
 		log.WithFields(log.Fields{
 			"Src":    m.Src,
@@ -120,19 +89,17 @@ func send(d amqp.Delivery, msgCh chan int) {
 			"Enc":    m.Enc,
 			"Fields": s.Fields,
 		}).Info("Sent message.")
-		d.Ack(false)
-		go updateMessage(m, respId, sconn.ID, "", int(total), s.Fields)
+		go updateMessage(m, respId, sconn.ID, "", s.Fields, sent)
 	}
 	log.WithField("RespId", respId).Info("response id")
 }
 
-func updateMessage(m models.Message, respId, con, errMsg string, total int, fields smpp.PduFields) {
+func updateMessage(m models.Message, respId, con, errMsg string, fields smpp.PduFields, sent int64) {
 	m.RespId = respId
 	m.Connection = con
 	m.Error = errMsg
-	m.Total = total
 	m.Fields = fields
-	m.SentAt = time.Now().UTC().Unix()
+	m.SentAt = sent
 	m.Status = models.MsgSent
 	if errMsg != "" {
 		m.Status = models.MsgError
@@ -241,7 +208,6 @@ func bind() {
 		log.Error("Timed out waiting for smpp connection. Exiting.")
 		os.Exit(2)
 	}
-	cmutex = smpp.CountMutex{}
 	log.WithField("conn", sconn).Info("Binding")
 	if err != nil {
 		log.WithField("connid", connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")
