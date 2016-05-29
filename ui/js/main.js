@@ -105,6 +105,7 @@ var app = {
             app.renderMessageList();
             $("#message-form").on("submit", function(e){
                 e.preventDefault();
+                $("#message-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
                 var msgReq = {
                     "Enc" : $("#Enc").prop("checked") ? "ucs" : "latin",
                     "Msg" : $("#Msg").val(),
@@ -122,6 +123,7 @@ var app = {
                     "type": "POST",
                     "data": msgReq,
                 }).done(function(data){
+                    $("#message-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
                     Materialize.toast("Message sent succesfully.", 5000);
                     app.renderMessageList();
                 }).fail(function(xhr, status, errThrone){
@@ -130,6 +132,7 @@ var app = {
                         window.location.reload();
                     }
                     utils.showErrors(xhr.responseJSON.Errors);
+                    $("#message-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
                 });
                 return false;
             });
@@ -154,6 +157,7 @@ var app = {
             });
             $("#services-form").on("submit", function(e){
                 e.preventDefault();
+                $("#services-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
                 var config
                 try {
                     config = $.parseJSON($("#Config").val());
@@ -172,6 +176,7 @@ var app = {
                     "contentType" : "application/json",
                     "data": JSON.stringify(configReq),
                 }).done(function(data){
+                    $("#services-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
                     Materialize.toast("Config updated succesfully.", 5000);
                 }).fail(function(xhr, status, errThrone){
                     if(xhr.status == 401) {
@@ -179,6 +184,7 @@ var app = {
                         window.location.reload();
                     }
                     utils.showErrors(xhr.responseJSON.Errors);
+                    $("#services-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
                 });
                 return false;
             });
@@ -214,6 +220,7 @@ var app = {
 
             $("#reports-form").on("submit", function(e){
                 e.preventDefault();
+                $("#reports-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
                 var reportData = utils.getReportData();
                 reportData["Token"] = localStorage.getItem("auth_token");
                 $.ajax({
@@ -222,6 +229,7 @@ var app = {
                     dataType : "json",
                     type : "get"
                 }).done(function(data){
+                    $("#reports-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
                     Materialize.toast("Report generated.", 5000);
                     var source   = $("#report-template").html();
                     var template = Handlebars.compile(source);
@@ -232,6 +240,7 @@ var app = {
                         localStorage.removeItem("auth_token");
                         window.location.reload();
                     }
+                    $("#reports-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
                     utils.showErrors(xhr.responseJSON.Errors);
                 });
                 return false;
@@ -262,17 +271,18 @@ var app = {
             app.renderFileList();
             $("#files-form").on("submit", function(e){
                 e.preventDefault();
+                $("#files-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
                 var formData = new FormData($(this)[0]);
                 formData.append("Token", localStorage.getItem("auth_token"));
                 $.ajax({
                     url: "/api/file/upload",
                     type: 'POST',
                     data: formData,
-                    async: false,
                     cache: false,
                     contentType: false,
                     processData: false
                 }).done(function(data){
+                    $("#files-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
                     Materialize.toast("File uploaded succesfully.", 5000);
                     $("#files-form input").val("");
                     app.renderFileList();
@@ -281,6 +291,7 @@ var app = {
                         localStorage.removeItem("auth_token");
                         window.location.reload();
                     }
+                    $("#files-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
                     utils.showErrors(xhr.responseJSON.Errors);
                 });
                 return false;

@@ -21,7 +21,8 @@ $.extend(app, {
 	        app.renderPermissionsSelect();
 	        $("#userfilter-form").on("submit", function(e){
 	            e.preventDefault();
-	            var userData = {
+							$("#userfilter-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
+							var userData = {
 	                ConnectionGroup : $("#ConnectionGroup").val(),
 	                Username : $("#Username").val(),
 	                RegisteredBefore    : utils.dateFieldToEpoch("RegisteredBefore"),
@@ -43,6 +44,7 @@ $.extend(app, {
 	                dataType : "json",
 	                contentType: "application/json",
 	            }).done(function(data){
+									$("#userfilter-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
 	                Materialize.toast("Users filtered.", 5000);
 	                var source   = $("#users-template").html();
 	                var template = Handlebars.compile(source);
@@ -59,6 +61,7 @@ $.extend(app, {
 	        });
 	        $("#useradd-form").on("submit", function(e){
 	            e.preventDefault();
+							$("#useradd-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
 	            var userData = {
 	                ConnectionGroup : $("#addConnectionGroup").val(),
 	                Username : $("#addUsername").val(),
@@ -76,6 +79,7 @@ $.extend(app, {
 	                type : "post",
 	                contentType : "application/json",
 	            }).done(function(data){
+									$("#useradd-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
 	                Materialize.toast("User added.", 5000);
 	                $("#useradd-form input").val("");
 	            }).fail(function(xhr, status, errThrone){
@@ -83,12 +87,14 @@ $.extend(app, {
 	                    localStorage.removeItem("auth_token");
 	                    window.location.reload();
 	                }
+									$("#useradd-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
 	                utils.showErrors(xhr.responseJSON.Errors);
 	            });
 	            return false;
 	        });
 	        $("#finduser-form").on("submit", function(e){
 	        	e.preventDefault();
+						$("#files-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
 	        	$.ajax({
 	        		url : "/api/users",
 	        		data : {
@@ -97,6 +103,7 @@ $.extend(app, {
 	        		},
 	        		dataType : "json"
 	        	}).done(function(data){
+							$("#files-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
 	        		if (data.Response.Users && data.Response.Users.length == 1) {
 	        			Materialize.toast("User found", 5000);
 	        			$("#editName").val(data.Response.Users[0].Name).change();
@@ -107,7 +114,7 @@ $.extend(app, {
 	        			$("#editSuspended").prop("checked", data.Response.Users[0].Suspended);
 	        		} else {
 	        			var toastContent = '<span class="red-text">Couldn\'t find user.</span>';
-		                Materialize.toast(toastContent, 5000);	
+		                Materialize.toast(toastContent, 5000);
 	        		}
 	        	}).fail(function(xhr, status, errThrone){
 	                if(xhr.status == 401) {
@@ -121,6 +128,7 @@ $.extend(app, {
 	        });
 	        $("#useredit-form").on("submit", function(e){
 	            e.preventDefault();
+							$("#useredit-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
 	            var userData = {
 	                ConnectionGroup : $("#editConnectionGroup").val(),
 	                Password : $("#editPassword").val(),
@@ -138,10 +146,12 @@ $.extend(app, {
 	                type : "post",
 	                contentType : "application/json",
 	            }).done(function(data){
+								  $("#useredit-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
 	                Materialize.toast("User updated.", 5000);
 	                $("#useredit-form input, #finduser-form input").val("");
 	            }).fail(function(xhr, status, errThrone){
-	                if(xhr.status == 401) {
+									$("#useredit-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+									if(xhr.status == 401) {
 	                    localStorage.removeItem("auth_token");
 	                    window.location.reload();
 	                }
@@ -161,7 +171,7 @@ $.extend(app, {
 	        data : data,
 	        dataType: "json",
 	        type: "get"
-	    }).done(function(data){        
+	    }).done(function(data){
 	        var source   = $("#Permissions-template").html();
 	        var template = Handlebars.compile(source);
 	        var html    = template(data.Response);

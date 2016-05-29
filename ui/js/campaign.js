@@ -9,7 +9,7 @@ $.extend(app, {
             data : data,
             dataType: "json",
             type: "get"
-        }).done(function(data){        
+        }).done(function(data){
             var source   = $("#list-campaign-template").html();
             var template = Handlebars.compile(source);
             var html    = template(data.Response);
@@ -32,7 +32,7 @@ $.extend(app, {
             data : data,
             dataType: "json",
             type: "get"
-        }).done(function(data){        
+        }).done(function(data){
             var source   = $("#CampaignId-template").html();
             var template = Handlebars.compile(source);
             var html    = template(data.Response);
@@ -56,7 +56,7 @@ $.extend(app, {
             data : data,
             dataType: "json",
             type: "get"
-        }).done(function(data){        
+        }).done(function(data){
             var source   = $("#FileId-template").html();
             var template = Handlebars.compile(source);
             var html    = template(data.Response);
@@ -93,6 +93,7 @@ $.extend(app, {
             });
             $("#campaign-form").on("submit", function(e){
                 e.preventDefault();
+                $("#campaign-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
                 var campReq = {
                     "Enc" : $("#Enc").prop("checked") ? "ucs" : "latin",
                     "Msg" : $("#Msg").val(),
@@ -111,14 +112,16 @@ $.extend(app, {
                     "type": "POST",
                     "data": campReq,
                 }).done(function(data){
-                    Materialize.toast("Campaign started succesfully.", 5000);
+                    $("#campaign-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+                    Materialize.toast("All messages for campaign have been queued.", 5000);
                     app.renderCampaignList();
                 }).fail(function(xhr, status, errThrone){
                     if(xhr.status == 401) {
                         localStorage.removeItem("auth_token");
                         window.location.reload();
                     }
-                    utils.showErrors(xhr.responseJSON.Errors);   
+                    $("#campaign-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+                    utils.showErrors(xhr.responseJSON.Errors);
                 });
                 return false;
             });

@@ -23,6 +23,10 @@ nav .button-collapse i{
     margin-left: 170px;
 }
 
+.preloader-top{
+  top:12px;
+}
+
 @media only screen and (max-width: 992px){
     header, main, footer {
         padding-left: 0;
