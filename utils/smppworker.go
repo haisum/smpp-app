@@ -93,7 +93,7 @@ func send(d amqp.Delivery, msgCh chan int) {
 	}
 	res := float64(float64(len(m.Msg)) / float64(charLimit))
 	total := math.Ceil(res)
-	for i := 0; i < int(total); i++ {
+	for i := 0; i < int(math.Min(total, float64(int(sconn.Size)-len(msgCh)))); i++ {
 		msgCh <- 1
 	}
 	respId, err := s.Send(m.Src, m.Dst, m.Enc, m.Msg)
@@ -106,10 +106,11 @@ func send(d amqp.Delivery, msgCh chan int) {
 			"Fields": s.Fields,
 		}).Error("Couldn't send message.")
 		if err != smppstatus.ErrNotConnected {
-			d.Reject(false)
+			d.Ack(false)
 		} else {
 			log.Error("SMPP not connected. Aborting worker.")
-			os.Exit(1)
+			//exit code 2, because supervisord wont restart this
+			os.Exit(2)
 		}
 		go updateMessage(m, respId, sconn.ID, err.Error(), int(total), s.Fields)
 	} else {
@@ -238,7 +239,7 @@ func bind() {
 	case <-s.Connected:
 	case <-time.After(time.Duration(time.Second * 5)):
 		log.Error("Timed out waiting for smpp connection. Exiting.")
-		os.Exit(1)
+		os.Exit(2)
 	}
 	cmutex = smpp.CountMutex{}
 	log.WithField("conn", sconn).Info("Binding")
@@ -247,12 +248,12 @@ func bind() {
 	}
 	r, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
 	if err != nil {
-		os.Exit(1)
+		os.Exit(2)
 	}
 	log.WithField("Pfxs", sconn.Pfxs).Info("Binding to routing keys")
 	err = r.Bind(*group, sconn.Pfxs, handler)
 	if err != nil {
-		os.Exit(1)
+		os.Exit(2)
 	}
 	//Listen for termination signals from OS
 	go gracefulShutdown(r)
@@ -263,7 +264,7 @@ func main() {
 	flag.Parse()
 	if *connid == "" {
 		flag.Usage()
-		os.Exit(1)
+		os.Exit(2)
 	}
 	var err error
 	c = &smpp.Config{}

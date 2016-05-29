@@ -39,7 +39,7 @@ func (s *Sender) Connect(addr, user, passwd string, handler smpp.HandlerFunc) {
 		"Addr":   addr,
 		"User":   user,
 		"Passwd": passwd,
-	}).Info("Connected with these credentials.")
+	}).Info("Connecting with these credentials.")
 	conn := s.Tx.Bind() // make persistent connection.
 	s.Connected = make(chan bool, 1)
 	go func() {

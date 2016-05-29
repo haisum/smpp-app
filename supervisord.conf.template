@@ -44,12 +44,6 @@ stdout_logfile_maxbytes=50MB        ; (max main logfile bytes b4 rotation;defaul
 stdout_logfile_backups=10           ; (num of main logfile rotation backups;default 10)
 {{end}}
 
-[program:supervisord]
-command=/home/maaz/smpp/./soapservice 
-
-[program:httpserver]
-command=/home/maaz/smpp/./httpserver 
-
 [group:{{.Name}}]
 programs={{range $index, $element := .Programs}}{{if $index}},{{end}}{{$element.Name}}{{end}}
 priority=999

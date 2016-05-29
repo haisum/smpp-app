@@ -43,7 +43,7 @@
             <div class="input-field col s6">
               <div class="row">
                 <div class="input-field col s6" style="margin-top:0px;">
-                  <input id="SendBefore" name="SendBefore" type="text" class="datepicker">
+                  <input id="SendBefore" name="SendBefore" type="text" class="timepicker">
                   <label for="SendBefore">Send Before</label>
                 </div>
               </div>
@@ -51,7 +51,7 @@
             <div class="input-field col s6">
               <div class="row">
                 <div class="input-field col s6" style="margin-top:0px;">
-                  <input id="SendAfter" name="SendAfter" type="text" class="datepicker">
+                  <input id="SendAfter" name="SendAfter" type="text" class="timepicker">
                   <label for="SendAfter">Send After</label>
                 </div>
               </div>
@@ -72,6 +72,17 @@
               <button class="btn teal waves-effect waves-light" type="submit" name="action">Send
                 <i class="mdi-content-send right"></i>
               </button>
+              <div class="preloader-wrapper small active">
+                <div class="spinner-layer spinner-green-only">
+                  <div class="circle-clipper left">
+                    <div class="circle"></div>
+                  </div><div class="gap-patch">
+                    <div class="circle"></div>
+                  </div><div class="circle-clipper right">
+                    <div class="circle"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </form>
