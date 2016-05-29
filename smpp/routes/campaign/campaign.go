@@ -1,16 +1,17 @@
 package campaign
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/queue"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
+
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	log "github.com/Sirupsen/logrus"
 )
 
 type campaignRequest struct {
@@ -142,7 +143,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	okCh := make(chan bool, len(numbers))
 	burstCh := make(chan int, 1000)
 	for _, dst := range numbers {
-		go func() {
+		go func(dst string) {
 			m := models.Message{
 				ConnectionGroup: u.ConnectionGroup,
 				Username:        u.Username,
@@ -177,7 +178,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			}
 			//free one burst
 			<-burstCh
-		}()
+		}(dst)
 		//proceed if you can feed the burst channel
 		burstCh <- 1
 	}
