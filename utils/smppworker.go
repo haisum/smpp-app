@@ -22,12 +22,12 @@ import (
 )
 
 var (
-	c        *smpp.Config
-	s        *smpp.Sender
-	sconn    *smpp.Conn
-	connid   = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
-	group    = flag.String("group", "", "Group name of connection.")
-	throttle chan time.Time
+	c      *smpp.Config
+	s      *smpp.Sender
+	sconn  *smpp.Conn
+	connid = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
+	group  = flag.String("group", "", "Group name of connection.")
+	tick   *time.Ticker
 )
 
 // Handler is called by rabbitmq library after a queue has been bound/
@@ -46,11 +46,13 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 			d.Nack(false, true)
 			return
 		}
+		<-tick.C
+		for c := 1; c < i.Total; c++ {
+			<-tick.C
+		}
 		go send(i)
-		<-time.After(time.Duration(float64(int64(time.Second)*int64(sconn.Time)) / (float64(sconn.Size) / float64(i.Total))))
 		d.Ack(false)
 	}
-	time.NewTicker(d)
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
 }
@@ -114,7 +116,7 @@ func updateMessage(m models.Message, respId, con, errMsg string, fields smpp.Pdu
 
 func receiver(p pdu.Body) {
 	if p.Header().ID == pdu.DeliverSMID {
-		go saveDeliverySM(p.Fields())
+		//go saveDeliverySM(p.Fields())
 	} else {
 		fields := log.Fields{
 			"pdu":    p.Header().ID.String(),
@@ -218,6 +220,9 @@ func bind() {
 	if err != nil {
 		os.Exit(2)
 	}
+	rate := time.Second / time.Duration(sconn.Size)
+	tick = time.NewTicker(rate)
+	defer tick.Stop()
 	log.WithField("Pfxs", sconn.Pfxs).Info("Binding to routing keys")
 	err = r.Bind(*group, sconn.Pfxs, handler)
 	if err != nil {
@@ -226,6 +231,8 @@ func bind() {
 	//Listen for termination signals from OS
 	go gracefulShutdown(r)
 
+	forever := make(<-chan int)
+	<-forever
 }
 
 func main() {
@@ -241,7 +248,4 @@ func main() {
 		log.Fatal("Can't continue without settings. Exiting.")
 	}
 	bind()
-
-	forever := make(<-chan int)
-	<-forever
 }

@@ -86,6 +86,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	total := smpp.Total(uReq.Msg, uReq.Enc)
+	log.WithField("total", total).Info("Total messages.")
 	m := models.Message{
 		ConnectionGroup: u.ConnectionGroup,
 		Username:        u.Username,
@@ -120,6 +121,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	key := matchKey(keys, uReq.Dst, noKey)
 	qItem := queue.Item{
 		MsgId: msgId,
+		Total: total,
 	}
 	respJSON, _ := qItem.ToJSON()
 	err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
