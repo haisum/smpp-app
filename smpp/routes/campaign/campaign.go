@@ -2,7 +2,6 @@ package campaign
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"regexp"
 	"strings"
@@ -143,12 +142,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	errCh := make(chan error, 1)
 	okCh := make(chan bool, len(numbers))
 	burstCh := make(chan int, 1000)
-	charLimit := smpp.MaxLatinChars
-	if uReq.Enc == "ucs" {
-		charLimit = smpp.MaxUCSChars
-	}
-	res := float64(float64(len(uReq.Msg)) / float64(charLimit))
-	total := int(math.Ceil(res))
+	total := smpp.Total(uReq.Msg, uReq.Enc)
 	for _, dst := range numbers {
 		go func(dst string) {
 			m := models.Message{

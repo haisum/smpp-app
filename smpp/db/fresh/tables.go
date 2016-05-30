@@ -1,11 +1,12 @@
 package fresh
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp"
 	"encoding/json"
+	"time"
+
+	"bitbucket.org/codefreak/hsmpp/smpp"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
-	"time"
 )
 
 func tconfig(s *r.Session, dbname string) error {
@@ -166,6 +167,8 @@ func tmessage(s *r.Session, dbname string) error {
 		"Src",
 		"QueuedAt",
 		"SentAt",
+		"Total",
+		"Priority",
 		"DeliveredAt",
 		"CampaignId",
 		"Status",

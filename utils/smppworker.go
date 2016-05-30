@@ -22,11 +22,12 @@ import (
 )
 
 var (
-	c      *smpp.Config
-	s      *smpp.Sender
-	sconn  *smpp.Conn
-	connid = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
-	group  = flag.String("group", "", "Group name of connection.")
+	c        *smpp.Config
+	s        *smpp.Sender
+	sconn    *smpp.Conn
+	connid   = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
+	group    = flag.String("group", "", "Group name of connection.")
+	throttle chan time.Time
 )
 
 // Handler is called by rabbitmq library after a queue has been bound/
@@ -46,9 +47,10 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 			return
 		}
 		go send(i)
-		<-time.After((time.Second * time.Duration(sconn.Time)) / (time.Duration(sconn.Size) / time.Duration(i.Total)))
+		<-time.After(time.Duration(float64(int64(time.Second)*int64(sconn.Time)) / (float64(sconn.Size) / float64(i.Total))))
 		d.Ack(false)
 	}
+	time.NewTicker(d)
 	log.Printf("handle: deliveries channel closed")
 	done <- nil
 }
@@ -66,7 +68,7 @@ func send(i queue.Item) {
 		}).Error("Failed in fetching message from db.")
 		return
 	}
-	respId, err := s.Send(m.Src, m.Dst, m.Enc, m.Msg)
+	respId, err := s.Send(m.Src, m.Dst, m.Enc, m.Msg, i.Total)
 	sent := time.Now().UTC().Unix()
 	if err != nil {
 		log.WithFields(log.Fields{

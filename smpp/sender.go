@@ -58,9 +58,8 @@ func (s *Sender) Connect(addr, user, passwd string, handler smpp.HandlerFunc) {
 	}()
 }
 
-// Send sends sms to given source and destination with latin as encoding
-// or ucs if asked.
-func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
+// Total counts number of messages in one text string
+func Total(msg, enc string) int {
 	var text pdutext.Codec
 	if enc == "ucs" {
 		text = pdutext.UCS2(msg)
@@ -69,10 +68,21 @@ func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
 	}
 	maxLen := 134 // 140-6 (UDH)
 	rawMsg := text.Encode()
-	total := int(len(rawMsg)/maxLen) + 1
+	return int(len(rawMsg)/maxLen) + 1
+}
+
+// Send sends sms to given source and destination with latin as encoding
+// or ucs if asked.
+func (s *Sender) Send(src, dst, enc, msg string, total int) (string, error) {
 	submitFunc := s.Tx.Submit
 	if total > 1 {
 		submitFunc = s.Tx.SubmitLongMsg
+	}
+	var text pdutext.Codec
+	if enc == "ucs" {
+		text = pdutext.UCS2(msg)
+	} else {
+		text = pdutext.Raw(msg)
 	}
 	sm, err := submitFunc(&smpp.ShortMessage{
 		Src:                  src,

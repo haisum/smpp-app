@@ -1,16 +1,17 @@
 package message
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/queue"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
+
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	log "github.com/Sirupsen/logrus"
 )
 
 type messageReq struct {
@@ -84,7 +85,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-
+	total := smpp.Total(uReq.Msg, uReq.Enc)
 	m := models.Message{
 		ConnectionGroup: u.ConnectionGroup,
 		Username:        u.Username,
@@ -98,6 +99,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		ScheduledAt:     uReq.ScheduledAt,
 		SendAfter:       uReq.SendAfter,
 		SendBefore:      uReq.SendBefore,
+		Total:           total,
 	}
 	msgId, err := m.Save()
 	if err != nil {

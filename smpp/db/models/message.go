@@ -46,12 +46,15 @@ type MessageCriteria struct {
 	Enc             string
 	Dst             string
 	Src             string
+	Msg             string
 	QueuedBefore    int64
 	QueuedAfter     int64
 	SentBefore      int64
 	SentAfter       int64
 	DeliveredBefore int64
 	DeliveredAfter  int64
+	Total           int
+	Priority        int
 	CampaignId      string
 	Status          MessageStatus
 	Error           string
@@ -279,7 +282,17 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		"Username":        c.Username,
 	}
 	t = filterEqStr(strFields, t)
-
+	if c.Msg != "" {
+		t = t.Filter(func(t r.Term) r.Term {
+			return t.Field("Msg").Match(c.Msg)
+		})
+	}
+	if c.Total > 0 {
+		t = t.Filter(map[string]int{"Total": c.Total})
+	}
+	if c.Priority > 0 {
+		t = t.Filter(map[string]int{"Priority": c.Priority})
+	}
 	if c.OrderByKey == "" {
 		c.OrderByKey = "QueuedAt"
 	}
