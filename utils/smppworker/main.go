@@ -2,11 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -15,9 +12,6 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	log "github.com/Sirupsen/logrus"
 	smppstatus "github.com/fiorix/go-smpp/smpp"
-	"github.com/fiorix/go-smpp/smpp/pdu"
-	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
-	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
 	"github.com/streadway/amqp"
 )
 
@@ -70,7 +64,7 @@ func send(i queue.Item) {
 		}).Error("Failed in fetching message from db.")
 		return
 	}
-	respId, err := s.Send(m.Src, m.Dst, m.Enc, m.Msg, i.Total)
+	respID, err := s.Send(m.Src, m.Dst, m.Enc, m.Msg, i.Total)
 	sent := time.Now().UTC().Unix()
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -85,7 +79,7 @@ func send(i queue.Item) {
 			//exit code 2, because supervisord wont restart this
 			os.Exit(2)
 		}
-		go updateMessage(m, respId, sconn.ID, err.Error(), s.Fields, sent)
+		go updateMessage(m, respID, sconn.ID, err.Error(), s.Fields, sent)
 	} else {
 		log.WithFields(log.Fields{
 			"Src":    m.Src,
@@ -93,82 +87,9 @@ func send(i queue.Item) {
 			"Enc":    m.Enc,
 			"Fields": s.Fields,
 		}).Info("Sent message.")
-		go updateMessage(m, respId, sconn.ID, "", s.Fields, sent)
+		go updateMessage(m, respID, sconn.ID, "", s.Fields, sent)
 	}
-	log.WithField("RespId", respId).Info("response id")
-}
-
-func updateMessage(m models.Message, respId, con, errMsg string, fields smpp.PduFields, sent int64) {
-	m.RespId = respId
-	m.Connection = con
-	m.Error = errMsg
-	m.Fields = fields
-	m.SentAt = sent
-	m.Status = models.MsgSent
-	if errMsg != "" {
-		m.Status = models.MsgError
-	}
-	err := m.Update()
-	if err != nil {
-		log.WithError(err).Error("Couldn't update message.")
-	}
-}
-
-func receiver(p pdu.Body) {
-	if p.Header().ID == pdu.DeliverSMID {
-		//go saveDeliverySM(p.Fields())
-	} else {
-		fields := log.Fields{
-			"pdu":    p.Header().ID.String(),
-			"fields": p.Fields(),
-		}
-		log.WithFields(fields).Info("PDU Received.")
-	}
-}
-
-func saveDeliverySM(deliverSM pdufield.Map) {
-	log.WithFields(log.Fields{"deliverySM": deliverSM}).Info("Received deliverySM")
-	if val, ok := deliverSM["short_message"]; ok {
-		log.WithField("ucs", string(pdutext.Raw(deliverSM["short_message"].Bytes()).Decode())).Info("Decoded message")
-		_, err := splitShortMessage(val.String(), "id:")
-		if err != nil {
-			log.Info("Couldn't find id, executing receiver")
-			callReceiver(deliverSM)
-			return
-		}
-	} else {
-		log.WithField("deliverySM", deliverSM).Error("Couldn't find short_message field")
-		return
-	}
-	log.Info("Skipping deliver msg due to a bug now. Will save it later.")
-	return
-}
-
-func callReceiver(deliverSM pdufield.Map) {
-	if sconn.Receiver != "" {
-		log.WithFields(log.Fields{
-			"Receiver":      sconn.Receiver,
-			"source_addr":   deliverSM[pdufield.SourceAddr].String(),
-			"dest_addr":     deliverSM[pdufield.DestinationAddr].String(),
-			"short_message": deliverSM[pdufield.ShortMessage].String(),
-		}).Info("Executing Receiver")
-		err := exec.Command(sconn.Receiver, deliverSM[pdufield.SourceAddr].String(), deliverSM[pdufield.DestinationAddr].String(), deliverSM[pdufield.ShortMessage].String(), *connid, *group).Run()
-		if err != nil {
-			log.WithFields(log.Fields{
-				"Error": err,
-			}).Error("Couldn't execute receiver command.")
-		}
-	}
-}
-
-func splitShortMessage(sm, sep string) (string, error) {
-	var id string
-	tokens := strings.Split(sm, sep)
-	if len(tokens) < 2 {
-		return id, fmt.Errorf("Couldn't find enough tokens")
-	}
-	id = strings.Fields(tokens[1])[0]
-	return id, nil
+	log.WithField("RespId", respID).Info("response id")
 }
 
 // When SIGTERM or SIGINT is received, this routine will make sure we shutdown our queues and finish in progress jobs
