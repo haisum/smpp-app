@@ -117,30 +117,32 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-	noKey = group.DefaultPfx
-	key := matchKey(keys, uReq.Dst, noKey)
-	qItem := queue.Item{
-		MsgId: msgId,
-		Total: total,
-	}
-	respJSON, _ := qItem.ToJSON()
-	err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"uReq":  uReq,
-		}).Error("Couldn't publish message.")
-		resp := routes.Response{
-			Errors: []routes.ResponseError{
-				{
-					Type:    routes.ErrorTypeQueue,
-					Message: "Couldn't send message.",
-				},
-			},
-			Request: uReq,
+	if m.ScheduledAt == 0 {
+		noKey = group.DefaultPfx
+		key := matchKey(keys, uReq.Dst, noKey)
+		qItem := queue.Item{
+			MsgId: msgId,
+			Total: total,
 		}
-		resp.Send(w, *r, http.StatusInternalServerError)
-		return
+		respJSON, _ := qItem.ToJSON()
+		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"uReq":  uReq,
+			}).Error("Couldn't publish message.")
+			resp := routes.Response{
+				Errors: []routes.ResponseError{
+					{
+						Type:    routes.ErrorTypeQueue,
+						Message: "Couldn't send message.",
+					},
+				},
+				Request: uReq,
+			}
+			resp.Send(w, *r, http.StatusInternalServerError)
+			return
+		}
 	}
 	uResp.Id = msgId
 	resp := routes.Response{
@@ -202,11 +204,11 @@ func validateMsg(msg messageReq) []routes.ResponseError {
 			Message: "Send before must be of 24 hour format such as \"22:00\".",
 		})
 	}
-	if msg.ScheduledAt != 0 && msg.ScheduledAt < time.Now().UTC().Unix() {
+	if msg.ScheduledAt != 0 && msg.ScheduledAt < time.Now().Add(time.Minute*2).UTC().Unix() {
 		errors = append(errors, routes.ResponseError{
 			Type:    routes.ErrorTypeForm,
 			Field:   "ScheduledAt",
-			Message: "Schedule time must be in future.",
+			Message: "Schedule time must be at least 2 minutes in future.",
 		})
 	}
 	return errors

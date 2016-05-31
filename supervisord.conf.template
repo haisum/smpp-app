@@ -49,4 +49,3 @@ programs={{range $index, $element := .Programs}}{{if $index}},{{end}}{{$element.
 priority=999
 
 {{end}}
-

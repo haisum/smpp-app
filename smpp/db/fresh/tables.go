@@ -173,6 +173,7 @@ func tmessage(s *r.Session, dbname string) error {
 		"CampaignId",
 		"Status",
 		"Error",
+		"ScheduledAt",
 	})
 	if err != nil {
 		log.WithError(err).Error("Couldn't create indexes.")

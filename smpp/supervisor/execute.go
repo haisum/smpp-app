@@ -1,15 +1,16 @@
 package supervisor
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 	"text/template"
+
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	log "github.com/Sirupsen/logrus"
 )
 
 // Group represents group of related processes
@@ -49,6 +50,15 @@ func (t *TplData) load(c smpp.Config) {
 		{
 			Name:     "workers",
 			Programs: workers,
+		},
+		{
+			Name: "Scheduler",
+			Programs: []Program{
+				{
+					Name:    "scheduler",
+					Command: fmt.Sprintf("%s/./scheduler", path),
+				},
+			},
 		},
 	}
 }

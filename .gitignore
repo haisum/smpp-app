@@ -1,11 +1,14 @@
 .vagrant
-smppworker
-httpserver
+/smppworker
+/httpserver
+/scheduler
+/tlvworker
+/smppworker
 *.log
-smppctl
 *.zip
 .vscode
 docs
 ansible/hosts
 *.sublime*
 make.sh
+nohup.out

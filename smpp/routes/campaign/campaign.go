@@ -166,19 +166,21 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				errCh <- err
 				return
 			}
-			noKey = group.DefaultPfx
-			key := matchKey(keys, dst, noKey)
-			qItem := queue.Item{
-				MsgId: msgId,
-				Total: total,
+			if m.ScheduledAt == 0 {
+				noKey = group.DefaultPfx
+				key := matchKey(keys, dst, noKey)
+				qItem := queue.Item{
+					MsgId: msgId,
+					Total: total,
+				}
+				respJSON, _ := qItem.ToJSON()
+				err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
+				if err != nil {
+					errCh <- err
+					return
+				}
 			}
-			respJSON, _ := qItem.ToJSON()
-			err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
-			if err != nil {
-				errCh <- err
-			} else {
-				okCh <- true
-			}
+			okCh <- true
 			//free one burst
 			<-burstCh
 		}(dst)
@@ -274,11 +276,11 @@ func validateCampaign(c campaignRequest) []routes.ResponseError {
 			Message: "Send before must be of 24 hour format such as \"22:00\".",
 		})
 	}
-	if c.ScheduledAt != 0 && c.ScheduledAt < time.Now().UTC().Unix() {
+	if c.ScheduledAt != 0 && c.ScheduledAt < time.Now().Add(time.Minute*2).UTC().Unix() {
 		errors = append(errors, routes.ResponseError{
 			Type:    routes.ErrorTypeForm,
 			Field:   "ScheduledAt",
-			Message: "Schedule time must be in future.",
+			Message: "Schedule time must be at least 2 minutes in future.",
 		})
 	}
 	return errors
