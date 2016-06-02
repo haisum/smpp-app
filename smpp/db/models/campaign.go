@@ -1,11 +1,12 @@
 package models
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"fmt"
+	"strconv"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
-	"strconv"
 )
 
 type Campaign struct {
@@ -123,7 +124,7 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 	if c.OrderByKey == "" {
 		c.OrderByKey = "SubmittedAt"
 	}
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
+	t = orderBy(c.OrderByKey, c.OrderByDir, from, t, true)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}

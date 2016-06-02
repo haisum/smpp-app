@@ -243,7 +243,7 @@ func tuser(s *r.Session, dbname string) error {
 		Username:        "admin",
 		ConnectionGroup: "Default",
 		Permissions:     smpp.GetPermissions(),
-		RegisteredAt:    time.Now().Unix(),
+		RegisteredAt:    time.Now().UTC().Unix(),
 	}
 	u.Password, err = hash(u.Password)
 	if err != nil {

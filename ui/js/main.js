@@ -220,27 +220,31 @@ var app = {
 
             $("#reports-form").on("submit", function(e){
                 e.preventDefault();
-                $("#reports-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
+                $("#reports-form").find("button[type=submit]").addClass("disabled").siblings(".preloader-wrapper").addClass("active");
+                $("#Stats").prop("disabled", true);
                 var reportData = utils.getReportData();
                 reportData["Token"] = localStorage.getItem("auth_token");
+                reportData["Stats"] = $("#Stats").prop("checked")
                 $.ajax({
                     url : "/api/message/filter",
                     data : reportData,
                     dataType : "json",
                     type : "get"
                 }).done(function(data){
-                    $("#reports-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+                    $("#reports-form").find("button[type=submit]").removeClass("disabled").siblings(".preloader-wrapper").removeClass("active");
                     Materialize.toast("Report generated.", 5000);
                     var source   = $("#report-template").html();
                     var template = Handlebars.compile(source);
                     var html    = template(data.Response);
                     $("#report").html(html);
+                    $("#Stats").prop("disabled", false);
                 }).fail(function(xhr, status, errThrone){
                     if(xhr.status == 401) {
                         localStorage.removeItem("auth_token");
                         window.location.reload();
                     }
-                    $("#reports-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+                    $("#reports-form").find("button[type=submit]").removeClass("disabled").siblings(".preloader-wrapper").removeClass("active");
+                    $("#Stats").prop("disabled", false);
                     utils.showErrors(xhr.responseJSON.Errors);
                 });
                 return false;
@@ -250,6 +254,7 @@ var app = {
                 var reportData = utils.getReportData();
                 reportData["Token"] = localStorage.getItem("auth_token");
                 reportData["CSV"] = true;
+                reportData["TZ"] = "Asia/Dubai"
                 window.open("/api/message/filter?" + $.param(reportData));
                 return false;
             });

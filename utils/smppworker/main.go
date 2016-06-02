@@ -2,8 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -63,6 +66,34 @@ func send(i queue.Item) {
 			"id":  i.MsgId,
 		}).Error("Failed in fetching message from db.")
 		return
+	}
+	if m.SendAfter != "" && m.SendBefore != "" {
+		afterParts := strings.Split(m.SendAfter, ":")
+		beforeParts := strings.Split(m.SendBefore, ":")
+
+		hour, _ := strconv.ParseInt(afterParts[0], 10, 32)
+		minute, _ := strconv.ParseInt(afterParts[1], 10, 32)
+		now := time.Now().UTC()
+		afterTime := time.Date(now.Year(), now.Month(), now.Day(), int(hour), int(minute), 0, 0, now.Location())
+		hour, _ = strconv.ParseInt(beforeParts[0], 10, 32)
+		minute, _ = strconv.ParseInt(beforeParts[1], 10, 32)
+		beforeTime := time.Date(now.Year(), now.Month(), now.Day(), int(hour), int(minute), 0, 0, now.Location())
+		fmt.Println(now.String())
+		fmt.Println(beforeTime.String())
+		fmt.Println(afterTime.String())
+		if beforeTime.Unix() < afterTime.Unix() {
+			beforeTime.AddDate(0, 0, 1)
+		}
+		log.WithFields(log.Fields{"after": afterTime.String(), "before": beforeTime.String(), "now": now.String()}).Info("Scheduling")
+		if !(now.After(afterTime) && now.Before(beforeTime)) {
+			//don't send msg here
+			scheduledTime := afterTime.AddDate(0, 0, 1).Add(time.Minute)
+			log.WithField("time", scheduledTime.String()).Info("Scheduling message.")
+			m.ScheduledAt = scheduledTime.Unix()
+			m.Status = models.MsgScheduled
+			m.Update()
+			return
+		}
 	}
 	respID, err := s.Send(m.Src, m.Dst, m.Enc, m.Msg, i.Total)
 	sent := time.Now().UTC().Unix()

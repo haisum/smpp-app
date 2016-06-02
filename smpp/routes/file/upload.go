@@ -1,11 +1,12 @@
 package file
 
 import (
+	"net/http"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
-	"time"
 )
 
 type uploadReq struct {
@@ -79,7 +80,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		Description: uReq.Description,
 		Username:    u.Username,
 		UserId:      u.Id,
-		SubmittedAt: time.Now().Unix(),
+		SubmittedAt: time.Now().UTC().Unix(),
 	}
 	f, h, err := r.FormFile("File")
 	if err != nil {

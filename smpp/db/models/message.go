@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
@@ -38,7 +39,6 @@ type Message struct {
 
 // MessageCriteria represents filters we can give to GetMessages method.
 type MessageCriteria struct {
-	Id              string
 	RespId          string
 	ConnectionGroup string
 	Connection      string
@@ -127,6 +127,38 @@ func (m *Message) Update() error {
 			"Query": r.DB(db.DBName).Table("Message").Get(m.Id).Update(m).String(),
 		}).Error("Error in updating message.")
 		return err
+	}
+	return nil
+}
+
+// SaveDelivery updates an existing message in Message table and adds delivery status
+func SaveDelivery(respID, src, status string) error {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Error("Couldn't get session.")
+		return err
+	}
+	resp, err := r.DB(db.DBName).Table("Message").GetAllByIndex("RespId", respID).Filter(map[string]string{
+		"Src": src,
+	}).Update(map[string]interface{}{
+		"Status":      status,
+		"DeliveredAt": time.Now().UTC().Unix(),
+	}).RunWrite(s)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+			"Query": r.DB(db.DBName).Table("Message").GetAllByIndex("respId", respID).Filter(map[string]string{
+				"Src": src,
+			}).Update(map[string]interface{}{
+				"Status":      status,
+				"DeliveredAt": time.Now().UTC().Unix(),
+			}),
+		}).Error("Error in updating message.")
+		return err
+	}
+	if resp.Replaced == 0 {
+		log.WithField("RespID", respID).Error("Couldn't update delivery sm. No such response id found.")
+		return fmt.Errorf("Couldn't update delivery sm. No such response id found.")
 	}
 	return nil
 }
@@ -245,9 +277,23 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 }
 
 func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
-
 	t := r.DB(db.DBName).Table("Message")
-
+	indexUsed := false
+	if from != nil || c.QueuedAfter+c.QueuedBefore+c.DeliveredAfter+c.DeliveredBefore+c.SentAfter+c.SentBefore+c.ScheduledAfer+c.ScheduledBefore != 0 {
+		indexUsed = true
+	}
+	if !indexUsed {
+		if c.CampaignId != "" {
+			t = t.GetAllByIndex("CampaignId", c.CampaignId)
+			c.CampaignId = ""
+		} else if c.Username != "" {
+			t = t.GetAllByIndex("Username", c.Username)
+			c.Username = ""
+		} else if c.RespId != "" {
+			t = t.GetAllByIndex("RespId", c.RespId)
+			c.RespId = ""
+		}
+	}
 	// note to self: keep between before Eq filters.
 	betweenFields := map[string]map[string]int64{
 		"QueuedAt": {
@@ -269,7 +315,6 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 	}
 	t = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
-		"id":              c.Id,
 		"RespId":          c.RespId,
 		"Connection":      c.Connection,
 		"ConnectionGroup": c.ConnectionGroup,
@@ -297,7 +342,7 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		c.OrderByKey = "QueuedAt"
 	}
 	if !c.DisableOrder {
-		t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
+		t = orderBy(c.OrderByKey, c.OrderByDir, from, t, true)
 	}
 	return t
 }

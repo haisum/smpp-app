@@ -126,7 +126,7 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	if c.OrderByKey == "" {
 		c.OrderByKey = "SubmittedAt"
 	}
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t)
+	t = orderBy(c.OrderByKey, c.OrderByDir, from, t, true)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}

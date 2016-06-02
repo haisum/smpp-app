@@ -1,12 +1,13 @@
 package models
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"crypto/sha1"
 	"fmt"
+	"time"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
-	"time"
 )
 
 const (
@@ -67,7 +68,7 @@ func CreateToken(s *r.Session, username string) (string, error) {
 	token := secureRandomAlphaString(TokenSize)
 	t := Token{
 		Token:        toSHA1(token),
-		LastAccessed: time.Now().Unix(),
+		LastAccessed: time.Now().UTC().Unix(),
 		Username:     username,
 	}
 	err := r.DB(db.DBName).Table("Token").Insert(t).Exec(s)

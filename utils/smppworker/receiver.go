@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp/pdu"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
@@ -13,7 +15,7 @@ import (
 
 func receiver(p pdu.Body) {
 	if p.Header().ID == pdu.DeliverSMID {
-		//go saveDeliverySM(p.Fields())
+		go saveDeliverySM(p.Fields())
 	} else {
 		fields := log.Fields{
 			"pdu":    p.Header().ID.String(),
@@ -25,9 +27,11 @@ func receiver(p pdu.Body) {
 
 func saveDeliverySM(deliverSM pdufield.Map) {
 	log.WithFields(log.Fields{"deliverySM": deliverSM}).Info("Received deliverySM")
+	var id string
+	var err error
 	if val, ok := deliverSM["short_message"]; ok {
 		log.WithField("ucs", string(pdutext.Raw(deliverSM["short_message"].Bytes()).Decode())).Info("Decoded message")
-		_, err := splitShortMessage(val.String(), "id:")
+		id, err = splitShortMessage(val.String(), "id:")
 		if err != nil {
 			log.Info("Couldn't find id, executing receiver")
 			callReceiver(deliverSM)
@@ -37,8 +41,17 @@ func saveDeliverySM(deliverSM pdufield.Map) {
 		log.WithField("deliverySM", deliverSM).Error("Couldn't find short_message field")
 		return
 	}
-	log.Info("Skipping deliver msg due to a bug now. Will save it later.")
-	return
+	deliveryMap := make(map[string]string, len(deliverSM))
+	for k, v := range deliverSM {
+		deliveryMap[string(k)] = v.String()
+	}
+	status, _ := splitShortMessage(deliverSM["short_message"].String(), "stat:")
+	if status == "DELIVRD" {
+		status = string(models.MsgDelivered)
+	} else {
+		status = string(models.MsgNotDelivered)
+	}
+	models.SaveDelivery(id, deliverSM["destination_addr"].String(), status)
 }
 
 func callReceiver(deliverSM pdufield.Map) {

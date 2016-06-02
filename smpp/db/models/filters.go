@@ -1,8 +1,9 @@
 package models
 
 import (
-	r "github.com/dancannon/gorethink"
 	"strings"
+
+	r "github.com/dancannon/gorethink"
 )
 
 func filterBetweenInt(fields map[string]map[string]int64, t r.Term) r.Term {
@@ -31,7 +32,7 @@ func filterEqStr(fields map[string]string, t r.Term) r.Term {
 	return t
 }
 
-func orderBy(key, dir string, from interface{}, t r.Term) r.Term {
+func orderBy(key, dir string, from interface{}, t r.Term, indexUsed bool) r.Term {
 	var order func(args ...interface{}) r.Term
 	if strings.ToUpper(dir) == "ASC" {
 		order = r.Asc
@@ -51,6 +52,12 @@ func orderBy(key, dir string, from interface{}, t r.Term) r.Term {
 			})
 		}
 	}
-	t = t.OrderBy(order(key))
+	if !indexUsed {
+		t = t.OrderBy(r.OrderByOpts{
+			Index: order(key),
+		})
+	} else {
+		t = t.OrderBy(order(key))
+	}
 	return t
 }

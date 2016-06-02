@@ -3,7 +3,7 @@ package campaign
 import (
 	"fmt"
 	"net/http"
-	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,7 +90,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		Src:         uReq.Src,
 		Msg:         uReq.Msg,
 		FileId:      uReq.FileId,
-		SubmittedAt: time.Now().Unix(),
+		SubmittedAt: time.Now().UTC().Unix(),
 		Priority:    uReq.Priority,
 		SendBefore:  uReq.SendBefore,
 		SendAfter:   uReq.SendAfter,
@@ -145,6 +145,14 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	total := smpp.Total(uReq.Msg, uReq.Enc)
 	for _, dst := range numbers {
 		go func(dst string) {
+			var (
+				queuedTime int64                = time.Now().UTC().Unix()
+				status     models.MessageStatus = models.MsgQueued
+			)
+			if uReq.ScheduledAt > 0 {
+				queuedTime = 0
+				status = models.MsgScheduled
+			}
 			m := models.Message{
 				ConnectionGroup: u.ConnectionGroup,
 				Username:        u.Username,
@@ -153,8 +161,8 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				Dst:             dst,
 				Src:             uReq.Src,
 				Priority:        uReq.Priority,
-				QueuedAt:        time.Now().Unix(),
-				Status:          models.MsgQueued,
+				QueuedAt:        queuedTime,
+				Status:          status,
 				CampaignId:      campaignId,
 				SendBefore:      uReq.SendBefore,
 				SendAfter:       uReq.SendAfter,
@@ -261,20 +269,45 @@ func validateCampaign(c campaignRequest) []routes.ResponseError {
 			Message: "Send before time and Send after time, both should be provided at a time.",
 		})
 	}
-	re := regexp.MustCompile("[0-9][0-9]:[0-9][0-9](AM)|(PM)")
-	if c.SendAfter != "" && !re.Match([]byte(c.SendAfter)) {
-		errors = append(errors, routes.ResponseError{
-			Type:    routes.ErrorTypeForm,
-			Field:   "SendAfter",
-			Message: "Send after must be of 24 hour format such as \"09:00\".",
-		})
+	if c.SendAfter != "" {
+		parts := strings.Split(c.SendAfter, ":")
+		if len(parts) != 2 {
+			errors = append(errors, routes.ResponseError{
+				Type:    routes.ErrorTypeForm,
+				Field:   "SendAfter",
+				Message: "Send after must be of 24 hour format such as \"09:00\".",
+			})
+		} else {
+			hour, errH := strconv.ParseInt(parts[0], 10, 32)
+			minute, errM := strconv.ParseInt(parts[1], 10, 32)
+			if errH != nil || errM != nil || hour < 0 || hour > 24 || minute < 1 || minute > 59 {
+				errors = append(errors, routes.ResponseError{
+					Type:    routes.ErrorTypeForm,
+					Field:   "SendAfter",
+					Message: "Send after must be of 24 hour format such as \"09:00\".",
+				})
+			}
+		}
 	}
-	if c.SendBefore != "" && !re.Match([]byte(c.SendBefore)) {
-		errors = append(errors, routes.ResponseError{
-			Type:    routes.ErrorTypeForm,
-			Field:   "SendBefore",
-			Message: "Send before must be of 24 hour format such as \"22:00\".",
-		})
+	if c.SendBefore != "" {
+		parts := strings.Split(c.SendBefore, ":")
+		if len(parts) != 2 {
+			errors = append(errors, routes.ResponseError{
+				Type:    routes.ErrorTypeForm,
+				Field:   "SendBefore",
+				Message: "Send before must be of 24 hour format such as \"09:00\".",
+			})
+		} else {
+			hour, errH := strconv.ParseInt(parts[0], 10, 32)
+			minute, errM := strconv.ParseInt(parts[1], 10, 32)
+			if errH != nil || errM != nil || hour < 0 || hour > 24 || minute < 1 || minute > 59 {
+				errors = append(errors, routes.ResponseError{
+					Type:    routes.ErrorTypeForm,
+					Field:   "SendBefore",
+					Message: "Send before must be of 24 hour format such as \"09:00\".",
+				})
+			}
+		}
 	}
 	if c.ScheduledAt != 0 && c.ScheduledAt < time.Now().Add(time.Minute*2).UTC().Unix() {
 		errors = append(errors, routes.ResponseError{

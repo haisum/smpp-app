@@ -1,13 +1,14 @@
 package users
 
 import (
+	"net/http"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
-	"time"
 )
 
 type addRequest struct {
@@ -70,7 +71,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Password:        uReq.Password,
 		Name:            uReq.Name,
 		Permissions:     uReq.Permissions,
-		RegisteredAt:    time.Now().Unix(),
+		RegisteredAt:    time.Now().UTC().Unix(),
 		Suspended:       uReq.Suspended,
 	}
 

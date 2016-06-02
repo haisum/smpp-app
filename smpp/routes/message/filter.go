@@ -1,15 +1,16 @@
 package message
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bytes"
 	"encoding/csv"
-	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"time"
+
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	log "github.com/Sirupsen/logrus"
 )
 
 type messagesRequest struct {
@@ -17,11 +18,14 @@ type messagesRequest struct {
 	Url   string
 	Token string
 	CSV   bool
+	Stats bool
+	TZ    string
 }
 
 type messagesResponse struct {
-	Messages []models.Message
-	Stats    models.MessageStats
+	Messages   []models.Message
+	Stats      models.MessageStats
+	Throughput string
 }
 
 // MessagesHandler allows adding a user to database
@@ -70,25 +74,30 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	stats, err := models.GetMessageStats(uReq.MessageCriteria)
-	if err != nil {
-		resp.Ok = false
-		log.WithError(err).Error("Couldn't get message stats.")
-		resp.Errors = []routes.ResponseError{
-			{
-				Type:    routes.ErrorTypeDB,
-				Message: "Couldn't get message stats.",
-			},
+	if uReq.Stats == true {
+		stats, err := models.GetMessageStats(uReq.MessageCriteria)
+		if err != nil {
+			resp.Ok = false
+			log.WithError(err).Error("Couldn't get message stats.")
+			resp.Errors = []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeDB,
+					Message: "Couldn't get message stats.",
+				},
+			}
+			resp.Request = uReq
+			resp.Send(w, *r, http.StatusInternalServerError)
+			return
 		}
-		resp.Request = uReq
-		resp.Send(w, *r, http.StatusInternalServerError)
-		return
+		uResp.Stats = stats
 	}
 	if uReq.CSV == true {
-		toCsv(w, r, messages)
+		toCsv(w, r, messages, uReq.TZ)
 	} else {
 		uResp.Messages = messages
-		uResp.Stats = stats
+		if len(messages) > 1 && messages[0].QueuedAt != 0 && messages[len(messages)-1].SentAt != 0 {
+			uResp.Throughput = strconv.FormatFloat(float64(len(messages)*messages[0].Total)/float64(messages[len(messages)-1].SentAt-messages[0].QueuedAt), 'f', 2, 64)
+		}
 		resp.Obj = uResp
 		resp.Ok = true
 		resp.Request = uReq
@@ -96,9 +105,12 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	}
 })
 
-func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message) {
+func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string) {
 	b := &bytes.Buffer{}
 	wr := csv.NewWriter(b)
+	if len(m) > 1 && m[0].QueuedAt != 0 && m[len(m)-1].SentAt != 0 {
+		wr.Write([]string{"Throughput:", strconv.FormatFloat(float64(len(m)*m[0].Total)/float64(m[len(m)-1].SentAt-m[0].QueuedAt), 'f', 2, 64) + "m/s"})
+	}
 	wr.Write([]string{
 		"Id",
 		"Connection",
@@ -128,17 +140,22 @@ func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message) {
 			delivered string
 			scheduled string
 		)
+		loc, err := time.LoadLocation(TZ)
+		if err != nil {
+			log.WithFields(log.Fields{"Error": err, "TZ": TZ}).Error("Couldn't load location. Loading UTC")
+			loc, _ = time.LoadLocation("UTC")
+		}
 		if v.QueuedAt > 0 {
-			queued = time.Unix(v.QueuedAt, 0).UTC().Format("02-01-2006 03:04:05 MST")
+			queued = time.Unix(v.QueuedAt, 0).In(loc).Format("02-01-2006 03:04:05 MST")
 		}
 		if v.SentAt > 0 {
-			sent = time.Unix(v.SentAt, 0).UTC().Format("02-01-2006 03:04:05 MST")
+			sent = time.Unix(v.SentAt, 0).In(loc).Format("02-01-2006 03:04:05 MST")
 		}
 		if v.DeliveredAt > 0 {
-			delivered = time.Unix(v.DeliveredAt, 0).UTC().Format("02-01-2006 03:04:05 MST")
+			delivered = time.Unix(v.DeliveredAt, 0).In(loc).Format("02-01-2006 03:04:05 MST")
 		}
 		if v.ScheduledAt > 0 {
-			scheduled = time.Unix(v.ScheduledAt, 0).UTC().Format("02-01-2006 03:04:05 MST")
+			scheduled = time.Unix(v.ScheduledAt, 0).In(loc).Format("02-01-2006 03:04:05 MST")
 		}
 		wr.Write([]string{
 			v.Id,
