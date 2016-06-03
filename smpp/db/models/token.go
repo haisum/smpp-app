@@ -11,20 +11,21 @@ import (
 )
 
 const (
-	// No. of days token is valid for if unaccessed
+	// TokenValidity is No. of days token is valid for if unaccessed
 	TokenValidity int = 30
-	TokenSize     int = 40
+	// TokenSize is length of token
+	TokenSize int = 40
 )
 
 // Token represents a token given produced against valid authentication request
 type Token struct {
-	Id           string `gorethink:"id,omitempty"`
+	ID           string `gorethink:"id,omitempty"`
 	LastAccessed int64
 	Token        []byte
 	Username     string
 }
 
-// Get Token looks for token in Token table and returns it or error if
+// GetToken looks for token in Token table and returns it or error if
 // it's not found.
 func GetToken(s *r.Session, token string) (Token, error) {
 	var t Token
@@ -48,17 +49,16 @@ func GetToken(s *r.Session, token string) (Token, error) {
 	// if token was accessed an year ago, delete it and return error.
 	if t.LastAccessed < then {
 		return t, fmt.Errorf("Token has expired.")
-	} else {
-		//renew token last accessed
-		t.LastAccessed = now.Unix()
-		err := r.DB(db.DBName).Table("Token").Get(t.Id).Update(t).Exec(s)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"err":   err,
-				"query": r.DB(db.DBName).Table("Token").Get(t.Id).Update(t).String(),
-			}).Error("Error occured while updating last accessed of token.")
-			return t, err
-		}
+	}
+	//renew token last accessed
+	t.LastAccessed = now.Unix()
+	err = r.DB(db.DBName).Table("Token").Get(t.ID).Update(t).Exec(s)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":   err,
+			"query": r.DB(db.DBName).Table("Token").Get(t.ID).Update(t).String(),
+		}).Error("Error occured while updating last accessed of token.")
+		return t, err
 	}
 	return t, err
 }
@@ -85,7 +85,7 @@ func CreateToken(s *r.Session, username string) (string, error) {
 // Delete deletes a previously created token
 // This may be called when user logs out
 func (t *Token) Delete(s *r.Session) error {
-	err := r.DB(db.DBName).Table("Token").Get(t.Id).Delete().Exec(s)
+	err := r.DB(db.DBName).Table("Token").Get(t.ID).Delete().Exec(s)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":   err,

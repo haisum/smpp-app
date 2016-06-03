@@ -1,14 +1,17 @@
 package soap
 
-type SOAPEnvelope struct {
-	Body SOAPBody
+// Envelope is beginning of soap response
+type Envelope struct {
+	Body Body
 }
 
-type SOAPBody struct {
-	Request SOAPReq `xml:"SendSMS2"`
+// Body is internal contents
+type Body struct {
+	Request Req `xml:"SendSMS2"`
 }
 
-type SOAPReq struct {
+// Req has all input fields
+type Req struct {
 	Dst     string `xml:"toMobile"`
 	Src     string `xml:"sender"`
 	Message string `xml:"smsText"`

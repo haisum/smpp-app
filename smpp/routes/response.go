@@ -2,8 +2,9 @@ package routes
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"net/http"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // Response represents json/xml response we give to requests
@@ -31,6 +32,7 @@ const (
 	ErrorTypeConfig  string = "config"
 )
 
+// Send sends a given response with status code
 func (resp Response) Send(w http.ResponseWriter, r http.Request, code int) {
 	b, cType, err := MakeResponse(r, resp)
 	if err != nil {

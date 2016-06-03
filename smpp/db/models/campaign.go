@@ -9,8 +9,9 @@ import (
 	r "github.com/dancannon/gorethink"
 )
 
+// Campaign represents a message campaign
 type Campaign struct {
-	Id            string `gorethink:"id,omitempty"`
+	ID            string `gorethink:"id,omitempty"`
 	Description   string
 	Src           string
 	Msg           string
@@ -18,8 +19,8 @@ type Campaign struct {
 	FileName      string
 	Priority      int
 	FileLocalName string
-	FileId        string
-	UserId        string
+	FileID        string
+	UserID        string
 	Username      string
 	SendBefore    string
 	SendAfter     string
@@ -27,15 +28,20 @@ type Campaign struct {
 	SubmittedAt   int64
 }
 
-// NumFileCriteria represents filters we can give to GetFiles method.
+const (
+	//SubmittedAt is time at which campaign was put in system
+	SubmittedAt string = "SubmittedAt"
+)
+
+// CampaignCriteria represents filters we can give to GetCampaigns method.
 type CampaignCriteria struct {
-	Id              string
+	ID              string
 	Username        string
 	FileName        string
 	Src             string
 	Msg             string
 	Enc             string
-	UserId          string
+	UserID          string
 	SubmittedAfter  int64
 	SubmittedBefore int64
 	ScheduledAfter  int64
@@ -48,6 +54,7 @@ type CampaignCriteria struct {
 	PerPage         int
 }
 
+// Save saves a campaign in db
 func (c *Campaign) Save() (string, error) {
 	var id string
 	s, err := db.GetSession()
@@ -56,7 +63,7 @@ func (c *Campaign) Save() (string, error) {
 		return id, err
 	}
 	f, _ := GetNumFiles(NumFileCriteria{
-		Id: c.FileId,
+		ID: c.FileID,
 	})
 	if len(f) != 1 {
 		return id, fmt.Errorf("Couldn't find file.")
@@ -75,6 +82,7 @@ func (c *Campaign) Save() (string, error) {
 	return id, nil
 }
 
+// GetCampaigns fetches list of campaigns based on criteria
 func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 	var camps []Campaign
 	s, err := db.GetSession()
@@ -86,7 +94,7 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 
 	var from interface{}
 	if c.From != "" {
-		if c.OrderByKey == "SubmittedAt" || c.OrderByKey == "ScheduledAt" {
+		if c.OrderByKey == SubmittedAt || c.OrderByKey == "ScheduledAt" {
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return camps, fmt.Errorf("Invalid value for from: %s", from)
@@ -109,9 +117,9 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 	}
 	t = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
-		"id":         c.Id,
+		"id":         c.ID,
 		"Username":   c.Username,
-		"UserId":     c.UserId,
+		"UserID":     c.UserID,
 		"FileName":   c.FileName,
 		"Src":        c.Src,
 		"Msg":        c.Msg,
@@ -122,7 +130,7 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 	t = filterEqStr(strFields, t)
 
 	if c.OrderByKey == "" {
-		c.OrderByKey = "SubmittedAt"
+		c.OrderByKey = SubmittedAt
 	}
 	t = orderBy(c.OrderByKey, c.OrderByDir, from, t, true)
 	if c.PerPage == 0 {

@@ -1,15 +1,16 @@
 package user
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
 )
 
 type authRequest struct {
-	Url      string
+	URL      string
 	Username string
 	Password string
 }
@@ -35,7 +36,7 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uReq.Url = r.URL.RequestURI()
+	uReq.URL = r.URL.RequestURI()
 	s, err := db.GetSession()
 	if err != nil {
 		resp := routes.Response{}
@@ -71,7 +72,7 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	}
 	if !u.Auth(uReq.Password) {
 		log.WithError(err).Error("Couldn't authenticate user.")
-		resp := routes.Response{
+		resp = routes.Response{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeAuth,
@@ -84,7 +85,7 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if u.Suspended {
-		resp := routes.Response{
+		resp = routes.Response{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeAuth,

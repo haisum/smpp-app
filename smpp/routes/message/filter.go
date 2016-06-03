@@ -15,7 +15,7 @@ import (
 
 type messagesRequest struct {
 	models.MessageCriteria
-	Url   string
+	URL   string
 	Token string
 	CSV   bool
 	Stats bool
@@ -46,7 +46,7 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uReq.Url = r.URL.RequestURI()
+	uReq.URL = r.URL.RequestURI()
 	var (
 		u  models.User
 		ok bool
@@ -112,19 +112,19 @@ func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 		wr.Write([]string{"Throughput:", strconv.FormatFloat(float64(len(m)*m[0].Total)/float64(m[len(m)-1].SentAt-m[0].QueuedAt), 'f', 2, 64) + "m/s"})
 	}
 	wr.Write([]string{
-		"Id",
+		"ID",
 		"Connection",
 		"ConnectionGroup",
 		"Status",
 		"Error",
-		"RespId",
+		"RespID",
 		"Total",
 		"Username",
 		"Msg",
 		"Enc",
 		"Dst",
 		"Src",
-		"CampaignId",
+		"CampaignID",
 		"Priority",
 		"QueuedAt",
 		"SentAt",
@@ -158,19 +158,19 @@ func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 			scheduled = time.Unix(v.ScheduledAt, 0).In(loc).Format("02-01-2006 03:04:05 MST")
 		}
 		wr.Write([]string{
-			v.Id,
+			v.ID,
 			v.Connection,
 			v.ConnectionGroup,
 			string(v.Status),
 			v.Error,
-			v.RespId,
+			v.RespID,
 			strconv.Itoa(v.Total),
 			v.Username,
 			v.Msg,
 			v.Enc,
 			v.Dst,
 			v.Src,
-			v.CampaignId,
+			v.CampaignID,
 			strconv.Itoa(v.Priority),
 			queued,
 			sent,

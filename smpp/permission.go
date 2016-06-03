@@ -4,17 +4,28 @@ package smpp
 type Permission string
 
 const (
-	PermAddUsers      Permission = "Add users"
-	PermEditUsers                = "Edit users"
-	PermListUsers                = "List users"
-	PermShowConfig               = "Show config"
-	PermEditConfig               = "Edit config"
-	PermSendMessage              = "Send message"
-	PermListMessages             = "List messages"
-	PermListNumFiles             = "List number files"
-	PermDeleteNumFile            = "Delete a number file"
-	PermListCampaigns            = "List campaigns"
-	PermStartCampaign            = "Start a campaign"
+	// PermAddUsers permission to add users
+	PermAddUsers Permission = "Add users"
+	// PermEditUsers permission to edit users
+	PermEditUsers = "Edit users"
+	// PermListUsers permission to list/filter users
+	PermListUsers = "List users"
+	// PermShowConfig permission to see config
+	PermShowConfig = "Show config"
+	// PermEditConfig permission to edit config
+	PermEditConfig = "Edit config"
+	// PermSendMessage permission to send messages
+	PermSendMessage = "Send message"
+	// PermListMessages permission to list/filter messages
+	PermListMessages = "List messages"
+	// PermListNumFiles permission to list number files
+	PermListNumFiles = "List number files"
+	// PermDeleteNumFile permission to mark a numfile deleted.
+	PermDeleteNumFile = "Delete a number file"
+	// PermListCampaigns permission to list campaigns
+	PermListCampaigns = "List campaigns"
+	// PermStartCampaign permission to start a campaign
+	PermStartCampaign = "Start a campaign"
 )
 
 // GetPermissions returns all valid permissions for a user

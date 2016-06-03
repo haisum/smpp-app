@@ -20,7 +20,7 @@ type messageReq struct {
 	Src         string
 	Dst         string
 	Msg         string
-	Url         string
+	URL         string
 	Token       string
 	ScheduledAt int64
 	SendBefore  string
@@ -28,7 +28,7 @@ type messageReq struct {
 }
 
 type messageResponse struct {
-	Id string
+	ID string
 }
 
 // MessageHandler allows sending one sms
@@ -49,7 +49,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uReq.Url = r.URL.RequestURI()
+	uReq.URL = r.URL.RequestURI()
 	var (
 		u  models.User
 		ok bool
@@ -110,7 +110,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		SendBefore:      uReq.SendBefore,
 		Total:           total,
 	}
-	msgId, err := m.Save()
+	msgID, err := m.Save()
 	if err != nil {
 		log.WithField("err", err).Error("Couldn't insert in db.")
 		resp := routes.Response{
@@ -129,7 +129,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		noKey = group.DefaultPfx
 		key := matchKey(keys, uReq.Dst, noKey)
 		qItem := queue.Item{
-			MsgId: msgId,
+			MsgID: msgID,
 			Total: total,
 		}
 		respJSON, _ := qItem.ToJSON()
@@ -152,7 +152,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	}
-	uResp.Id = msgId
+	uResp.ID = msgID
 	resp := routes.Response{
 		Obj:     uResp,
 		Request: uReq,

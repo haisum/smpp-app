@@ -15,9 +15,9 @@ import (
 )
 
 type campaignRequest struct {
-	Url         string
+	URL         string
 	Token       string
-	FileId      string
+	FileID      string
 	Description string
 	Priority    int
 	Src         string
@@ -29,7 +29,7 @@ type campaignRequest struct {
 }
 
 type campaignResponse struct {
-	Id string
+	ID string
 }
 
 // CampaignHandler allows starting a campaign
@@ -49,7 +49,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uReq.Url = r.URL.RequestURI()
+	uReq.URL = r.URL.RequestURI()
 	var (
 		u  models.User
 		ok bool
@@ -58,7 +58,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	files, err := models.GetNumFiles(models.NumFileCriteria{
-		Id: uReq.FileId,
+		ID: uReq.FileID,
 	})
 	if err != nil || len(files) == 0 {
 		resp := routes.Response{}
@@ -66,7 +66,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			{
 				Type:    routes.ErrorTypeForm,
 				Message: "Couldn't get any file.",
-				Field:   "FileId",
+				Field:   "FileID",
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
@@ -79,7 +79,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			{
 				Type:    routes.ErrorTypeForm,
 				Message: "Couldn't read numbers from file.",
-				Field:   "FileId",
+				Field:   "FileID",
 			},
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)
@@ -89,7 +89,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		Enc:         uReq.Enc,
 		Src:         uReq.Src,
 		Msg:         uReq.Msg,
-		FileId:      uReq.FileId,
+		FileID:      uReq.FileID,
 		SubmittedAt: time.Now().UTC().Unix(),
 		Priority:    uReq.Priority,
 		SendBefore:  uReq.SendBefore,
@@ -106,7 +106,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	campaignId, err := c.Save()
+	campaignID, err := c.Save()
 	if err != nil {
 		log.WithError(err).Error("Couldn't save campaign.")
 		resp := routes.Response{
@@ -143,8 +143,8 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	okCh := make(chan bool, len(numbers))
 	burstCh := make(chan int, 1000)
 	total := smpp.Total(uReq.Msg, uReq.Enc)
-	for _, dst := range numbers {
-		go func(dst string) {
+	for _, nr := range numbers {
+		go func(nr models.NumFileRow) {
 			var (
 				queuedTime int64                = time.Now().UTC().Unix()
 				status     models.MessageStatus = models.MsgQueued
@@ -153,45 +153,49 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				queuedTime = 0
 				status = models.MsgScheduled
 			}
+			msg := uReq.Msg
+			for search, replace := range nr.Params {
+				msg = strings.Replace(msg, "{{"+search+"}}", replace, -1)
+			}
 			m := models.Message{
 				ConnectionGroup: u.ConnectionGroup,
 				Username:        u.Username,
-				Msg:             uReq.Msg,
+				Msg:             msg,
 				Enc:             uReq.Enc,
-				Dst:             dst,
+				Dst:             nr.Destination,
 				Src:             uReq.Src,
 				Priority:        uReq.Priority,
 				QueuedAt:        queuedTime,
 				Status:          status,
-				CampaignId:      campaignId,
+				CampaignID:      campaignID,
 				SendBefore:      uReq.SendBefore,
 				SendAfter:       uReq.SendAfter,
 				ScheduledAt:     uReq.ScheduledAt,
 				Total:           total,
 			}
-			msgId, err := m.Save()
-			if err != nil {
-				errCh <- err
+			msgID, errSave := m.Save()
+			if errSave != nil {
+				errCh <- errSave
 				return
 			}
 			if m.ScheduledAt == 0 {
 				noKey = group.DefaultPfx
-				key := matchKey(keys, dst, noKey)
+				key := matchKey(keys, nr.Destination, noKey)
 				qItem := queue.Item{
-					MsgId: msgId,
+					MsgID: msgID,
 					Total: total,
 				}
 				respJSON, _ := qItem.ToJSON()
-				err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
-				if err != nil {
-					errCh <- err
+				errP := q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
+				if errP != nil {
+					errCh <- errP
 					return
 				}
 			}
 			okCh <- true
 			//free one burst
 			<-burstCh
-		}(dst)
+		}(nr)
 		//proceed if you can feed the burst channel
 		burstCh <- 1
 	}
@@ -217,6 +221,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	log.Info("All campaign messages queued")
+	uResp.ID = campaignID
 	resp := routes.Response{
 		Obj:     uResp,
 		Request: uReq,
@@ -227,11 +232,11 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 })
 
 func validateCampaign(c campaignRequest) []routes.ResponseError {
-	errors := make([]routes.ResponseError, 0)
-	if c.FileId == "" {
+	var errors []routes.ResponseError
+	if c.FileID == "" {
 		errors = append(errors, routes.ResponseError{
 			Type:    routes.ErrorTypeForm,
-			Field:   "FileId",
+			Field:   "FileID",
 			Message: "File can't be empty.",
 		})
 	}

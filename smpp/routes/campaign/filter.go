@@ -1,16 +1,17 @@
 package campaign
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
 )
 
 type campaignsRequest struct {
 	models.CampaignCriteria
-	Url      string
+	URL      string
 	Token    string
 	Username string
 }
@@ -19,7 +20,7 @@ type campaignsResponse struct {
 	Campaigns []models.Campaign
 }
 
-// MessagesHandler allows adding a user to database
+// CampaignsHandler handles filter requests for campaigns
 var CampaignsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	uResp := campaignsResponse{}
 	var uReq campaignsRequest
@@ -37,7 +38,7 @@ var CampaignsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uReq.Url = r.URL.RequestURI()
+	uReq.URL = r.URL.RequestURI()
 	var (
 		u  models.User
 		ok bool

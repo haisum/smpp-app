@@ -57,22 +57,22 @@
               </select>
               <label for="Enc">Encoding</label>
             </div>
-            <div class="input-field col s6" id="CampaignIdSelect">
-              <select id="CampaignId" name="CampaignId">
+            <div class="input-field col s6" id="CampaignIDSelect">
+              <select id="CampaignID" name="CampaignID">
                 <option value="1">Option 1</option>
                 <option value="2">Option 2</option>
                 <option value="3">Option 3</option>
               </select>
-              <label for="CampaignId">Campaign</label>
+              <label for="CampaignID">Campaign</label>
             </div>
-            <script id="CampaignId-template" type="text/x-handlebars-template">
-              <select id="CampaignId" name="CampaignId">
+            <script id="CampaignID-template" type="text/x-handlebars-template">
+              <select id="CampaignID" name="CampaignID">
                 <option value="">--Choose One--</option>
               {{#each Campaigns}}
-                <option value="{{Id}}">{{Description}}</option>
+                <option value="{{ID}}">{{Description}}</option>
               {{/each}}
               </select>
-              <label for="CampaignId">Campaign</label>
+              <label for="CampaignID">Campaign</label>
             </script>
             <div class="input-field col s6">
               <div class="row">
@@ -158,7 +158,7 @@
             <div class="input-field col s6">
               <select id="OrderByKey" name="OrderByKey">
                 <option value="">--Choose One--</option>
-                <option value="RespId">SMPP Response ID</option>
+                <option value="RespID">SMPP Response ID</option>
                 <option value="ConnectionGroup">Connection Group</option>
                 <option value="Connection">Connection</option>
                 <option value="Username">Username</option>

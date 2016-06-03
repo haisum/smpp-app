@@ -2,10 +2,12 @@ package fresh
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 )
 
+// Create creates a fresh database, tables, indexes and populates primary data
 func Create(s *r.Session, dbname string) error {
 	w, err := r.DBCreate(dbname).RunWrite(s)
 	if err != nil {
@@ -45,6 +47,7 @@ func Create(s *r.Session, dbname string) error {
 	return nil
 }
 
+// Drop drops existing database
 func Drop(s *r.Session, name string) error {
 	w, err := r.DBDrop(name).RunWrite(s)
 	if err != nil {
@@ -65,6 +68,7 @@ func Drop(s *r.Session, name string) error {
 	return nil
 }
 
+// Exists checks if a database exists
 func Exists(s *r.Session, name string) bool {
 	cur, err := r.DBList().Run(s)
 	if err != nil {

@@ -12,7 +12,7 @@ import (
 )
 
 type addRequest struct {
-	Url             string
+	URL             string
 	Token           string
 	Username        string
 	Password        string
@@ -24,7 +24,7 @@ type addRequest struct {
 }
 
 type addResponse struct {
-	Id string
+	ID string
 }
 
 // AddHandler allows adding a user to database
@@ -45,7 +45,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uReq.Url = r.URL.RequestURI()
+	uReq.URL = r.URL.RequestURI()
 	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermAddUsers); !ok {
 		return
 	}
@@ -78,7 +78,6 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	resp := routes.Response{
 		Obj:     uResp,
 		Request: uReq,
-		Ok:      true,
 	}
 	verrs, err := u.Validate()
 	if err != nil {
@@ -98,7 +97,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	id, err := u.Add(s)
 	if err != nil {
 		log.WithError(err).Error("Couldn't add user.")
-		resp := routes.Response{
+		resp = routes.Response{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeDB,
@@ -109,7 +108,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-	uResp.Id = id
+	uResp.ID = id
 	resp.Obj = uResp
 	resp.Ok = true
 	resp.Request = uReq

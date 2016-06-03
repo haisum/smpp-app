@@ -1,6 +1,13 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/campaign"
@@ -10,20 +17,14 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
 	"bitbucket.org/codefreak/hsmpp/smpp/supervisor"
-	"flag"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var (
 	port    = flag.Int("port", 8443, "Port on which http service should start.")
-	amqpUrl = flag.String("amqpUrl", "amqp://guest:guest@localhost:5672/", "Amqp url for rabbitmq")
+	amqpURL = flag.String("amqpUrl", "amqp://guest:guest@localhost:5672/", "Amqp url for rabbitmq")
 )
 
 func main() {
@@ -36,7 +37,7 @@ func main() {
 	defer s.Close()
 
 	log.Info("Connecting with rabbitmq.")
-	q, err := queue.GetQueue(*amqpUrl, "smppworker-exchange", 1)
+	q, err := queue.GetQueue(*amqpURL, "smppworker-exchange", 1)
 	if err != nil {
 		log.WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
 	}

@@ -1,15 +1,16 @@
 package user
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
 )
 
 type editRequest struct {
-	Url      string
+	URL      string
 	Token    string
 	Password string
 	Name     string
@@ -38,7 +39,7 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uReq.Url = r.URL.RequestURI()
+	uReq.URL = r.URL.RequestURI()
 	var (
 		u  models.User
 		ok bool
@@ -60,7 +61,6 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	resp := routes.Response{
 		Obj:     uResp,
 		Request: uReq,
-		Ok:      true,
 	}
 	verrs, err := u.Validate()
 	if err != nil {
@@ -81,7 +81,7 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	err = u.Update(s, len(uReq.Password) > 1)
 	if err != nil {
 		log.WithError(err).Error("Couldn't update user.")
-		resp := routes.Response{
+		resp = routes.Response{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeDB,

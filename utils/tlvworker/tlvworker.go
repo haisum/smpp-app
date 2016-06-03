@@ -4,12 +4,13 @@ import (
 	"encoding/binary"
 	"flag"
 	"fmt"
-	smpp "github.com/CodeMonkeyKevin/smpp34"
-	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
 	"math"
 	"math/rand"
 	"os"
 	"time"
+
+	smpp "github.com/CodeMonkeyKevin/smpp34"
+	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
 )
 
 const (
@@ -17,12 +18,15 @@ const (
 	MaxLatinChars int = 140
 	//MaxUCSChars is number of characters allowed in single ucs encoded text message
 	MaxUCSChars int = 50
-
+	// Latin1Type is hexcode for pdu encoding latin
 	Latin1Type int = 0x03
-	UCS2Type   int = 0x08
-
-	SarMsgRefNum     int = 0x020C
+	//UCS2Type iis hexcode for pdu encoding UCS2
+	UCS2Type int = 0x08
+	// SarMsgRefNum is hexcode for sar_msg_refnum tlv field
+	SarMsgRefNum int = 0x020C
+	// SarTotalSegments is hexcode for sar_total_segments tlv field
 	SarTotalSegments int = 0x020E
+	// SarSegmentSeqnum is hexcode for sar_seq_num tlv field
 	SarSegmentSeqnum int = 0x020F
 )
 
@@ -37,13 +41,13 @@ var (
 	isUCS    = flag.Bool("isUCS", false, "Set this flag if data should be sent as UCS instead of latin.")
 )
 
-func packUi16(n uint16) (b []byte) {
+func packUI16(n uint16) (b []byte) {
 	b = make([]byte, 2)
 	binary.BigEndian.PutUint16(b, n)
 	return
 }
 
-func packUi8(n uint8) (b []byte) {
+func packUI8(n uint8) (b []byte) {
 	b = make([]byte, 2)
 	binary.BigEndian.PutUint16(b, uint16(n))
 	return b[1:]
@@ -83,7 +87,7 @@ func main() {
 	runeLength := len([]rune(*message))
 	rand.Seed(time.Now().UnixNano())
 	randRefNum := uint16(rand.Intn(math.MaxUint16))
-	msgRefNum := packUi16(randRefNum)
+	msgRefNum := packUI16(randRefNum)
 
 	for i := 0; i < runeLength; i += maxLen {
 		var text string
@@ -117,8 +121,8 @@ func main() {
 		fmt.Printf("SarRef: %d, total:  %d, this: %d\n", randRefNum, (runeLength/maxLen)+1, (i/maxLen)+1)
 
 		p.SetTLVField(SarMsgRefNum, 2, msgRefNum)
-		p.SetTLVField(SarSegmentSeqnum, 1, packUi8(uint8((i/maxLen)+1)))
-		p.SetTLVField(SarTotalSegments, 1, packUi8(uint8((runeLength/maxLen)+1)))
+		p.SetTLVField(SarSegmentSeqnum, 1, packUI8(uint8((i/maxLen)+1)))
+		p.SetTLVField(SarTotalSegments, 1, packUI8(uint8((runeLength/maxLen)+1)))
 
 		err = trx.Write(p)
 		// Pdu gen errors

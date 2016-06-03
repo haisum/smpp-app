@@ -1,21 +1,22 @@
 package models
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	r "github.com/dancannon/gorethink"
-	"golang.org/x/crypto/bcrypt"
 	"net/mail"
 	"strconv"
 	"strings"
+
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	log "github.com/Sirupsen/logrus"
+	r "github.com/dancannon/gorethink"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // User contains data for a single user
 type User struct {
-	Id              string `gorethink:"id,omitempty"`
+	ID              string `gorethink:"id,omitempty"`
 	Username        string
 	Password        string
 	Name            string
@@ -43,7 +44,12 @@ type UserCriteria struct {
 }
 
 const (
+	//DefaultConnectionGroup is set for each user who doesn't specifically specify a group
 	DefaultConnectionGroup string = "Default"
+	//RegisteredAt is time at which user got inserted into system
+	RegisteredAt = "RegisteredAt"
+	//ASC is used in criteria to sort in ascending order, anything else will be assumed to be descending
+	ASC = "ASC"
 )
 
 // Add adds a user to database and returns its primary key
@@ -99,7 +105,7 @@ func (u *User) Update(s *r.Session, passwdChanged bool) error {
 			return fmt.Errorf("Couldn't hash password. %s", err)
 		}
 	}
-	w, err := r.DB(db.DBName).Table("User").Get(u.Id).Update(u).RunWrite(s)
+	w, err := r.DB(db.DBName).Table("User").Get(u.ID).Update(u).RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
@@ -124,8 +130,8 @@ func GetUser(s *r.Session, username string) (User, error) {
 	return u, nil
 }
 
-// GetUser gets a single user identified by an id
-func GetIdUser(s *r.Session, id string) (User, error) {
+// GetIDUser gets a single user identified by an id
+func GetIDUser(s *r.Session, id string) (User, error) {
 	var u User
 	cur, err := r.DB(db.DBName).Table("User").Get(id).Run(s)
 	defer cur.Close()
@@ -177,7 +183,7 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 
 	// See https://rethinkdb.com/blog/beerthink/
 	var order func(args ...interface{}) r.Term
-	if strings.ToUpper(c.OrderByDir) == "ASC" {
+	if strings.ToUpper(c.OrderByDir) == ASC {
 		order = r.Asc
 	} else {
 		order = r.Desc
@@ -190,8 +196,8 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 		c.PerPage = 100
 	}
 	if c.From != "" {
-		if c.OrderByDir == "ASC" {
-			if c.OrderByKey == "RegisteredAt" {
+		if c.OrderByDir == ASC {
+			if c.OrderByKey == RegisteredAt {
 				from, err := strconv.ParseInt(c.From, 10, 64)
 				if err != nil {
 					return users, fmt.Errorf("Invalid value for RegisteredAt")
@@ -207,7 +213,7 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 				})
 			}
 		} else {
-			if c.OrderByKey == "RegisteredAt" {
+			if c.OrderByKey == RegisteredAt {
 				upto, err := strconv.ParseInt(c.From, 10, 64)
 				if err != nil {
 					return users, fmt.Errorf("Invalid value for RegisteredAt")
@@ -237,7 +243,7 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 		return users, err
 	}
 	defer cur.Close()
-	for i, _ := range users {
+	for i := range users {
 		users[i].Password = ""
 	}
 	return users, nil
@@ -288,9 +294,8 @@ func (u *User) Validate() (map[string]string, error) {
 	}
 	if len(errors) > 0 {
 		return errors, fmt.Errorf("Validation failed")
-	} else {
-		return errors, nil
 	}
+	return errors, nil
 }
 
 // Auth authenticates given password against user's password hash

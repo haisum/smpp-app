@@ -59,11 +59,11 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 // This function also increments count by ceil of number of characters divided by number of characters per message.
 // When count reaches a certain number defined per connection, worker waits for time t defined in configuration before resuming operations.
 func send(i queue.Item) {
-	m, err := models.GetMessage(i.MsgId)
+	m, err := models.GetMessage(i.MsgID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
-			"id":  i.MsgId,
+			"id":  i.MsgID,
 		}).Error("Failed in fetching message from db.")
 		return
 	}
@@ -120,7 +120,7 @@ func send(i queue.Item) {
 		}).Info("Sent message.")
 		go updateMessage(m, respID, sconn.ID, "", s.Fields, sent)
 	}
-	log.WithField("RespId", respID).Info("response id")
+	log.WithField("RespID", respID).Info("response id")
 }
 
 // When SIGTERM or SIGINT is received, this routine will make sure we shutdown our queues and finish in progress jobs

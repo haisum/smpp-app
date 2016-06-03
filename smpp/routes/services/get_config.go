@@ -1,15 +1,16 @@
 package services
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
 )
 
 type getConfigRequest struct {
-	Url   string
+	URL   string
 	Token string
 }
 
@@ -30,7 +31,7 @@ var GetConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uReq.Url = r.URL.RequestURI()
+	uReq.URL = r.URL.RequestURI()
 	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermShowConfig); !ok {
 		return
 	}

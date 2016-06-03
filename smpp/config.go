@@ -74,6 +74,7 @@ func (c *Config) GetConn(group, id string) (Conn, error) {
 	return con, fmt.Errorf("Couldn't find key for connection %s.", id)
 }
 
+// GetGroup gets a group from configuration with given name
 func (c *Config) GetGroup(group string) (ConnGroup, error) {
 	var cg ConnGroup
 	for _, g := range c.ConnGroups {

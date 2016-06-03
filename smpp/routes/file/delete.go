@@ -1,23 +1,24 @@
 package file
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
 )
 
 type deleteRequest struct {
-	Url   string
+	URL   string
 	Token string
-	Id    string
+	ID    string
 }
 
 type deleteResponse struct {
 }
 
-// MessagesHandler allows adding a user to database
+// DeleteHandler marks a particular file deleted
 var DeleteHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	uResp := deleteResponse{}
 	var uReq deleteRequest
@@ -35,7 +36,7 @@ var DeleteHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uReq.Url = r.URL.RequestURI()
+	uReq.URL = r.URL.RequestURI()
 	var (
 		u  models.User
 		ok bool
@@ -44,7 +45,7 @@ var DeleteHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		return
 	}
 	files, err := models.GetNumFiles(models.NumFileCriteria{
-		Id: uReq.Id,
+		ID: uReq.ID,
 	})
 	resp := routes.Response{}
 	if len(files) == 0 {

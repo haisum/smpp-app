@@ -12,18 +12,18 @@
               <input id="Src" type="text" class="validate">
               <label for="Src">Source</label>
             </div>
-            <div class="input-field col s6" id="FileIdSelect">
-              <select id="FileId" name="FileId">
+            <div class="input-field col s6" id="FileIDSelect">
+              <select id="FileID" name="FileID">
                 <option value="1">Option 1</option>
                 <option value="2">Option 2</option>
                 <option value="3">Option 3</option>
               </select>
-              <label for="FileId">Destination Numbers File</label>
+              <label for="FileID">Destination Numbers File</label>
             </div>
-            <script id="FileId-template" type="text/x-handlebars-template">
-              <select id="FileId" name="FileId">
+            <script id="FileID-template" type="text/x-handlebars-template">
+              <select id="FileID" name="FileID">
               {{#each NumFiles}}
-                <option value="{{Id}}">{{Name}}</option>
+                <option value="{{ID}}">{{Name}}</option>
               {{/each}}
               </select>
               <label for="Dst">Destination Numbers File</label>

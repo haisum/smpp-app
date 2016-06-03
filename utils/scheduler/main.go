@@ -54,7 +54,7 @@ func main() {
 			noKey = group.DefaultPfx
 			key := matchKey(keys, m.Dst, noKey)
 			qItem := queue.Item{
-				MsgId: m.Id,
+				MsgID: m.ID,
 				Total: m.Total,
 			}
 			respJSON, _ := qItem.ToJSON()

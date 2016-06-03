@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"net/http"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/schema"
-	"net/http"
 )
 
 const (
@@ -16,6 +17,8 @@ const (
   	%s
    </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>`
+	// UTF8XMLCHAR is character set of xml requests
+	UTF8XMLCHAR = "text/xml;charset=UTF-8"
 )
 
 type _SOAPEnvelope struct {
@@ -47,7 +50,7 @@ func ParseRequest(r http.Request, v interface{}) error {
 			log.WithError(err).Error("Couldn't understand xml request.")
 			return err
 		}
-	} else if cType, ok := r.Header["Content-Type"]; ok && (cType[0] == "text/xml;charset=UTF-8" || cType[0] == "application/xml+soap") {
+	} else if cType, ok := r.Header["Content-Type"]; ok && (cType[0] == UTF8XMLCHAR || cType[0] == "application/xml+soap") {
 		decoder := xml.NewDecoder(r.Body)
 		var env _SOAPEnvelope
 		err := decoder.Decode(&env)
@@ -87,15 +90,15 @@ func MakeResponse(r http.Request, v interface{}) ([]byte, string, error) {
 		if err != nil {
 			log.WithError(err).Error("Couldn't make xml response.")
 		}
-		return b, "text/xml;charset=UTF-8", err
-	} else if cType, ok := r.Header["Content-Type"]; ok && (cType[0] == "text/xml;charset=UTF-8" || cType[0] == "application/xml+soap") {
+		return b, UTF8XMLCHAR, err
+	} else if cType, ok := r.Header["Content-Type"]; ok && (cType[0] == UTF8XMLCHAR || cType[0] == "application/xml+soap") {
 		b, err := xml.Marshal(v)
 		if err != nil {
 			log.WithError(err).Errorf("Couldn't make SOAP envelope.")
-			return b, "text/xml;charset=UTF-8", err
+			return b, UTF8XMLCHAR, err
 		}
 		b = []byte(fmt.Sprintf(_SOAPResponse, b))
-		return b, "text/xml;charset=UTF-8", nil
+		return b, UTF8XMLCHAR, nil
 	} else {
 		b, err := json.Marshal(v)
 		if err != nil {

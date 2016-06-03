@@ -13,8 +13,8 @@ import (
 
 // Message represents a smpp message
 type Message struct {
-	Id              string `gorethink:"id,omitempty"`
-	RespId          string
+	ID              string `gorethink:"id,omitempty"`
+	RespID          string
 	DeliverySM      map[string]string
 	ConnectionGroup string
 	Connection      string
@@ -29,7 +29,7 @@ type Message struct {
 	QueuedAt        int64
 	SentAt          int64
 	DeliveredAt     int64
-	CampaignId      string
+	CampaignID      string
 	Status          MessageStatus
 	Error           string
 	SendBefore      string
@@ -39,7 +39,7 @@ type Message struct {
 
 // MessageCriteria represents filters we can give to GetMessages method.
 type MessageCriteria struct {
-	RespId          string
+	RespID          string
 	ConnectionGroup string
 	Connection      string
 	Username        string
@@ -55,7 +55,7 @@ type MessageCriteria struct {
 	DeliveredAfter  int64
 	Total           int
 	Priority        int
-	CampaignId      string
+	CampaignID      string
 	Status          MessageStatus
 	Error           string
 	ScheduledAfer   int64
@@ -72,13 +72,22 @@ type MessageCriteria struct {
 type MessageStatus string
 
 const (
-	MsgQueued       MessageStatus = "Queued"
-	MsgError        MessageStatus = "Error"
-	MsgSent         MessageStatus = "Sent"
-	MsgDelivered    MessageStatus = "Delivered"
+	//MsgQueued shows that have been put in rabbitmq
+	MsgQueued MessageStatus = "Queued"
+	//MsgError shows that message was sent to operator but returned error
+	MsgError MessageStatus = "Error"
+	//MsgSent shows that message was accepted by operator for delivery
+	MsgSent MessageStatus = "Sent"
+	//MsgDelivered shows that message was delivered
+	MsgDelivered MessageStatus = "Delivered"
+	//MsgNotDelivered shows message was not delivered by operator
 	MsgNotDelivered MessageStatus = "Not Delivered"
-	MsgScheduled    MessageStatus = "Scheduled"
-	MsgStopped      MessageStatus = "Stopped"
+	//MsgScheduled shows message is schedueled to be delivered in future
+	MsgScheduled MessageStatus = "Scheduled"
+	//MsgStopped shows message was stopped by user intervention
+	MsgStopped MessageStatus = "Stopped"
+	// QueuedAt field is time at which message was put in rabbitmq queue
+	QueuedAt string = "QueuedAt"
 )
 
 // MessageStats records number of messages in different statuses.
@@ -120,11 +129,11 @@ func (m *Message) Update() error {
 		log.WithError(err).Error("Couldn't get session.")
 		return err
 	}
-	err = r.DB(db.DBName).Table("Message").Get(m.Id).Update(m).Exec(s)
+	err = r.DB(db.DBName).Table("Message").Get(m.ID).Update(m).Exec(s)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB(db.DBName).Table("Message").Get(m.Id).Update(m).String(),
+			"Query": r.DB(db.DBName).Table("Message").Get(m.ID).Update(m).String(),
 		}).Error("Error in updating message.")
 		return err
 	}
@@ -138,7 +147,7 @@ func SaveDelivery(respID, src, status string) error {
 		log.WithError(err).Error("Couldn't get session.")
 		return err
 	}
-	resp, err := r.DB(db.DBName).Table("Message").GetAllByIndex("RespId", respID).Filter(map[string]string{
+	resp, err := r.DB(db.DBName).Table("Message").GetAllByIndex("RespID", respID).Filter(map[string]string{
 		"Src": src,
 	}).Update(map[string]interface{}{
 		"Status":      status,
@@ -147,7 +156,7 @@ func SaveDelivery(respID, src, status string) error {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB(db.DBName).Table("Message").GetAllByIndex("respId", respID).Filter(map[string]string{
+			"Query": r.DB(db.DBName).Table("Message").GetAllByIndex("respID", respID).Filter(map[string]string{
 				"Src": src,
 			}).Update(map[string]interface{}{
 				"Status":      status,
@@ -192,7 +201,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 	}
 	var from interface{}
 	if c.From != "" && !c.DisableOrder {
-		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" || c.OrderByKey == "ScheduledAt" {
+		if c.OrderByKey == QueuedAt || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" || c.OrderByKey == "ScheduledAt" {
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return m, fmt.Errorf("Invalid value for from: %s", from)
@@ -220,7 +229,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 	return m, err
 }
 
-// GetMessagesStats filters messages based on criteria and finds total number of messages in different statuses
+// GetMessageStats filters messages based on criteria and finds total number of messages in different statuses
 func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 	var m MessageStats
 	s, err := db.GetSession()
@@ -283,15 +292,15 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		indexUsed = true
 	}
 	if !indexUsed {
-		if c.CampaignId != "" {
-			t = t.GetAllByIndex("CampaignId", c.CampaignId)
-			c.CampaignId = ""
+		if c.CampaignID != "" {
+			t = t.GetAllByIndex("CampaignID", c.CampaignID)
+			c.CampaignID = ""
 		} else if c.Username != "" {
 			t = t.GetAllByIndex("Username", c.Username)
 			c.Username = ""
-		} else if c.RespId != "" {
-			t = t.GetAllByIndex("RespId", c.RespId)
-			c.RespId = ""
+		} else if c.RespID != "" {
+			t = t.GetAllByIndex("RespID", c.RespID)
+			c.RespID = ""
 		}
 	}
 	// note to self: keep between before Eq filters.
@@ -315,14 +324,14 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 	}
 	t = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
-		"RespId":          c.RespId,
+		"RespID":          c.RespID,
 		"Connection":      c.Connection,
 		"ConnectionGroup": c.ConnectionGroup,
 		"Src":             c.Src,
 		"Dst":             c.Dst,
 		"Enc":             c.Enc,
 		"Status":          string(c.Status),
-		"CampaignId":      c.CampaignId,
+		"CampaignID":      c.CampaignID,
 		"Error":           c.Error,
 		"Username":        c.Username,
 	}
@@ -339,7 +348,7 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		t = t.Filter(map[string]int{"Priority": c.Priority})
 	}
 	if c.OrderByKey == "" {
-		c.OrderByKey = "QueuedAt"
+		c.OrderByKey = QueuedAt
 	}
 	if !c.DisableOrder {
 		t = orderBy(c.OrderByKey, c.OrderByDir, from, t, true)

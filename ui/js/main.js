@@ -374,7 +374,7 @@ var utils = {
             DeliveredBefore : utils.dateFieldToEpoch("DeliveredBefore"),
             DeliveredAfter  : utils.dateFieldToEpoch("DeliveredAfter"),
             ScheduledAt     : utils.dateFieldToEpoch("ScheduledAt"),
-            CampaignId      : $("#CampaignId").val(),
+            CampaignID      : $("#CampaignID").val(),
             Status          : $("#Status").val(),
             Error           : $("#Error").val(),
             OrderByKey      : $("#OrderByKey").val(),

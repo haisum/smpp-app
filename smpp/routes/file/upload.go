@@ -11,15 +11,15 @@ import (
 
 type uploadReq struct {
 	Description string
-	Url         string
+	URL         string
 	Token       string
 }
 
 type uploadResponse struct {
-	Id string
+	ID string
 }
 
-// MessageHandler allows sending one sms
+// UploadHandler handles uploading of files
 var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	maxPostSize := models.MaxFileSize + (1024 * 512)
 	if r.ContentLength > maxPostSize {
@@ -67,7 +67,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uReq.Url = r.URL.RequestURI()
+	uReq.URL = r.URL.RequestURI()
 	var (
 		u  models.User
 		ok bool
@@ -79,7 +79,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	nf := models.NumFile{
 		Description: uReq.Description,
 		Username:    u.Username,
-		UserId:      u.Id,
+		UserID:      u.ID,
 		SubmittedAt: time.Now().UTC().Unix(),
 	}
 	f, h, err := r.FormFile("File")
@@ -112,7 +112,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	uResp.Id = id
+	uResp.ID = id
 	resp := routes.Response{
 		Obj:     uResp,
 		Request: uReq,

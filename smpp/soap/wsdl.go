@@ -1,6 +1,7 @@
 package soap
 
 const (
+	// WSDL represents soap wsdl
 	WSDL string = `<?xml version="1.0" encoding="UTF-8"?>
 <definitions name="Hsmpp Service"
  targetNamespace="http://www.csoft.co.uk/dtd/sendsms5.wsdl"
@@ -47,7 +48,7 @@ const (
     </sequence>
    </complexType>
   </element>
-  
+
  </schema>
 
 </types>

@@ -33,10 +33,10 @@ $.extend(app, {
             dataType: "json",
             type: "get"
         }).done(function(data){
-            var source   = $("#CampaignId-template").html();
+            var source   = $("#CampaignID-template").html();
             var template = Handlebars.compile(source);
             var html    = template(data.Response);
-            $("#CampaignIdSelect").html(html);
+            $("#CampaignIDSelect").html(html);
             $('select').material_select();
         }).error(function(data){
             if(xhr.status == 401) {
@@ -57,10 +57,10 @@ $.extend(app, {
             dataType: "json",
             type: "get"
         }).done(function(data){
-            var source   = $("#FileId-template").html();
+            var source   = $("#FileID-template").html();
             var template = Handlebars.compile(source);
             var html    = template(data.Response);
-            $("#FileIdSelect").html(html);
+            $("#FileIDSelect").html(html);
             $('select').material_select();
         }).error(function(data){
             if(xhr.status == 401) {
@@ -97,7 +97,7 @@ $.extend(app, {
                 var campReq = {
                     "Enc" : $("#Enc").prop("checked") ? "ucs" : "latin",
                     "Msg" : $("#Msg").val(),
-                    "FileId" : $("#FileId").val(),
+                    "FileID" : $("#FileID").val(),
                     "Priority" : parseInt($("#Priority").val()) > 0 ? parseInt($("#Priority").val()) : 0,
                     "Src" : $("#Src").val(),
                     "Token" : localStorage.getItem("auth_token"),

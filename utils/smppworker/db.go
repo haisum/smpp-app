@@ -7,7 +7,7 @@ import (
 )
 
 func updateMessage(m models.Message, respID, con, errMsg string, fields smpp.PduFields, sent int64) {
-	m.RespId = respID
+	m.RespID = respID
 	m.Connection = con
 	m.Error = errMsg
 	m.Fields = fields

@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
@@ -20,13 +21,8 @@ func GetQueue(url string, ex string, pCount int) (*Rabbit, error) {
 	return q, nil
 }
 
-// Priority represents priority of a message
-// Higher number means higher priority. Four priorities are supported:
-// priority.Low
-// priority.Normal
-// priority.Medium
-// priority.High
-// Passing other numbers doesn't halt program but may result in undefined behavior
+// Priority represents priority of a message. O is default priority
+// Higher number means higher priority. 10 is max priority after that, every number is considered to be 10
 type Priority uint8
 
 // Handler is a function which accepts deliveries channel and a error channel to indicate when processing is done

@@ -134,7 +134,7 @@ func tnumfile(s *r.Session, dbname string) error {
 	err = createIndexes(s, dbname, "NumFile", []string{
 		"Username",
 		"LocalName",
-		"UserId",
+		"UserID",
 		"SubmittedAt",
 		"Type",
 		"Name",
@@ -159,7 +159,7 @@ func tmessage(s *r.Session, dbname string) error {
 	}
 	err = createIndexes(s, dbname, "Message", []string{
 		"Username",
-		"RespId",
+		"RespID",
 		"ConnectionGroup",
 		"Connection",
 		"Enc",
@@ -170,7 +170,7 @@ func tmessage(s *r.Session, dbname string) error {
 		"Total",
 		"Priority",
 		"DeliveredAt",
-		"CampaignId",
+		"CampaignID",
 		"Status",
 		"Error",
 		"ScheduledAt",
@@ -198,7 +198,7 @@ func tcampaign(s *r.Session, dbname string) error {
 		"Dst",
 		"Src",
 		"FileName",
-		"UserId",
+		"UserID",
 		"SubmittedAt",
 	})
 	if err != nil {

@@ -13,17 +13,18 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
+	"github.com/tealeg/xlsx"
 )
 
 // NumFile represents file uploaded to system for saving
 // files with numbers
 type NumFile struct {
-	Id          string `gorethink:"id,omitempty"`
+	ID          string `gorethink:"id,omitempty"`
 	Name        string
 	Description string
 	LocalName   string
 	Username    string
-	UserId      string
+	UserID      string
 	SubmittedAt int64
 	Deleted     bool
 	Type        NumFileType
@@ -34,23 +35,40 @@ type NumFile struct {
 type NumFileType string
 
 const (
-	NumFileCSV  NumFileType = ".csv"
-	NumFileTxt              = ".txt"
-	NumFileXLS              = ".xls"
-	NumFileXLSX             = ".xlsx"
-	MaxFileSize int64       = 5 * 1024 * 1024
+	//NumFileCSV is text file with .csv extension. This file should have comma separated numbers
+	NumFileCSV NumFileType = ".csv"
+	//NumFileTxt is text file with .txt extension. This file should have comma separated numbers
+	NumFileTxt = ".txt"
+	//NumFileXLSX is excel file with .xlsx extension. These files should follow following structure:
+	// -----------------------------------------
+	// Destination | Param1 | Param2 | ..ParamN |
+	// ------------------------------------------
+	// 02398232390 | hello  | World  |  ValN    |
+	//-------------------------------------------
+	// First header must be Destination and firs cell value will be used as destination number
+	// Rest of cells will be replacement values in message. A message with text "{{Param1}} {{Param2}} how are you" will become "hello World how are you"
+	NumFileXLSX = ".xlsx"
+	// MaxFileSize is maximum file size in bytes
+	MaxFileSize int64 = 5 * 1024 * 1024
 )
 
+//NumFileRow represents one single row in excel or csv file
+type NumFileRow struct {
+	Destination string
+	Params      map[string]string
+}
+
 var (
-	NumFilePath string = "./files"
+	//NumFilePath is folder relative to path where httpserver binary is, we'll save all files here
+	NumFilePath = "./files"
 )
 
 // NumFileCriteria represents filters we can give to GetFiles method.
 type NumFileCriteria struct {
-	Id              string
+	ID              string
 	Username        string
 	LocalName       string
-	UserId          string
+	UserID          string
 	SubmittedAfter  int64
 	SubmittedBefore int64
 	Type            NumFileType
@@ -63,18 +81,18 @@ type NumFileCriteria struct {
 }
 
 // Delete marks Deleted=true for a NumFile
-func (f *NumFile) Delete() error {
+func (nf *NumFile) Delete() error {
 	s, err := db.GetSession()
 	if err != nil {
 		log.WithError(err).Error("Couldn't get session.")
 		return err
 	}
-	f.Deleted = true
-	err = r.DB(db.DBName).Table("NumFile").Get(f.Id).Update(f).Exec(s)
+	nf.Deleted = true
+	err = r.DB(db.DBName).Table("NumFile").Get(nf.ID).Update(nf).Exec(s)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB(db.DBName).Table("NumFile").Get(f.Id).Update(f).String(),
+			"Query": r.DB(db.DBName).Table("NumFile").Get(nf.ID).Update(nf).String(),
 		}).Error("Error in updating file.")
 		return err
 	}
@@ -111,18 +129,15 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	}
 	t = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
-		"id":        c.Id,
+		"id":        c.ID,
 		"LocalName": c.LocalName,
 		"Username":  c.Username,
-		"UserId":    c.UserId,
+		"UserID":    c.UserID,
 		"Type":      string(c.Type),
 		"Name":      c.Name,
 	}
 	t = filterEqStr(strFields, t)
 	t = t.Filter(map[string]bool{"Deleted": c.Deleted})
-	if c.OrderByKey == "" {
-		c.OrderByKey = "SubmittedAt"
-	}
 	if c.OrderByKey == "" {
 		c.OrderByKey = "SubmittedAt"
 	}
@@ -154,8 +169,8 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 		return id, err
 	}
 	fileType := NumFileType(filepath.Ext(strings.ToLower(name)))
-	if fileType != NumFileCSV && fileType != NumFileTxt {
-		return id, fmt.Errorf("Only csv and txt extensions are allowed Given file %s has extension %s.", name, fileType)
+	if fileType != NumFileCSV && fileType != NumFileTxt && fileType != NumFileXLSX {
+		return id, fmt.Errorf("Only csv, txt and xlsx extensions are allowed Given file %s has extension %s.", name, fileType)
 	}
 	nf.Type = fileType
 	nf.Name = name
@@ -163,10 +178,10 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 	if err != nil {
 		return id, fmt.Errorf("Couldn't read file.")
 	}
-	if http.DetectContentType(b) != "text/plain; charset=utf-8" {
-		return id, fmt.Errorf("File doesn't seem to be a text file.")
+	if http.DetectContentType(b) != "text/plain; charset=utf-8" && http.DetectContentType(b) != "application/zip" {
+		return id, fmt.Errorf("File doesn't seem to be a text or excel file.")
 	}
-	numfilePath := fmt.Sprintf("%s/%s", NumFilePath, nf.UserId)
+	numfilePath := fmt.Sprintf("%s/%s", NumFilePath, nf.UserID)
 	err = os.MkdirAll(numfilePath, 0711)
 	if err != nil {
 		return id, fmt.Errorf("Couldn't create directory %s", numfilePath)
@@ -193,10 +208,11 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 	return id, nil
 }
 
-func (nf *NumFile) ToNumbers() ([]string, error) {
-	var nums []string
-	numfilePath := fmt.Sprintf("%s/%s", NumFilePath, nf.UserId)
-	b, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", numfilePath, nf.LocalName))
+// ToNumbers reads a csv or xlsx file and returns array of NumFileRow with Destination and Params map
+func (nf *NumFile) ToNumbers() ([]NumFileRow, error) {
+	var nums []NumFileRow
+	numfilePath := fmt.Sprintf("%s/%s/%s", NumFilePath, nf.UserID, nf.LocalName)
+	b, err := ioutil.ReadFile(numfilePath)
 	if err != nil {
 		return nums, err
 	}
@@ -206,7 +222,52 @@ func (nf *NumFile) ToNumbers() ([]string, error) {
 			if len(num) > 15 || len(num) < 5 {
 				return nums, fmt.Errorf("Entry number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
 			}
-			nums = append(nums, num)
+			nums = append(nums, NumFileRow{Destination: num})
+		}
+	} else if nf.Type == NumFileXLSX {
+		xlFile, err := xlsx.OpenBinary(b)
+		if err != nil {
+			return nums, err
+		}
+		if len(xlFile.Sheets) != 1 {
+			return nums, fmt.Errorf("xslx file should contain exactly one sheet")
+		}
+		if len(xlFile.Sheets[0].Rows) < 2 {
+			return nums, fmt.Errorf("xslx file is empty")
+		}
+		if len(xlFile.Sheets[0].Rows[0].Cells) == 0 || xlFile.Sheets[0].Rows[0].Cells[0].Value != "Destination" {
+			return nums, fmt.Errorf("First cell of excel sheet must be Destination header")
+		}
+		var keys []string
+		for _, cell := range xlFile.Sheets[0].Rows[0].Cells {
+			keys = append(keys, cell.Value)
+		}
+		for i := 1; i < len(xlFile.Sheets[0].Rows); i++ {
+			if len(xlFile.Sheets[0].Rows[i].Cells) < 1 {
+				return nums, fmt.Errorf("Row number %d doesn't have any value.", i+1)
+			}
+			num := xlFile.Sheets[0].Rows[i].Cells[0].Value
+			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
+			if len(num) > 15 || len(num) < 5 {
+				return nums, fmt.Errorf("Row number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
+			}
+			nr := NumFileRow{
+				Destination: num,
+				Params:      map[string]string{},
+			}
+			if len(xlFile.Sheets[0].Rows[i].Cells) < len(keys) {
+				return nums, fmt.Errorf("Row number %d has blank values for some parameters.", i)
+			}
+			for j := 1; j < len(keys) && j < len(xlFile.Sheets[0].Rows[i].Cells); j++ {
+				val := xlFile.Sheets[0].Rows[i].Cells[j].Value
+				val = strings.Trim(val, "\t\n\v\f\r \u0085\u00a0")
+				if val == "" {
+					return nums, fmt.Errorf("Row number %d contains no value at cell number %d.", i, j)
+				}
+				nr.Params[keys[j]] = val
+			}
+			nums = append(nums, nr)
+			log.WithField("nums", nums).Info("nums")
 		}
 	} else {
 		return nums, fmt.Errorf("This file type isn't supported yet.")
