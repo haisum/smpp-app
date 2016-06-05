@@ -45,6 +45,7 @@ var app = {
                 } else {
                     app.renderSMS();
                 }
+                app.checkServices();
             }).fail(function(xhr, status, errThrone){
                 if (xhr.status == 401){
                     localStorage.removeItem("auth_token");
@@ -178,6 +179,9 @@ var app = {
                 }).done(function(data){
                     $("#services-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
                     Materialize.toast("Config updated succesfully.", 5000);
+                    window.setTimeout(function () {
+                      app.checkServices();
+                    }, 2000);
                 }).fail(function(xhr, status, errThrone){
                     if(xhr.status == 401) {
                         localStorage.removeItem("auth_token");
@@ -318,7 +322,7 @@ var app = {
             var template = Handlebars.compile(source);
             var html    = template(data.Response);
             $("#list-files").html(html);
-        }).error(function(data){
+        }).fail(function(xhr, status, errThrone){
             if(xhr.status == 401) {
                 localStorage.removeItem("auth_token");
                 window.location.reload();
@@ -341,7 +345,7 @@ var app = {
             var template = Handlebars.compile(source);
             var html    = template(data.Response);
             $("#list-message").html(html);
-        }).error(function(data){
+        }).fail(function(xhr, status, errThrone){
             if(xhr.status == 401) {
                 localStorage.removeItem("auth_token");
                 window.location.reload();
@@ -349,6 +353,40 @@ var app = {
             utils.showErrors(xhr.responseJSON.Errors);
         });
     },
+    checkServices : function(){
+      $.ajax({
+        url : "/api/services/status",
+        data : {
+          Token : localStorage.getItem("auth_token"),
+        },
+        type : "get",
+        dataType : "json"
+      }).done(function(data){
+        notOk = [];
+        for(i=0; i<data.Response.length; i++){
+          if (!data.Response[i].Ok) {
+            notOk.push(data.Response[i].Program + " " + data.Response[i].Status);
+          }
+        }
+        if (notOk.length != 0){
+          var errHtml = "Following services are not working: <ul>";
+          for (i=0; i<notOk.length;i++){
+              errHtml +=  "<li>" + notOk[i]  + "</li>";
+          }
+          errHtml += "</ul>"
+          var toastContent = '<div class="red-text">' + errHtml + '</div>';
+          Materialize.toast(toastContent, 5000)
+        } else {
+          var toastContent = '<div class="green-text">All services are up and running</div>';
+          Materialize.toast(toastContent, 5000)
+        }
+      }).fail(function(xhr, status, errThrone){
+          if(xhr.status == 401) {
+              localStorage.removeItem("auth_token");
+              window.location.reload();
+          }
+      });
+    }
 }
 
 var utils = {

@@ -30,7 +30,7 @@ func GetStatus() ([]Status, error) {
 		if len(fields) == 0 {
 			continue
 		}
-		if len(fields) < 5 {
+		if len(fields) < 2 {
 			log.WithFields(log.Fields{
 				"line":   line,
 				"fields": fields,
