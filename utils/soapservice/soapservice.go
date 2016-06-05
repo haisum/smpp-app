@@ -1,65 +1,92 @@
 package main
 
 import (
-	hsmpp "bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/soap"
 	"encoding/xml"
-	"flag"
 	"fmt"
-	smpp "github.com/CodeMonkeyKevin/smpp34"
-	log "github.com/Sirupsen/logrus"
 	"net/http"
-	"os"
+	"strings"
+	"time"
+
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/smpp/soap"
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	HTTPPort int = 80
-)
-
-var (
-	host     = flag.String("host", "localhost", "SMPP host address.")
-	port     = flag.Int("port", 2775, "SMPP host port.")
-	username = flag.String("username", "", "Username to connect to smpp server.")
-	password = flag.String("password", "", "Password to connect to smpp server.")
+	HTTPPort int = 8445
 )
 
 func main() {
-	optionalFields := []string{"source_addr_ton", "source_addr_npi", "dest_addr_ton", "dest_addr_npi"}
-	optionalFlags := make(map[string]*int)
-	for _, v := range optionalFields {
-		optionalFlags[v] = flag.Int(v, 0, fmt.Sprintf("Optional %s field", v))
-	}
 
-	flag.Parse()
-	if *username == "" || *password == "" {
-		flag.Usage()
-		os.Exit(1)
-	}
-	// connect and bind
-	s := hsmpp.Sender{}
-	s.Connect(*host, *port, *username, *password)
-	defer s.Close()
-
-	params := smpp.Params{}
-	for _, v := range optionalFields {
-		if *optionalFlags[v] != 0 {
-			params[v] = *optionalFlags[v]
-		}
-	}
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		decoder := xml.NewDecoder(r.Body)
-		var e soap.SOAPEnvelope
+		var e soap.Envelope
 		err := decoder.Decode(&e)
 		if err != nil {
 			http.Error(w, "Couldn't understand soap request.", http.StatusBadRequest)
 			return
 		}
-		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
-		err = s.Send(e.Body.Request.Src, e.Body.Request.Dst, e.Body.Request.Message, e.Body.Request.Coding == 2, params)
+		s, err := db.GetSession()
 		if err != nil {
-			fmt.Fprintf(w, soap.SOAPResponse, "-1")
+			http.Error(w, "Couldn't connect to database.", http.StatusInternalServerError)
+			return
+		}
+		u, err := models.GetUser(s, e.Body.Request.Username)
+		if err != nil {
+			http.Error(w, "Username/password is wrong.", http.StatusUnauthorized)
+			return
+		}
+		if !u.Auth(e.Body.Request.Password) {
+			http.Error(w, "Username/password is wrong.", http.StatusUnauthorized)
+			return
+		}
+		q, err := queue.GetQueue("", "", 0)
+		config, err := models.GetConfig()
+		keys := config.GetKeys(u.ConnectionGroup)
+		var noKey string
+		var group smpp.ConnGroup
+		if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
+			http.Error(w, "User's connection group doesn't exist in configuration.", http.StatusUnauthorized)
+			return
+		}
+		enc := "latin"
+		if e.Body.Request.Coding == 2 {
+			enc = "ucs"
+		}
+		total := smpp.Total(e.Body.Request.Message, enc)
+
+		m := models.Message{
+			ConnectionGroup: u.ConnectionGroup,
+			Username:        u.Username,
+			Msg:             e.Body.Request.Message,
+			Enc:             enc,
+			Dst:             e.Body.Request.Dst,
+			Src:             e.Body.Request.Src,
+			QueuedAt:        time.Now().UTC().Unix(),
+			Status:          models.MsgQueued,
+			Total:           total,
+		}
+		msgID, err := m.Save()
+		if err != nil {
+			http.Error(w, "Couldn't save message.", http.StatusInternalServerError)
+			return
+		}
+		noKey = group.DefaultPfx
+		key := matchKey(keys, m.Dst, noKey)
+		qItem := queue.Item{
+			MsgID: msgID,
+			Total: total,
+		}
+		respJSON, _ := qItem.ToJSON()
+		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(0))
+		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
+		if err != nil {
+			fmt.Fprintf(w, soap.Response, "-1")
 		} else {
-			fmt.Fprintf(w, soap.SOAPResponse, "OK")
+			fmt.Fprintf(w, soap.Response, "OK")
 		}
 		return
 	})
@@ -72,7 +99,18 @@ func main() {
 		fmt.Fprintf(w, soap.WSDL, host)
 		return
 	})
-	go s.ReadPDUs()
 	log.Infof("Listening on port %s.", HTTPPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", HTTPPort), nil))
+}
+
+// Given a list of strings and a string,
+// this function returns a list item if large string starts with list item.
+// string in parameter noKey is returned if no matches could be found
+func matchKey(keys []string, str string, noKey string) string {
+	for _, key := range keys {
+		if strings.HasPrefix(str, key) {
+			return key
+		}
+	}
+	return noKey
 }

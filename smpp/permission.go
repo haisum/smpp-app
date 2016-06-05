@@ -26,6 +26,12 @@ const (
 	PermListCampaigns = "List campaigns"
 	// PermStartCampaign permission to start a campaign
 	PermStartCampaign = "Start a campaign"
+	// PermStopCampaign is permission to stop a running campaign
+	PermStopCampaign = "Stop campaign"
+	// PermRetryCampaign is permission to retry failed messages in campaign
+	PermRetryCampaign = "Retry campaign"
+	// PermGetStatus is permission to see status of running child processes via supervisord
+	PermGetStatus = "Get status of services"
 )
 
 // GetPermissions returns all valid permissions for a user
@@ -42,5 +48,8 @@ func GetPermissions() []Permission {
 		PermListNumFiles,
 		PermDeleteNumFile,
 		PermListCampaigns,
+		PermStopCampaign,
+		PermRetryCampaign,
+		PermGetStatus,
 	}
 }

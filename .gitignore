@@ -2,6 +2,7 @@
 /smppworker
 /httpserver
 /scheduler
+/soapservice
 /tlvworker
 /smppworker
 *.log

@@ -60,6 +60,15 @@ func (t *TplData) load(c smpp.Config) {
 				},
 			},
 		},
+		{
+			Name: "Soap",
+			Programs: []Program{
+				{
+					Name:    "soapservice",
+					Command: fmt.Sprintf("%s/./soapservice", path),
+				},
+			},
+		},
 	}
 }
 

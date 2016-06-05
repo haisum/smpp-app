@@ -67,6 +67,12 @@ func send(i queue.Item) {
 		}).Error("Failed in fetching message from db.")
 		return
 	}
+	if m.Status == models.MsgStopped {
+		log.Info("Message is stopped skipping.")
+		return
+	}
+	log.WithField("Status", m.Status).Info("Message Status")
+
 	if m.SendAfter != "" && m.SendBefore != "" {
 		afterParts := strings.Split(m.SendAfter, ":")
 		beforeParts := strings.Split(m.SendBefore, ":")

@@ -84,6 +84,8 @@ $.extend(app, {
             $('.materialize-textarea').characterCounter();
             app.renderCampaignFiles();
             app.renderCampaignList();
+            app.renderCampaignSelect();
+            $('ul.tabs').tabs();
             $('.datepicker').pickadate({
                 selectMonths: true, // Creates a dropdown to control month
                 selectYears: 15 // Creates a dropdown of 15 years to control year
@@ -115,6 +117,7 @@ $.extend(app, {
                     $("#campaign-form").find("button[type=submit]").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
                     Materialize.toast("All messages for campaign have been queued.", 5000);
                     app.renderCampaignList();
+                    app.renderCampaignSelect();
                 }).fail(function(xhr, status, errThrone){
                     if(xhr.status == 401) {
                         localStorage.removeItem("auth_token");
@@ -125,6 +128,58 @@ $.extend(app, {
                 });
                 return false;
             });
+            $("#stopcampaign").on("click", function(e){
+                e.preventDefault();
+                $("#stopcampaign").addClass("disabled").next(".preloader-wrapper").addClass("active");
+                $.ajax({
+                  url : "/api/campaign/stop",
+                  type: 'post',
+                  data : {
+                    Token : localStorage.getItem("auth_token"),
+                    CampaignID: $("#CampaignID").val()
+                  },
+                  dataType: 'json'
+                }).done(function(data){
+                    $("#stopcampaign").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+                    Materialize.toast(data.Response.Count + " pending messages have been stopped.", 5000);
+                    app.renderCampaignList();
+                }).fail(function(xhr, status, errThrone){
+                    if(xhr.status == 401) {
+                        localStorage.removeItem("auth_token");
+                        window.location.reload();
+                    }
+                    $("#stopcampaign").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+                    utils.showErrors(xhr.responseJSON.Errors);
+                });
+                return false;
+            });
+
+            $("#retrycampaign").on("click", function(e){
+                e.preventDefault();
+                $("#retrycampaign").addClass("disabled").next(".preloader-wrapper").addClass("active");
+                $.ajax({
+                  url : "/api/campaign/retry",
+                  type: 'post',
+                  data : {
+                    Token : localStorage.getItem("auth_token"),
+                    CampaignID: $("#CampaignID").val()
+                  },
+                  dataType: 'json'
+                }).done(function(data){
+                    $("#retrycampaign").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+                    Materialize.toast(data.Response.Count + " error messages have been re-queued.", 5000);
+                    app.renderCampaignList();
+                }).fail(function(xhr, status, errThrone){
+                    if(xhr.status == 401) {
+                        localStorage.removeItem("auth_token");
+                        window.location.reload();
+                    }
+                    $("#retrycampaign").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+                    utils.showErrors(xhr.responseJSON.Errors);
+                });
+                return false;
+            });
+
         });
     },
 });

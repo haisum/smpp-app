@@ -1,5 +1,11 @@
 <div class="card-panel">
   <div class="row">
+    <div class="col s12">
+      <ul class="tabs teal-text"  style="overflow:hidden;">
+        <li class="tab col s6 m4 l3"><a class="teal-text text-darken-1" href="#listfiles">Campaigns</a></li>
+        <li class="tab col s6 m4 l3 teal-text text-darken-2"><a class=" teal-text text-darken-2" href="#control-panel">Control Panel</a></li>
+      </ul>
+    </div>
     <div id="listfiles" class="col s12">
       <div class="row">
         <form class="col s12"  id="campaign-form">
@@ -63,7 +69,7 @@
                   <label class="active" for="ScheduledAt_date">Schedule At</label>
                 </div>
                 <div class="input-field col s6" style="margin-top:0px;">
-                  <input id="ScheduledAt_time" name="ScheduledAt_time" type="text" class="timepicker"">
+                  <input id="ScheduledAt_time" name="ScheduledAt_time" type="text" class="timepicker">
                 </div>
               </div>
             </div>
@@ -122,6 +128,62 @@
       </script>
       <div id="list-campaign">
       </div>
+    </div>
+    <div id="control-panel" class="col s12">
+      <div class="row">
+        <form class="col s12" id="controlpanel-form">
+          <div class="input-field col s12" id="CampaignIDSelect">
+            <select id="CampaignID" name="CampaignID">
+              <option value="1">Option 1</option>
+              <option value="2">Option 2</option>
+              <option value="3">Option 3</option>
+            </select>
+            <label for="CampaignID">Campaign</label>
+          </div>
+          <script id="CampaignID-template" type="text/x-handlebars-template">
+            <select id="CampaignID" name="CampaignID">
+              <option value="">--Choose One--</option>
+            {{#each Campaigns}}
+              <option value="{{ID}}">{{Description}}</option>
+            {{/each}}
+            </select>
+            <label for="CampaignID">Campaign</label>
+          </script>
+          <div class="input-field col s6">
+            <button class="btn teal waves-effect waves-light" id="retrycampaign" name="action">Restart Failed
+              <i class="mdi-content-send right"></i>
+            </button>
+            <div class="preloader-wrapper small preloader-top">
+              <div class="spinner-layer spinner-green-only">
+                <div class="circle-clipper left">
+                  <div class="circle"></div>
+                </div><div class="gap-patch">
+                  <div class="circle"></div>
+                </div><div class="circle-clipper right">
+                  <div class="circle"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="input-field col s6">
+            <button class="btn teal waves-effect waves-light" id="stopcampaign" name="action">Stop Campaign
+              <i class="mdi-content-send right"></i>
+            </button>
+            <div class="preloader-wrapper small preloader-top">
+              <div class="spinner-layer spinner-green-only">
+                <div class="circle-clipper left">
+                  <div class="circle"></div>
+                </div><div class="gap-patch">
+                  <div class="circle"></div>
+                </div><div class="circle-clipper right">
+                  <div class="circle"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
     </div>
   </div>
 </div>

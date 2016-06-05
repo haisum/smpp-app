@@ -37,6 +37,8 @@ const (
      <element name="sender" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
      <element name="smsText" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
      <element name="coding" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
+		 <element name="username" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
+		 <element name="password" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
     </sequence>
    </complexType>
   </element>

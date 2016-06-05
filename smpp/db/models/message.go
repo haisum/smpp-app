@@ -191,6 +191,42 @@ func GetMessage(id string) (Message, error) {
 	return m, nil
 }
 
+// StopPendingMessages marks stopped as true in all messages which are queued or scheduled in a campaign
+func StopPendingMessages(campID string) (int, error) {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Error("Couldn't get session.")
+		return 0, err
+	}
+	resp, err := r.DB(db.DBName).Table("Message").GetAllByIndex("CampaignID", campID).Filter(r.Row.Field("Status").Eq(MsgQueued).Or(r.Row.Field("Status").Eq(MsgScheduled))).Update(map[string]MessageStatus{"Status": MsgStopped}).RunWrite(s)
+	if err != nil {
+		log.WithError(err).Error("Couldn't run query")
+		return 0, err
+	}
+	return resp.Replaced, nil
+}
+
+// GetErrorMessages returns all messages with status error in a campaign
+func GetErrorMessages(campID string) ([]Message, error) {
+	s, err := db.GetSession()
+	var m []Message
+	if err != nil {
+		log.WithError(err).Error("Couldn't get session.")
+		return m, err
+	}
+	cur, err := r.DB(db.DBName).Table("Message").GetAllByIndex("CampaignID", campID).Filter(r.Row.Field("Status").Eq(MsgError)).Run(s)
+	if err != nil {
+		log.WithError(err).Error("Couldn't run query")
+		return m, err
+	}
+	defer cur.Close()
+	err = cur.All(&m)
+	if err != nil {
+		log.WithError(err).Error("Couldn't load messages")
+	}
+	return m, err
+}
+
 // GetMessages filters messages based on criteria
 func GetMessages(c MessageCriteria) ([]Message, error) {
 	var m []Message

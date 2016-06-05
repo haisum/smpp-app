@@ -23,9 +23,8 @@ type messagesRequest struct {
 }
 
 type messagesResponse struct {
-	Messages   []models.Message
-	Stats      models.MessageStats
-	Throughput string
+	Messages []models.Message
+	Stats    models.MessageStats
 }
 
 // MessagesHandler allows adding a user to database
@@ -95,9 +94,6 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		toCsv(w, r, messages, uReq.TZ)
 	} else {
 		uResp.Messages = messages
-		if len(messages) > 1 && messages[0].QueuedAt != 0 && messages[len(messages)-1].SentAt != 0 {
-			uResp.Throughput = strconv.FormatFloat(float64(len(messages)*messages[0].Total)/float64(messages[len(messages)-1].SentAt-messages[0].QueuedAt), 'f', 2, 64)
-		}
 		resp.Obj = uResp
 		resp.Ok = true
 		resp.Request = uReq
@@ -108,9 +104,6 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string) {
 	b := &bytes.Buffer{}
 	wr := csv.NewWriter(b)
-	if len(m) > 1 && m[0].QueuedAt != 0 && m[len(m)-1].SentAt != 0 {
-		wr.Write([]string{"Throughput:", strconv.FormatFloat(float64(len(m)*m[0].Total)/float64(m[len(m)-1].SentAt-m[0].QueuedAt), 'f', 2, 64) + "m/s"})
-	}
 	wr.Write([]string{
 		"ID",
 		"Connection",

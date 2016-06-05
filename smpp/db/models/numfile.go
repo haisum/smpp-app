@@ -109,6 +109,10 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	}
 	t := r.DB(db.DBName).Table("NumFile")
 
+	if c.ID != "" {
+		t = t.Get(c.ID)
+	}
+
 	var from interface{}
 	if c.From != "" {
 		if c.OrderByKey == "SubmittedAt" {
@@ -129,7 +133,6 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	}
 	t = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
-		"id":        c.ID,
 		"LocalName": c.LocalName,
 		"Username":  c.Username,
 		"UserID":    c.UserID,
