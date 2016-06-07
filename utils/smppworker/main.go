@@ -12,6 +12,7 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	log "github.com/Sirupsen/logrus"
 	smppstatus "github.com/fiorix/go-smpp/smpp"
@@ -194,6 +195,7 @@ func bind() {
 }
 
 func main() {
+	go license.CheckExpiry()
 	flag.Parse()
 	if *connid == "" {
 		flag.Usage()

@@ -10,17 +10,19 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/soap"
 	log "github.com/Sirupsen/logrus"
 )
 
 const (
+	//HTTPPort is port on which soapservice listens
 	HTTPPort int = 8445
 )
 
 func main() {
-
+	go license.CheckExpiry()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		decoder := xml.NewDecoder(r.Body)
 		var e soap.Envelope

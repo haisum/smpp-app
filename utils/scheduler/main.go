@@ -9,10 +9,12 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 )
 
 func main() {
+	go license.CheckExpiry()
 	tick := time.NewTicker(time.Minute * 2)
 	defer tick.Stop()
 	q, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)

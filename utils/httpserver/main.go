@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/campaign"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/file"
@@ -28,6 +29,7 @@ var (
 )
 
 func main() {
+	go license.CheckExpiry()
 	flag.Parse()
 	log.Info("Connecting database.")
 	s, err := db.GetSession()
