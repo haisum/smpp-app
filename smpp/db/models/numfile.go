@@ -111,6 +111,17 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 
 	if c.ID != "" {
 		t = t.Get(c.ID)
+		cur, errR := t.Run(s)
+		if errR != nil {
+			log.WithError(errR).Error("Couldn't run query.")
+			return f, errR
+		}
+		defer cur.Close()
+		errR = cur.All(&f)
+		if err != nil {
+			log.WithError(errR).Error("Couldn't load files.")
+		}
+		return f, errR
 	}
 
 	var from interface{}

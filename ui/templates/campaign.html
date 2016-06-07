@@ -149,7 +149,7 @@
             </select>
             <label for="CampaignID">Campaign</label>
           </script>
-          <div class="input-field col s6">
+          <div class="input-field col s4">
             <button class="btn teal waves-effect waves-light" id="retrycampaign" name="action">Restart Failed
               <i class="mdi-content-send right"></i>
             </button>
@@ -165,7 +165,7 @@
               </div>
             </div>
           </div>
-          <div class="input-field col s6">
+          <div class="input-field col s4">
             <button class="btn teal waves-effect waves-light" id="stopcampaign" name="action">Stop Campaign
               <i class="mdi-content-send right"></i>
             </button>
@@ -181,9 +181,55 @@
               </div>
             </div>
           </div>
+          <div class="input-field col s4">
+            <button class="btn teal waves-effect waves-light" id="campaignreport" name="action">Get Report
+              <i class="mdi-content-send right"></i>
+            </button>
+            <div class="preloader-wrapper small preloader-top">
+              <div class="spinner-layer spinner-green-only">
+                <div class="circle-clipper left">
+                  <div class="circle"></div>
+                </div><div class="gap-patch">
+                  <div class="circle"></div>
+                </div><div class="circle-clipper right">
+                  <div class="circle"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </form>
+        <div class="row">
+          <div class="col s12"  id="report-container">
+          </div>
+          <script id="campaignreport-template" type="text/x-handlebars-template">
+            <table class="striped responsive-table">
+              <thead>
+                <tr>
+                    <th data-field="name">Total Records</th>
+                    <th data-field="price">Total Messages</th>
+                    <th data-field="id">Start Time</th>
+                    <th data-field="id">End Time</th>
+                    <th data-field="id">Total Time</th>
+                    <th data-field="id">Throughput</th>
+                    <th data-field="id">Throughput per Connection</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{{Total}}</td>
+                  <td>{{TotalMsgs}}</td>
+                  <td>{{prettyDate FirstQueued}}</td>
+                  <td>{{prettyDate LastSent}}</td>
+                  <td>{{TotalTime}}</td>
+                  <td>{{Throughput}}</td>
+                  <td>{{PerConnection}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </script>
+
+        </div>
       </div>
-    </div>
     </div>
   </div>
 </div>

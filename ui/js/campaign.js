@@ -153,7 +153,33 @@ $.extend(app, {
                 });
                 return false;
             });
-
+            $("#campaignreport").on("click", function(e){
+                e.preventDefault();
+                $("#campaignreport").addClass("disabled").next(".preloader-wrapper").addClass("active");
+                $.ajax({
+                  url : "/api/campaign/report",
+                  type: 'get',
+                  data : {
+                    Token : localStorage.getItem("auth_token"),
+                    CampaignID: $("#CampaignID").val()
+                  },
+                  dataType: 'json'
+                }).done(function(data){
+                    $("#campaignreport").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+                    var source   = $("#campaignreport-template").html();
+                    var template = Handlebars.compile(source);
+                    var html    = template(data.Response);
+                    $("#report-container").html(html);
+                }).fail(function(xhr, status, errThrone){
+                    if(xhr.status == 401) {
+                        localStorage.removeItem("auth_token");
+                        window.location.reload();
+                    }
+                    $("#campaignreport").removeClass("disabled").next(".preloader-wrapper").removeClass("active");
+                    utils.showErrors(xhr.responseJSON.Errors);
+                });
+                return false;
+            });
             $("#retrycampaign").on("click", function(e){
                 e.preventDefault();
                 $("#retrycampaign").addClass("disabled").next(".preloader-wrapper").addClass("active");

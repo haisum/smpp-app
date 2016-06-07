@@ -123,7 +123,6 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	q, err := queue.GetQueue("", "", 0)
 	config, err := models.GetConfig()
 	keys := config.GetKeys(u.ConnectionGroup)
-	var noKey string
 	var group smpp.ConnGroup
 	if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
 		log.WithField("ConnectionGroup", u.ConnectionGroup).Error("User's connection group doesn't exist in configuration.")
@@ -139,6 +138,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
+	noKey := group.DefaultPfx
 	errCh := make(chan error, 1)
 	okCh := make(chan bool, len(numbers))
 	burstCh := make(chan int, 1000)
@@ -179,7 +179,6 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				return
 			}
 			if m.ScheduledAt == 0 {
-				noKey = group.DefaultPfx
 				key := matchKey(keys, nr.Destination, noKey)
 				qItem := queue.Item{
 					MsgID: msgID,
