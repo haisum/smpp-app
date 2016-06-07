@@ -9,6 +9,7 @@ import (
 type Item struct {
 	MsgID string
 	Total int
+	Msg   string
 }
 
 // FromJSON parses json and sets attributes in Item struct

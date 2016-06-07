@@ -3,6 +3,7 @@ package message
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ type messageReq struct {
 	ScheduledAt int64
 	SendBefore  string
 	SendAfter   string
+	Mask        bool
 }
 
 type messageResponse struct {
@@ -56,6 +58,11 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermSendMessage); !ok {
 		return
+	}
+	if uReq.Mask {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermMask); !ok {
+			return
+		}
 	}
 	if errors := validateMsg(uReq); len(errors) != 0 {
 		log.WithField("errors", errors).Error("Validation failed.")
@@ -110,6 +117,16 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		SendBefore:      uReq.SendBefore,
 		Total:           total,
 	}
+	msg := uReq.Msg
+	if uReq.Mask {
+		re := regexp.MustCompile("\\[\\[[^\\]]*\\]\\]")
+		bs := re.FindAll([]byte(msg), -1)
+		for i := 0; i < len(bs); i++ {
+			val := strings.Trim(string(bs[i]), "[]")
+			msg = strings.Replace(msg, "[["+val+"]]", val, -1)
+			m.Msg = strings.Replace(m.Msg, "[["+val+"]]", strings.Repeat("X", len(val)), -1)
+		}
+	}
 	msgID, err := m.Save()
 	if err != nil {
 		log.WithField("err", err).Error("Couldn't insert in db.")
@@ -131,6 +148,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		qItem := queue.Item{
 			MsgID: msgID,
 			Total: total,
+			Msg:   msg,
 		}
 		respJSON, _ := qItem.ToJSON()
 		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))

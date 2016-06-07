@@ -101,7 +101,7 @@ func send(i queue.Item) {
 			return
 		}
 	}
-	respID, err := s.Send(m.Src, m.Dst, m.Enc, m.Msg, i.Total)
+	respID, err := s.Send(m.Src, m.Dst, m.Enc, i.Msg, i.Total)
 	sent := time.Now().UTC().Unix()
 	if err != nil {
 		log.WithFields(log.Fields{

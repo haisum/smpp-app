@@ -3,6 +3,7 @@ package campaign
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +27,7 @@ type campaignRequest struct {
 	ScheduledAt int64
 	SendBefore  string
 	SendAfter   string
+	Mask        bool
 }
 
 type campaignResponse struct {
@@ -56,6 +58,11 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermStartCampaign); !ok {
 		return
+	}
+	if uReq.Mask {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermMask); !ok {
+			return
+		}
 	}
 	files, err := models.GetNumFiles(models.NumFileCriteria{
 		ID: uReq.FileID,
@@ -106,6 +113,16 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
+	msg := uReq.Msg
+	if uReq.Mask {
+		re := regexp.MustCompile("\\[\\[[^\\]]*\\]\\]")
+		bs := re.FindAll([]byte(msg), -1)
+		for i := 0; i < len(bs); i++ {
+			val := strings.Trim(string(bs[i]), "[]")
+			msg = strings.Replace(msg, "[["+val+"]]", val, -1)
+			c.Msg = strings.Replace(c.Msg, "[["+val+"]]", strings.Repeat("X", len(val)), -1)
+		}
+	}
 	campaignID, err := c.Save()
 	if err != nil {
 		log.WithError(err).Error("Couldn't save campaign.")
@@ -153,14 +170,13 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				queuedTime = 0
 				status = models.MsgScheduled
 			}
-			msg := uReq.Msg
 			for search, replace := range nr.Params {
 				msg = strings.Replace(msg, "{{"+search+"}}", replace, -1)
 			}
 			m := models.Message{
 				ConnectionGroup: u.ConnectionGroup,
 				Username:        u.Username,
-				Msg:             msg,
+				Msg:             c.Msg,
 				Enc:             uReq.Enc,
 				Dst:             nr.Destination,
 				Src:             uReq.Src,
@@ -183,6 +199,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				qItem := queue.Item{
 					MsgID: msgID,
 					Total: total,
+					Msg:   msg,
 				}
 				respJSON, _ := qItem.ToJSON()
 				errP := q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))

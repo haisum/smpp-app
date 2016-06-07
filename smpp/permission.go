@@ -32,6 +32,8 @@ const (
 	PermRetryCampaign = "Retry campaign"
 	// PermGetStatus is permission to see status of running child processes via supervisord
 	PermGetStatus = "Get status of services"
+	// PermMask is permission to mask messages
+	PermMask = "Mask Messages"
 )
 
 // GetPermissions returns all valid permissions for a user
@@ -51,5 +53,6 @@ func GetPermissions() []Permission {
 		PermStopCampaign,
 		PermRetryCampaign,
 		PermGetStatus,
+		PermMask,
 	}
 }
