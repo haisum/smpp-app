@@ -45,7 +45,7 @@ func main() {
 			http.Error(w, "Username/password is wrong.", http.StatusUnauthorized)
 			return
 		}
-		q, err := queue.GetQueue("", "", 0)
+		q, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
 		config, err := models.GetConfig()
 		keys := config.GetKeys(u.ConnectionGroup)
 		var noKey string

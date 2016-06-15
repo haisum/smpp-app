@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+	"os"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
@@ -81,13 +82,13 @@ func (r *Rabbit) connect() error {
 	}
 	log.Info("Connection Successful. Creating channel.")
 	r.Ch, err = r.Conn.Channel()
-	r.Ch.Qos(r.pCount, 0, false)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"url": r.url,
 			"err": err,
 		}).Error("Failed to create channel.")
 	}
+	r.Ch.Qos(r.pCount, 0, false)
 	return err
 }
 
@@ -125,9 +126,24 @@ func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
 		})
 	if err != nil {
 		log.WithFields(log.Fields{
-			"msg": msg,
+			"msg": string(msg),
 			"err": err,
-		}).Error("Error in publishing message.")
+		}).Error("Error in publishing message. Retrying.")
+		r.Init(r.url, r.ex, r.pCount)
+		err = r.Ch.Publish(
+			r.ex,  // exchange
+			key,   // routing key
+			false, // mandatory
+			false, // immediate
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        msg,
+				Priority:    uint8(priority),
+			})
+		if err != nil {
+			log.WithError(err).Error("Failed connecting to rabbitmq. Aborting.")
+			os.Exit(2)
+		}
 	}
 	return err
 }

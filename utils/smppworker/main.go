@@ -20,12 +20,20 @@ import (
 )
 
 var (
-	c      *smpp.Config
-	s      *smpp.Sender
-	sconn  *smpp.Conn
-	connid = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
-	group  = flag.String("group", "", "Group name of connection.")
-	tick   *time.Ticker
+	c       *smpp.Config
+	s       *smpp.Sender
+	sconn   *smpp.Conn
+	connid  = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
+	group   = flag.String("group", "", "Group name of connection.")
+	tick    *time.Ticker
+	errTick *time.Ticker
+)
+
+const (
+	//ThrottlingError is 0x00000058 status
+	ThrottlingError = "throttling error"
+	//MsgQFull is 0x00000014 in status
+	MsgQFull = "message queue full"
 )
 
 // Handler is called by rabbitmq library after a queue has been bound/
@@ -102,8 +110,21 @@ func send(i queue.Item) {
 			return
 		}
 	}
-	respID, err := s.Send(m.Src, m.Dst, m.Enc, i.Msg, i.Total)
+	var respID string
 	sent := time.Now().UTC().Unix()
+	for j := 1; j <= 10; j++ {
+		respID, err = s.Send(m.Src, m.Dst, m.Enc, i.Msg, i.Total)
+		if err != nil {
+			if err.Error() != ThrottlingError && err.Error() != MsgQFull {
+				break
+			} else {
+				log.WithError(err).Infof("Error occured, retrying for %d time.", j)
+				<-errTick.C
+			}
+		} else {
+			break
+		}
+	}
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Src":    m.Src,
@@ -181,6 +202,7 @@ func bind() {
 	}
 	rate := time.Second / time.Duration(sconn.Size)
 	tick = time.NewTicker(rate)
+	errTick = time.NewTicker(rate * 2)
 	defer tick.Stop()
 	log.WithField("Pfxs", sconn.Pfxs).Info("Binding to routing keys")
 	err = r.Bind(*group, sconn.Pfxs, handler)
