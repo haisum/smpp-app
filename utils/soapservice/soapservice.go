@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,25 +25,26 @@ const (
 func main() {
 	go license.CheckExpiry()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 		decoder := xml.NewDecoder(r.Body)
 		var e soap.Envelope
 		err := decoder.Decode(&e)
 		if err != nil {
-			http.Error(w, "Couldn't understand soap request.", http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't understand soap request."), http.StatusBadRequest)
 			return
 		}
 		s, err := db.GetSession()
 		if err != nil {
-			http.Error(w, "Couldn't connect to database.", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't connect to database."), http.StatusInternalServerError)
 			return
 		}
 		u, err := models.GetUser(s, e.Body.Request.Username)
 		if err != nil {
-			http.Error(w, "Username/password is wrong.", http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong."), http.StatusUnauthorized)
 			return
 		}
 		if !u.Auth(e.Body.Request.Password) {
-			http.Error(w, "Username/password is wrong.", http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong."), http.StatusUnauthorized)
 			return
 		}
 		q, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
@@ -51,7 +53,7 @@ func main() {
 		var noKey string
 		var group smpp.ConnGroup
 		if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
-			http.Error(w, "User's connection group doesn't exist in configuration.", http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(soap.Response, "User's connection group doesn't exist in configuration."), http.StatusUnauthorized)
 			return
 		}
 		enc := "latin"
@@ -70,10 +72,17 @@ func main() {
 			QueuedAt:        time.Now().UTC().Unix(),
 			Status:          models.MsgQueued,
 			Total:           total,
+			SendAfter:       e.Body.Request.SendAfter,
+			SendBefore:      e.Body.Request.SendBefore,
+		}
+		errors := m.Validate()
+		if len(errors) != 0 {
+			http.Error(w, fmt.Sprintf(soap.Response, strings.Join(errors, "\n")), http.StatusBadRequest)
+			return
 		}
 		msgID, err := m.Save()
 		if err != nil {
-			http.Error(w, "Couldn't save message.", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't save message."), http.StatusInternalServerError)
 			return
 		}
 		noKey = group.DefaultPfx
@@ -84,7 +93,6 @@ func main() {
 		}
 		respJSON, _ := qItem.ToJSON()
 		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(0))
-		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 		if err != nil {
 			fmt.Fprintf(w, soap.Response, "-1")
 		} else {
@@ -94,11 +102,15 @@ func main() {
 	})
 	http.HandleFunc("/wsdl", func(w http.ResponseWriter, r *http.Request) {
 		host := r.FormValue("host")
+		port := r.FormValue("port")
 		if host == "" {
 			host = "localhost"
 		}
+		if port == "" {
+			port = strconv.Itoa(HTTPPort)
+		}
 		w.Header().Set("Content-Type", "text/xml")
-		fmt.Fprintf(w, soap.WSDL, host)
+		fmt.Fprintf(w, soap.WSDL, host, port)
 		return
 	})
 	log.Infof("Listening on port %s.", HTTPPort)

@@ -102,6 +102,8 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		SendBefore:  uReq.SendBefore,
 		SendAfter:   uReq.SendAfter,
 		ScheduledAt: uReq.ScheduledAt,
+		UserID:      u.ID,
+		Username:    u.Username,
 	}
 
 	if errors := validateCampaign(uReq); len(errors) != 0 {

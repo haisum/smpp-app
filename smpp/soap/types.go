@@ -12,10 +12,12 @@ type Body struct {
 
 // Req has all input fields
 type Req struct {
-	Dst      string `xml:"toMobile"`
-	Src      string `xml:"sender"`
-	Message  string `xml:"smsText"`
-	Coding   int    `xml:"coding"`
-	Username string `xml:"username"`
-	Password string `xml:"password"`
+	Dst        string `xml:"toMobile"`
+	Src        string `xml:"sender"`
+	Message    string `xml:"smsText"`
+	Coding     int    `xml:"coding"`
+	Username   string `xml:"username"`
+	Password   string `xml:"password"`
+	SendAfter  string `xml:"sendAfter"`
+	SendBefore string `xml:"sendBefore"`
 }

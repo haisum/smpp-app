@@ -11,9 +11,8 @@ import (
 
 type campaignsRequest struct {
 	models.CampaignCriteria
-	URL      string
-	Token    string
-	Username string
+	URL   string
+	Token string
 }
 
 type campaignsResponse struct {

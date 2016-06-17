@@ -18,10 +18,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
     config.vm.network "forwarded_port", guest: 8443, host: 8443
+    config.vm.network "forwarded_port", guest: 8445, host: 8445
     config.vm.network "forwarded_port", guest: 9001, host: 9001
     config.vm.network "forwarded_port", guest: 8080, host: 8080
     config.vm.network "forwarded_port", guest: 15672, host: 15672
-  
+
   #
   # Run Ansible from the Vagrant Host
   #

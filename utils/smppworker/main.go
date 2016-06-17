@@ -115,7 +115,7 @@ func send(i queue.Item) {
 	for j := 1; j <= 10; j++ {
 		respID, err = s.Send(m.Src, m.Dst, m.Enc, i.Msg, i.Total)
 		if err != nil {
-			if err.Error() != ThrottlingError && err.Error() != MsgQFull {
+			if err.Error() != ThrottlingError {
 				break
 			} else {
 				log.WithError(err).Infof("Error occured, retrying for %d time.", j)

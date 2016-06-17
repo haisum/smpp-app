@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
@@ -331,7 +332,7 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		if c.CampaignID != "" {
 			t = t.GetAllByIndex("CampaignID", c.CampaignID)
 			c.CampaignID = ""
-		} else if c.Username != "" {
+		} else if c.Username != "" && !strings.HasPrefix(c.Username, "(re)") {
 			t = t.GetAllByIndex("Username", c.Username)
 			c.Username = ""
 		} else if c.RespID != "" {
@@ -369,7 +370,13 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		"Status":          string(c.Status),
 		"CampaignID":      c.CampaignID,
 		"Error":           c.Error,
-		"Username":        c.Username,
+	}
+	if !strings.HasPrefix(c.Username, "(re)") {
+		strFields["Username"] = c.Username
+	} else {
+		t = t.Filter(func(t r.Term) r.Term {
+			return t.Field("Username").Match(strings.TrimPrefix(c.Username, "(re)"))
+		})
 	}
 	t = filterEqStr(strFields, t)
 	if c.Msg != "" {
@@ -390,4 +397,52 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		t = orderBy(c.OrderByKey, c.OrderByDir, from, t, true)
 	}
 	return t
+}
+
+// Validate validates a message and returns error messages if any
+func (m *Message) Validate() []string {
+	var errors []string
+	if m.Dst == "" {
+		errors = append(errors, "Destination can't be empty.")
+	}
+	if m.Msg == "" {
+		errors = append(errors, "Can't send empty message")
+	}
+	if m.Src == "" {
+		errors = append(errors, "Source address can't be empty.")
+	}
+	if m.Enc != "ucs" && m.Enc != "latin" {
+		errors = append(errors, "Encoding can either be latin or UCS")
+	}
+	if (m.SendAfter == "" && m.SendBefore != "") || (m.SendBefore == "" && m.SendAfter != "") {
+		errors = append(errors, "Send before time and Send after time, both should be provided at a time.")
+	}
+	parts := strings.Split(m.SendAfter, ":")
+	if m.SendAfter != "" {
+		if len(parts) != 2 {
+			errors = append(errors, "Send after must be of 24 hour format such as \"09:00\".")
+		} else {
+			hour, errH := strconv.ParseInt(parts[0], 10, 32)
+			minute, errM := strconv.ParseInt(parts[1], 10, 32)
+			if errH != nil || errM != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+
+				errors = append(errors, "Send after must be of 24 hour format such as \"09:00\".")
+			}
+		}
+	}
+	parts = strings.Split(m.SendBefore, ":")
+	if m.SendBefore != "" {
+		if len(parts) != 2 {
+
+			errors = append(errors, "Send before must be of 24 hour format such as \"09:00\".")
+		} else {
+			hour, errH := strconv.ParseInt(parts[0], 10, 32)
+			minute, errM := strconv.ParseInt(parts[1], 10, 32)
+			if errH != nil || errM != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+
+				errors = append(errors, "Send before must be of 24 hour format such as \"09:00\".")
+			}
+		}
+	}
+	return errors
 }

@@ -33,12 +33,14 @@ const (
   <element name="SendSMS2">
    <complexType>
     <sequence>
-     <element name="toMobile" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
-     <element name="sender" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
-     <element name="smsText" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
+     <element name="toMobile" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
+     <element name="sender" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
+     <element name="smsText" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
      <element name="coding" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
-		 <element name="username" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
-		 <element name="password" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
+		 <element name="username" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
+		 <element name="password" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
+		 <element name="sendAfter" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
+		 <element name="sendBefore" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
     </sequence>
    </complexType>
   </element>
@@ -87,7 +89,7 @@ const (
 <service name="Service">
  <documentation>Connection Software SOAP Web Services API v5.7 (Primary Server)</documentation>
  <port name="Service" binding="tns:Service">
-  <SOAP:address location="http://%s"/>
+  <SOAP:address location="http://%s:%s"/>
  </port>
 </service>
 
