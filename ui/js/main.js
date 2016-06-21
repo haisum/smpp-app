@@ -38,7 +38,8 @@ var app = {
                     "#!files" : app.renderFiles,
                     "#!reports": app.renderReports,
                     "#!users": app.renderUsers,
-                    "#!services": app.renderServices
+                    "#!services": app.renderServices,
+                    "#!sysstats": app.renderSysStats
                 };
                 if (routes[window.location.hash]){
                     routes[window.location.hash]();
@@ -55,6 +56,19 @@ var app = {
                 }
             });
         }
+    },
+    renderSysStats: function(){
+      if (!app.headerRendered) {
+          app.renderHeader(app.renderSysStats);
+          app.headerRendered = true;
+          return;
+      }
+      $(".menuitem").removeClass("active");
+      $(".menuitem.sysstats").addClass("active");
+      $("#page-title").html("System Stats");
+      $("#inner-content").html('<div class="video-container">\
+         <iframe width="540" height="200"  src="//localhost:3000/dashboard/snapshot/lNQVZGUdpbQPGAKOc17EXx53xotLtZYH"  frameborder="0" allowfullscreen></iframe>\
+      </div>');
     },
     renderLogin: function(){
         $("#page-center-css").remove();

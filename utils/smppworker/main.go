@@ -27,13 +27,12 @@ var (
 	group   = flag.String("group", "", "Group name of connection.")
 	tick    *time.Ticker
 	errTick *time.Ticker
+	bucket  chan int
 )
 
 const (
 	//ThrottlingError is 0x00000058 status
 	ThrottlingError = "throttling error"
-	//MsgQFull is 0x00000014 in status
-	MsgQFull = "message queue full"
 )
 
 // Handler is called by rabbitmq library after a queue has been bound/
@@ -112,17 +111,41 @@ func send(i queue.Item) {
 	}
 	var respID string
 	sent := time.Now().UTC().Unix()
-	for j := 1; j <= 10; j++ {
-		respID, err = s.Send(m.Src, m.Dst, m.Enc, i.Msg, i.Total)
-		if err != nil {
-			if err.Error() != ThrottlingError {
-				break
+	if i.Total == 1 {
+		for j := 1; j <= 10; j++ {
+			bucket <- 1
+			respID, err = s.Send(m.Src, m.Dst, m.Enc, i.Msg)
+			<-bucket
+			if err != nil {
+				if err.Error() != ThrottlingError {
+					break
+				} else {
+					log.WithError(err).Infof("Error occured, retrying for %d time.", j)
+					<-errTick.C
+				}
 			} else {
-				log.WithError(err).Infof("Error occured, retrying for %d time.", j)
-				<-errTick.C
+				break
 			}
-		} else {
-			break
+		}
+	} else {
+		sm, parts := s.SplitLong(m.Src, m.Dst, m.Enc, i.Msg)
+		for i, p := range parts {
+			for j := 1; j <= 10; j++ {
+				bucket <- 1
+				respID, err = s.SendPart(sm, p)
+				<-bucket
+				log.WithField("part", i+1).Info("Sent part")
+				if err != nil {
+					if err.Error() != ThrottlingError {
+						break
+					} else {
+						log.WithError(err).Infof("Error occured, retrying for %d time.", j)
+						<-errTick.C
+					}
+				} else {
+					break
+				}
+			}
 		}
 	}
 	if err != nil {
@@ -152,15 +175,13 @@ func send(i queue.Item) {
 }
 
 // When SIGTERM or SIGINT is received, this routine will make sure we shutdown our queues and finish in progress jobs
-func gracefulShutdown(r *queue.Rabbit) {
+func gracefulShutdown() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt)
 	signal.Notify(sig, syscall.SIGTERM)
 	go func() {
 		<-sig
 		log.Print("Sutting down gracefully.")
-		r.Close()
-		s.Tx.Close()
 		os.Exit(0)
 	}()
 }
@@ -184,6 +205,7 @@ func bind() {
 	}).Info("Dialing")
 	s = &smpp.Sender{}
 	s.Connect(sconn.URL, sconn.User, sconn.Passwd, receiver)
+	defer s.Tx.Close()
 	s.Fields = sconn.Fields
 	log.Info("Waiting for smpp connection")
 	select {
@@ -202,15 +224,20 @@ func bind() {
 	}
 	rate := time.Second / time.Duration(sconn.Size)
 	tick = time.NewTicker(rate)
-	errTick = time.NewTicker(rate * 2)
 	defer tick.Stop()
+	errTick = time.NewTicker(rate * 2)
+	defer errTick.Stop()
+	//bucket helps in keeping at max Size concurrent network requests at a time
+	bucket = make(chan int, sconn.Size)
+	defer close(bucket)
 	log.WithField("Pfxs", sconn.Pfxs).Info("Binding to routing keys")
 	err = r.Bind(*group, sconn.Pfxs, handler)
+	defer r.Close()
 	if err != nil {
 		os.Exit(2)
 	}
 	//Listen for termination signals from OS
-	go gracefulShutdown(r)
+	go gracefulShutdown()
 
 	forever := make(<-chan int)
 	<-forever

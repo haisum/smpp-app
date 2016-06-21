@@ -27,6 +27,12 @@ nav .button-collapse i{
   top:12px;
 }
 
+iframe{
+  width: 1024px;
+  margin-top: 20px;
+  height: 600px;
+}
+
 @media only screen and (max-width: 992px){
     header, main, footer {
         padding-left: 0;

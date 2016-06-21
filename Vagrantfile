@@ -22,6 +22,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.network "forwarded_port", guest: 9001, host: 9001
     config.vm.network "forwarded_port", guest: 8080, host: 8080
     config.vm.network "forwarded_port", guest: 15672, host: 15672
+    config.vm.network "forwarded_port", guest: 3000, host: 3000
 
   #
   # Run Ansible from the Vagrant Host

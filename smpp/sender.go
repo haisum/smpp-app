@@ -3,15 +3,18 @@ package smpp
 import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp"
+	"github.com/fiorix/go-smpp/smpp/pdu"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
 )
 
 const (
 	esmClassUdhiMask uint8 = 0x40
 	//MaxLatinChars is number of characters allowed in single latin encoded text message
-	MaxLatinChars int = 160
+	MaxLatinChars = 160
 	//MaxUCSChars is number of characters allowed in single ucs encoded text message
-	MaxUCSChars int = 70
+	MaxUCSChars = 70
+	//EncUCS is string representation of ucs encoding
+	EncUCS = "ucs"
 )
 
 // Sender holds smpp transmitter and a channel indicating when smpp connection
@@ -61,7 +64,7 @@ func (s *Sender) Connect(addr, user, passwd string, handler smpp.HandlerFunc) {
 // Total counts number of messages in one text string
 func Total(msg, enc string) int {
 	var text pdutext.Codec
-	if enc == "ucs" {
+	if enc == EncUCS {
 		text = pdutext.UCS2(msg)
 	} else {
 		text = pdutext.Raw(msg)
@@ -73,18 +76,14 @@ func Total(msg, enc string) int {
 
 // Send sends sms to given source and destination with latin as encoding
 // or ucs if asked.
-func (s *Sender) Send(src, dst, enc, msg string, total int) (string, error) {
-	submitFunc := s.Tx.Submit
-	if total > 1 {
-		submitFunc = s.Tx.SubmitLongMsg
-	}
+func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
 	var text pdutext.Codec
-	if enc == "ucs" {
+	if enc == EncUCS {
 		text = pdutext.UCS2(msg)
 	} else {
 		text = pdutext.Raw(msg)
 	}
-	sm, err := submitFunc(&smpp.ShortMessage{
+	sm, err := s.Tx.Submit(&smpp.ShortMessage{
 		Src:                  src,
 		Dst:                  dst,
 		Text:                 text,
@@ -109,6 +108,49 @@ func (s *Sender) Send(src, dst, enc, msg string, total int) (string, error) {
 				"Text": msg,
 				"sm":   sm,
 			}).Error("Error in processing sms request because smpp is not connected.")
+		}
+		return "", err
+	}
+	return sm.RespID(), nil
+}
+
+//SplitLong splits a long message in parts and returns pdu.Body which can be sent individually using SendPart method
+func (s *Sender) SplitLong(src, dst, enc, msg string) (*smpp.ShortMessage, []pdu.Body) {
+	var text pdutext.Codec
+	if enc == EncUCS {
+		text = pdutext.UCS2(msg)
+	} else {
+		text = pdutext.Raw(msg)
+	}
+	sm := &smpp.ShortMessage{
+		Src:                  src,
+		Dst:                  dst,
+		Text:                 text,
+		ServiceType:          s.Fields.ServiceType,
+		SourceAddrTON:        s.Fields.SourceAddrTON,
+		SourceAddrNPI:        s.Fields.SourceAddrNPI,
+		DestAddrTON:          s.Fields.DestAddrTON,
+		DestAddrNPI:          s.Fields.DestAddrNPI,
+		ProtocolID:           s.Fields.ProtocolID,
+		PriorityFlag:         s.Fields.PriorityFlag,
+		ScheduleDeliveryTime: s.Fields.ScheduleDeliveryTime,
+		ReplaceIfPresentFlag: s.Fields.ReplaceIfPresentFlag,
+		SMDefaultMsgID:       s.Fields.SMDefaultMsgID,
+		Register:             smpp.FinalDeliveryReceipt,
+	}
+	return sm, s.Tx.SplitLong(sm)
+}
+
+// SendPart sends a part of long sms obtained from calling SplitLong message
+func (s *Sender) SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error) {
+	var err error
+	sm, err = s.Tx.SubmitPart(sm, p)
+	if err != nil {
+		if err == smpp.ErrNotConnected {
+			log.WithFields(log.Fields{
+				"sm": sm,
+				"p":  p,
+			}).Error("Error in processing partial sms send request because smpp is not connected.")
 		}
 		return "", err
 	}
