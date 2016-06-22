@@ -39,7 +39,8 @@ var app = {
                     "#!reports": app.renderReports,
                     "#!users": app.renderUsers,
                     "#!services": app.renderServices,
-                    "#!sysstats": app.renderSysStats
+                    "#!sysstats": app.renderSysStats,
+                    "#!smsstats": app.renderSMSStats
                 };
                 if (routes[window.location.hash]){
                     routes[window.location.hash]();
@@ -67,7 +68,20 @@ var app = {
       $(".menuitem.sysstats").addClass("active");
       $("#page-title").html("System Stats");
       $("#inner-content").html('<div class="video-container">\
-         <iframe width="540" height="200"  src="//localhost:3000/dashboard/snapshot/lNQVZGUdpbQPGAKOc17EXx53xotLtZYH"  frameborder="0" allowfullscreen></iframe>\
+         <iframe width="540" height="200"  src="https://' + window.location.hostname + ':3000/dashboard/db/system-stats?from=1466613264752&to=1466634864752"  frameborder="0" allowfullscreen></iframe>\
+      </div>');
+    },
+    renderSMSStats: function(){
+      if (!app.headerRendered) {
+          app.renderHeader(app.renderSMSStats);
+          app.headerRendered = true;
+          return;
+      }
+      $(".menuitem").removeClass("active");
+      $(".menuitem.smsstats").addClass("active");
+      $("#page-title").html("Sms Stats");
+      $("#inner-content").html('<div class="video-container">\
+         <iframe width="540" height="200"  src="https://' + window.location.hostname + ':3000/dashboard/db/sms-stats?from=1466634520671&to=1466634820671"  frameborder="0" allowfullscreen></iframe>\
       </div>');
     },
     renderLogin: function(){

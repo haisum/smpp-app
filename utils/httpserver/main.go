@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/influx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/campaign"
@@ -44,6 +45,11 @@ func main() {
 		log.WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
 	}
 	defer q.Close()
+	log.Info("Connecting to influxdb.")
+	_, err = influx.Connect("http://localhost:8086", "", "")
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't connect to influxdb")
+	}
 	r := mux.NewRouter()
 	r.Handle("/api/message", handlers.MethodHandler{"POST": message.MessageHandler})
 	r.Handle("/api/message/filter", message.MessagesHandler)

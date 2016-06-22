@@ -12,6 +12,7 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/influx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	log "github.com/Sirupsen/logrus"
@@ -110,11 +111,32 @@ func send(i queue.Item) {
 		}
 	}
 	var respID string
+
+	inf, err := influx.GetClient()
+	if err != nil {
+		log.WithError(err).Error("Couldn't get influxdb client")
+		os.Exit(2)
+	}
 	sent := time.Now().UTC().Unix()
 	if i.Total == 1 {
 		for j := 1; j <= 10; j++ {
 			bucket <- 1
+			start := time.Now()
 			respID, err = s.Send(m.Src, m.Dst, m.Enc, i.Msg)
+			go inf.AddPoint(&influx.Point{
+				Measurement: "message",
+				Tags: influx.Tags{
+					"Connection":      sconn.ID,
+					"ConnectionGroup": m.ConnectionGroup,
+					"User":            m.Username,
+					"Src":             m.Src,
+				},
+				Fields: influx.Fields{
+					"total":    1.0,
+					"duration": time.Now().Sub(start).Seconds(),
+				},
+				Time: time.Now(),
+			})
 			<-bucket
 			if err != nil {
 				if err.Error() != ThrottlingError {
@@ -132,7 +154,22 @@ func send(i queue.Item) {
 		for i, p := range parts {
 			for j := 1; j <= 10; j++ {
 				bucket <- 1
+				start := time.Now()
 				respID, err = s.SendPart(sm, p)
+				go inf.AddPoint(&influx.Point{
+					Measurement: "message",
+					Tags: influx.Tags{
+						"Connection":      sconn.ID,
+						"ConnectionGroup": m.ConnectionGroup,
+						"User":            m.Username,
+						"Src":             m.Src,
+					},
+					Fields: influx.Fields{
+						"total":    1.0,
+						"duration": time.Now().Sub(start).Seconds(),
+					},
+					Time: time.Now(),
+				})
 				<-bucket
 				log.WithField("part", i+1).Info("Sent part")
 				if err != nil {
@@ -220,8 +257,16 @@ func bind() {
 	}
 	r, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
 	if err != nil {
+		log.WithError(err).Error("Couldn't get queue")
 		os.Exit(2)
 	}
+	cl, err := influx.Connect("http://localhost:8086", "", "")
+	if err != nil {
+		log.WithError(err).Error("Couldn't connect to influxdb")
+		os.Exit(2)
+	}
+	defer cl.Close()
+	go writeInfluxBatch()
 	rate := time.Second / time.Duration(sconn.Size)
 	tick = time.NewTicker(rate)
 	defer tick.Stop()
