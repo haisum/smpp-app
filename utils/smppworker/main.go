@@ -21,14 +21,14 @@ import (
 )
 
 var (
-	c       *smpp.Config
-	s       *smpp.Sender
-	sconn   *smpp.Conn
-	connid  = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
-	group   = flag.String("group", "", "Group name of connection.")
-	tick    *time.Ticker
-	errTick *time.Ticker
-	bucket  chan int
+	c        *smpp.Config
+	s        *smpp.Sender
+	sconn    *smpp.Conn
+	connid   = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
+	group    = flag.String("group", "", "Group name of connection.")
+	dlvTick  *time.Ticker
+	sendTick *time.Ticker
+	bucket   chan int
 )
 
 const (
@@ -52,9 +52,9 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 			d.Nack(false, true)
 			return
 		}
-		<-tick.C
+		<-dlvTick.C
 		for c := 1; c < i.Total; c++ {
-			<-tick.C
+			<-dlvTick.C
 		}
 		go send(i)
 		d.Ack(false)
@@ -117,10 +117,14 @@ func send(i queue.Item) {
 		log.WithError(err).Error("Couldn't get influxdb client")
 		os.Exit(2)
 	}
-	sent := time.Now().UTC().Unix()
+	sent := int64(0)
 	if i.Total == 1 {
 		for j := 1; j <= 10; j++ {
 			bucket <- 1
+			if sent == 0 {
+				sent = time.Now().UTC().Unix()
+			}
+			<-sendTick.C
 			start := time.Now()
 			respID, err = s.Send(m.Src, m.Dst, m.Enc, i.Msg)
 			go inf.AddPoint(&influx.Point{
@@ -141,19 +145,20 @@ func send(i queue.Item) {
 			if err != nil {
 				if err.Error() != ThrottlingError {
 					break
-				} else {
-					log.WithError(err).Infof("Error occured, retrying for %d time.", j)
-					<-errTick.C
 				}
-			} else {
-				break
+				log.WithError(err).Infof("Error occured, retrying for %d time.", j)
 			}
+			break
 		}
 	} else {
 		sm, parts := s.SplitLong(m.Src, m.Dst, m.Enc, i.Msg)
 		for i, p := range parts {
 			for j := 1; j <= 10; j++ {
 				bucket <- 1
+				if sent == 0 {
+					sent = time.Now().UTC().Unix()
+				}
+				<-sendTick.C
 				start := time.Now()
 				respID, err = s.SendPart(sm, p)
 				go inf.AddPoint(&influx.Point{
@@ -175,13 +180,10 @@ func send(i queue.Item) {
 				if err != nil {
 					if err.Error() != ThrottlingError {
 						break
-					} else {
-						log.WithError(err).Infof("Error occured, retrying for %d time.", j)
-						<-errTick.C
 					}
-				} else {
-					break
+					log.WithError(err).Infof("Error occured, retrying for %d time.", j)
 				}
+				break
 			}
 		}
 	}
@@ -268,10 +270,10 @@ func bind() {
 	defer cl.Close()
 	go writeInfluxBatch()
 	rate := time.Second / time.Duration(sconn.Size)
-	tick = time.NewTicker(rate)
-	defer tick.Stop()
-	errTick = time.NewTicker(rate * 2)
-	defer errTick.Stop()
+	dlvTick = time.NewTicker(rate)
+	defer dlvTick.Stop()
+	sendTick = time.NewTicker(rate)
+	defer sendTick.Stop()
 	//bucket helps in keeping at max Size concurrent network requests at a time
 	bucket = make(chan int, sconn.Size)
 	defer close(bucket)
