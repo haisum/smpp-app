@@ -5,7 +5,7 @@
   yum: name="rethinkdb" state="present"
 
 - name: Copy config file
-  copy: src="instance1.conf" dest="/etc/rethinkdb/instances.d/instance1.conf"
+  copy: src="instance1.conf" dest="/etc/rethinkdb/instances.d/instance1.conf" force="no"
 
 - name: Start and make rethinkdb service available on start up
   service: name="rethinkdb" enabled=yes state=started

@@ -1,0 +1,25 @@
+---
+
+- name: Download grafana setup
+  get_url: url=https://grafanarel.s3.amazonaws.com/builds/grafana-3.0.4-1464167696.x86_64.rpm dest=/tmp/grafana.rpm
+
+- name: Install grafana
+  yum: name="/tmp/grafana.rpm" state=present
+
+- name: Make sure /opt/keys exists
+  file: path="/opt/keys" state="directory"
+
+- name: Copy key files
+  copy: src="{{item}}" dest="/opt/keys/"
+  items:
+    - cert.pem
+    - server.key
+
+- name: Copy grafana conf file
+  copy: src="grafana.ini" dest="/opt/grafana/grafana.ini"
+
+- name: Copy grafana database
+  copy: src="grafana.db" dest="/var/lib/grafana/grafana.db"
+
+- name: Restart grafana and enable it on startup
+  service: name="grafana-server" state="restarted" enabled="yes"

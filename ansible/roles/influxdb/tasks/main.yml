@@ -1,0 +1,13 @@
+---
+
+- name: Download influxdb package
+  get_url: url="https://dl.influxdata.com/influxdb/releases/influxdb-0.13.0.x86_64.rpm" dest="/tmp/influxdb.rpm"
+
+- name: Install influxdb
+  yum: name="/tmp/influxdb.rpm" state="present"
+
+- name: Copy influxdb conf file
+  copy: src="influxdb.conf" dest="/etc/influxdb/influxdb.conf"
+
+- name: Enable start up and restart influxdb
+  service: name="influxdb" enabled="yes" state="restarted"
