@@ -16,7 +16,7 @@
     - server.key
 
 - name: Copy grafana conf file
-  copy: src="grafana.ini" dest="/opt/grafana/grafana.ini"
+  copy: src="grafana.ini" dest="/etc/grafana/grafana.ini"
 
 - name: Copy grafana database
   copy: src="grafana.db" dest="/var/lib/grafana/grafana.db"

@@ -4,7 +4,7 @@
   get_url: url="https://dl.influxdata.com/telegraf/releases/telegraf-0.13.1.x86_64.rpm" dest="/tmp/telegraf.rpm"
 
 - name: Install telegraf
-  yum: name="/tmp/telegraph.rpm" state="present"
+  yum: name="/tmp/telegraf.rpm" state="present"
 
 - name: Copy telegraf conf file
   copy: src="telegraf.conf" dest="/etc/telegraf/telegraf.conf"
