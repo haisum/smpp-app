@@ -281,12 +281,12 @@ var app = {
                 });
                 return false;
             });
-            $("#reports-csv").on("click", function(e){
+            $("#reports-xlsx").on("click", function(e){
                 e.preventDefault();
                 var reportData = utils.getReportData();
                 reportData["Token"] = localStorage.getItem("auth_token");
-                reportData["CSV"] = true;
-                reportData["TZ"] = "Asia/Dubai"
+                reportData["XLSX"] = true;
+                reportData["TZ"] = "Asia/Dubai";
                 window.open("/api/message/filter?" + $.param(reportData));
                 return false;
             });
@@ -447,6 +447,7 @@ var utils = {
             OrderByDir      : $("#OrderByDir").val(),
             From            : $("#From").val(),
             PerPage         : $("#PerPage").val(),
+            ReportCols      : $("#ReportCols").val(),
         };
         return data;
 

@@ -1,26 +1,36 @@
 package message
 
 import (
-	"bytes"
-	"encoding/csv"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
+	"github.com/tealeg/xlsx"
 )
 
 type messagesRequest struct {
 	models.MessageCriteria
 	URL   string
 	Token string
-	CSV   bool
-	Stats bool
-	TZ    string
+	XLSX  bool
+	//commma separated list of columns to populate
+	ReportCols string
+	Stats      bool
+	TZ         string
 }
+
+var (
+	labels = map[string]string{
+		"Dst": "Mobile Number",
+		"Src": "Sender ID",
+	}
+)
 
 type messagesResponse struct {
 	Messages []models.Message
@@ -90,8 +100,8 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		}
 		uResp.Stats = stats
 	}
-	if uReq.CSV == true {
-		toCsv(w, r, messages, uReq.TZ)
+	if uReq.XLSX == true {
+		toXLS(w, r, messages, uReq.TZ, strings.Split(uReq.ReportCols, ","))
 	} else {
 		uResp.Messages = messages
 		resp.Obj = uResp
@@ -101,10 +111,8 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	}
 })
 
-func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string) {
-	b := &bytes.Buffer{}
-	wr := csv.NewWriter(b)
-	wr.Write([]string{
+func toXLS(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string, cols []string) {
+	availableCols := []string{
 		"ID",
 		"Connection",
 		"ConnectionGroup",
@@ -118,6 +126,7 @@ func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 		"Dst",
 		"Src",
 		"CampaignID",
+		"Campaign",
 		"Priority",
 		"QueuedAt",
 		"SentAt",
@@ -125,15 +134,42 @@ func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 		"ScheduledAt",
 		"SendBefore",
 		"SendAfter",
-	})
+	}
+	if len(cols) == 0 || (len(cols) == 1 && cols[0] == "") {
+		cols = availableCols
+	} else {
+		cols = trimSpace(cols)
+		//trim all unknown columns
+		for k, v := range cols {
+			if !contains(availableCols, v) {
+				cols = append(cols[:k], cols[k+1:]...)
+			}
+		}
+	}
+	file := xlsx.NewFile()
+	sheet, err := file.AddSheet("Sheet1")
+	if err != nil {
+		fmt.Printf(err.Error())
+	}
+
+	row := sheet.AddRow()
+	for _, v := range cols {
+		cell := row.AddCell()
+		if l, ok := labels[v]; ok {
+			cell.Value = l
+		} else {
+			cell.Value = v
+		}
+	}
 	for _, v := range m {
 		var (
 			queued    string
 			sent      string
 			delivered string
 			scheduled string
+			loc       *time.Location
 		)
-		loc, err := time.LoadLocation(TZ)
+		loc, err = time.LoadLocation(TZ)
 		if err != nil {
 			log.WithFields(log.Fields{"Error": err, "TZ": TZ}).Error("Couldn't load location. Loading UTC")
 			loc, _ = time.LoadLocation("UTC")
@@ -150,31 +186,59 @@ func toCsv(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 		if v.ScheduledAt > 0 {
 			scheduled = time.Unix(v.ScheduledAt, 0).In(loc).Format("02-01-2006 03:04:05 MST")
 		}
-		wr.Write([]string{
-			v.ID,
-			v.Connection,
-			v.ConnectionGroup,
-			string(v.Status),
-			v.Error,
-			v.RespID,
-			strconv.Itoa(v.Total),
-			v.Username,
-			v.Msg,
-			v.Enc,
-			v.Dst,
-			v.Src,
-			v.CampaignID,
-			strconv.Itoa(v.Priority),
-			queued,
-			sent,
-			delivered,
-			scheduled,
-			v.SendBefore,
-			v.SendAfter,
-		})
+		infoAvailable := map[string]string{
+			"ID":              v.ID,
+			"Connection":      v.Connection,
+			"ConnectionGroup": v.ConnectionGroup,
+			"Status":          string(v.Status),
+			"Error":           v.Error,
+			"RespID":          v.RespID,
+			"Total":           strconv.Itoa(v.Total),
+			"Username":        v.Username,
+			"Msg":             v.Msg,
+			"Enc":             v.Enc,
+			"Dst":             v.Dst,
+			"Src":             v.Src,
+			"CampaignID":      v.CampaignID,
+			"Campaign":        v.Campaign,
+			"Priority":        strconv.Itoa(v.Priority),
+			"QueuedAt":        queued,
+			"SentAt":          sent,
+			"DeliveredAt":     delivered,
+			"ScheduledAt":     scheduled,
+			"SendBefore":      v.SendBefore,
+			"SendAfter":       v.SendAfter,
+		}
+		row = sheet.AddRow()
+		for _, v := range cols {
+			if val, ok := infoAvailable[v]; ok {
+				cell := row.AddCell()
+				cell.Value = val
+			}
+		}
 	}
-	wr.Flush()
-	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", "attachment;filename=SMSReport.csv")
-	w.Write(b.Bytes())
+
+	w.Header().Set("Content-Type", "application/vnd.ms-excel")
+	w.Header().Set("Content-Disposition", "attachment;filename=SMSReport.xlsx")
+	err = file.Write(w)
+	if err != nil {
+		log.WithError(err).Error("Excel file writing failed.")
+	}
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func trimSpace(s []string) []string {
+	var trS []string
+	for _, v := range s {
+		trS = append(trS, strings.TrimSpace(v))
+	}
+	return trS
 }

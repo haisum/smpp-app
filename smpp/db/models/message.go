@@ -31,6 +31,7 @@ type Message struct {
 	SentAt          int64
 	DeliveredAt     int64
 	CampaignID      string
+	Campaign        string
 	Status          MessageStatus
 	Error           string
 	SendBefore      string

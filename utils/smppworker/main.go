@@ -121,12 +121,12 @@ func send(i queue.Item) {
 	if i.Total == 1 {
 		for j := 1; j <= 10; j++ {
 			bucket <- 1
-			if sent == 0 {
-				sent = time.Now().UTC().Unix()
-			}
 			<-sendTick.C
 			start := time.Now()
 			respID, err = s.Send(m.Src, m.Dst, m.Enc, i.Msg)
+			if sent == 0 {
+				sent = time.Now().UTC().Unix()
+			}
 			go inf.AddPoint(&influx.Point{
 				Measurement: "message",
 				Tags: influx.Tags{

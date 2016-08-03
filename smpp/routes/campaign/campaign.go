@@ -190,6 +190,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				SendAfter:       uReq.SendAfter,
 				ScheduledAt:     uReq.ScheduledAt,
 				Total:           total,
+				Campaign:        uReq.Description,
 			}
 			msgID, errSave := m.Save()
 			if errSave != nil {
