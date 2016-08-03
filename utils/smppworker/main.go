@@ -34,6 +34,8 @@ var (
 const (
 	//ThrottlingError is 0x00000058 status
 	ThrottlingError = "throttling error"
+	//RetryCount is number of times we should retry sending throttling error messsages
+	RetryCount = 10
 )
 
 // Handler is called by rabbitmq library after a queue has been bound/
@@ -119,14 +121,14 @@ func send(i queue.Item) {
 	}
 	sent := int64(0)
 	if i.Total == 1 {
-		for j := 1; j <= 10; j++ {
+		for j := 1; j <= RetryCount; j++ {
 			bucket <- 1
-			<-sendTick.C
-			start := time.Now()
-			respID, err = s.Send(m.Src, m.Dst, m.Enc, i.Msg)
 			if sent == 0 {
 				sent = time.Now().UTC().Unix()
 			}
+			<-sendTick.C
+			start := time.Now()
+			respID, err = s.Send(m.Src, m.Dst, m.Enc, i.Msg)
 			go inf.AddPoint(&influx.Point{
 				Measurement: "message",
 				Tags: influx.Tags{
