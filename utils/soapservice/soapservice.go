@@ -90,6 +90,7 @@ func main() {
 		qItem := queue.Item{
 			MsgID: msgID,
 			Total: total,
+			Msg:   m.Msg,
 		}
 		respJSON, _ := qItem.ToJSON()
 		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(0))
