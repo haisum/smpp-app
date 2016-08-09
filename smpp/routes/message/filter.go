@@ -29,6 +29,7 @@ var (
 	labels = map[string]string{
 		"Dst": "Mobile Number",
 		"Src": "Sender ID",
+		"Msg": "Message",
 	}
 )
 
@@ -218,7 +219,7 @@ func toXLS(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/vnd.ms-excel")
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	w.Header().Set("Content-Disposition", "attachment;filename=SMSReport.xlsx")
 	err = file.Write(w)
 	if err != nil {
