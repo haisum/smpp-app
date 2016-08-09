@@ -49,6 +49,7 @@ const (
    <complexType>
     <sequence>
      <element name="SendSMS2Result" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
+		 <element name="SendSMS2ID" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
     </sequence>
    </complexType>
   </element>

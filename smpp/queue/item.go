@@ -9,7 +9,9 @@ import (
 type Item struct {
 	MsgID string
 	Total int
-	Msg   string
+	// Msg parameter is required so that, masked msgs are recorded in db and
+	// real messages are sent via worker
+	Msg string
 }
 
 // FromJSON parses json and sets attributes in Item struct

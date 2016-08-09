@@ -30,21 +30,21 @@ func main() {
 		var e soap.Envelope
 		err := decoder.Decode(&e)
 		if err != nil {
-			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't understand soap request."), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't understand soap request.", ""), http.StatusBadRequest)
 			return
 		}
 		s, err := db.GetSession()
 		if err != nil {
-			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't connect to database."), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't connect to database.", ""), http.StatusInternalServerError)
 			return
 		}
 		u, err := models.GetUser(s, e.Body.Request.Username)
 		if err != nil {
-			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong."), http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong.", ""), http.StatusUnauthorized)
 			return
 		}
 		if !u.Auth(e.Body.Request.Password) {
-			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong."), http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong.", ""), http.StatusUnauthorized)
 			return
 		}
 		q, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
@@ -53,7 +53,7 @@ func main() {
 		var noKey string
 		var group smpp.ConnGroup
 		if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
-			http.Error(w, fmt.Sprintf(soap.Response, "User's connection group doesn't exist in configuration."), http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(soap.Response, "User's connection group doesn't exist in configuration.", ""), http.StatusUnauthorized)
 			return
 		}
 		enc := "latin"
@@ -77,12 +77,12 @@ func main() {
 		}
 		errors := m.Validate()
 		if len(errors) != 0 {
-			http.Error(w, fmt.Sprintf(soap.Response, strings.Join(errors, "\n")), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf(soap.Response, strings.Join(errors, "\n"), ""), http.StatusBadRequest)
 			return
 		}
 		msgID, err := m.Save()
 		if err != nil {
-			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't save message."), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't save message.", ""), http.StatusInternalServerError)
 			return
 		}
 		noKey = group.DefaultPfx
@@ -95,9 +95,11 @@ func main() {
 		respJSON, _ := qItem.ToJSON()
 		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(0))
 		if err != nil {
-			fmt.Fprintf(w, soap.Response, "-1")
+			log.WithError(err).Error("Error sending message.")
+			fmt.Fprintf(w, soap.Response, "Error in queueing message.", "")
 		} else {
-			fmt.Fprintf(w, soap.Response, "OK")
+			log.WithField("msg", m).Info("Sent message.")
+			fmt.Fprintf(w, soap.Response, "OK", msgID)
 		}
 		return
 	})

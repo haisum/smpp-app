@@ -7,6 +7,7 @@ const (
    <SOAP-ENV:Body>
   	<ns1:SendSMS2Response xmlns:ns1="smgs">
      	<SendSMS2Result xsi:type="xsd:string">%s</SendSMS2Result>
+			<SendSMS2ID xsi:type="xsd:string">%s</SendSMS2ID>
   	</ns1:SendSMS2Response>
    </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>`
