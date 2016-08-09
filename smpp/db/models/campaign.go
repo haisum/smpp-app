@@ -194,7 +194,11 @@ func GetReport(id string) (CampaignReport, error) {
 		return cr, nil
 	}
 	cr.TotalTime = int(cr.LastSent - cr.FirstQueued)
-	cr.Throughput = strconv.FormatFloat(1.0/(float64(cr.TotalTime)/float64(cr.TotalMsgs)), 'f', 2, 64)
+	if cr.TotalTime <= 0 {
+		cr.Throughput = strconv.FormatInt(int64(cr.TotalMsgs), 10)
+	} else {
+		cr.Throughput = strconv.FormatFloat(1.0/(float64(cr.TotalTime)/float64(cr.TotalMsgs)), 'f', 2, 64)
+	}
 	tp, _ := strconv.ParseFloat(cr.Throughput, 64)
 	cr.PerConnection = strconv.FormatFloat(tp/float64(len(cr.Connections)), 'f', 2, 64)
 	return cr, nil
