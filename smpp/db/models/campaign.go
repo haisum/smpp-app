@@ -206,7 +206,11 @@ func GetReport(id string) (CampaignReport, error) {
 
 // GetCampaigns fetches list of campaigns based on criteria
 func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
-	var camps []Campaign
+	var (
+		camps      []Campaign
+		indexUsed  bool
+		filterUsed bool
+	)
 	s, err := db.GetSession()
 	if err != nil {
 		log.WithError(err).Error("Couldn't get session.")
@@ -225,7 +229,26 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 			from = c.From
 		}
 	}
-
+	if from != nil || c.ScheduledAfter+c.ScheduledBefore+c.SubmittedAfter+c.SubmittedBefore != 0 {
+		indexUsed = true
+	}
+	if c.OrderByKey == "" {
+		c.OrderByKey = SubmittedAt
+	}
+	if !indexUsed {
+		if c.Username != "" {
+			if c.OrderByKey == SubmittedAt && !indexUsed {
+				t = t.Between([]interface{}{c.Username, r.MinVal}, []interface{}{c.Username, r.MaxVal}, r.BetweenOpts{
+					Index: "Username_SubmittedAt",
+				})
+				c.OrderByKey = "Username_SubmittedAt"
+			} else {
+				t = t.GetAllByIndex("Username", c.Username)
+				indexUsed = true
+			}
+			c.Username = ""
+		}
+	}
 	// keep between before Eq
 	betweenFields := map[string]map[string]int64{
 		"SubmittedAt": {
@@ -237,7 +260,7 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 			"before": c.ScheduledBefore,
 		},
 	}
-	t = filterBetweenInt(betweenFields, t)
+	t, filterUsed = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
 		"id":         c.ID,
 		"Username":   c.Username,
@@ -249,12 +272,10 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 		"SendBefore": c.SendBefore,
 		"SendAfter":  c.SendAfter,
 	}
-	t = filterEqStr(strFields, t)
-
-	if c.OrderByKey == "" {
-		c.OrderByKey = SubmittedAt
-	}
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t, true)
+	var filtered bool
+	t, filtered = filterEqStr(strFields, t)
+	filterUsed = filtered || filterUsed
+	t = orderBy(c.OrderByKey, c.OrderByDir, from, t, indexUsed, filterUsed)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}

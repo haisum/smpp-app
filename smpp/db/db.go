@@ -1,18 +1,23 @@
 package db
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db/fresh"
 	"fmt"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db/fresh"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 )
 
 var (
-	s          *r.Session
-	DBName     string = "hsmppdb"
-	DBTestName string = "hsmpptestdb"
-	DBHost     string = "localhost"
-	DBPort     int    = 28015
+	s *r.Session
+	//DBName is rethinkdb name
+	DBName = "hsmppdb_test"
+	//DBTestName is db name used for tests
+	DBTestName = "hsmpptestdb"
+	//DBHost is host address of rethink db
+	DBHost = "localhost"
+	//DBPort is port to bind connection to
+	DBPort = 28015
 )
 
 // Connect makes a new session to rethinkdb

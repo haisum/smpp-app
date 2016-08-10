@@ -2,6 +2,7 @@ package fresh
 
 import (
 	"encoding/json"
+
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 	"golang.org/x/crypto/bcrypt"
@@ -37,6 +38,22 @@ func createIndexes(s *r.Session, dbname, table string, indexes []string) error {
 			}).Error("Couldn't create index.")
 			return err
 		}
+	}
+	return nil
+}
+
+func createCompoundIndex(s *r.Session, dbname, table, col1, col2 string) error {
+	err := r.DB(dbname).Table(table).IndexCreateFunc(col1+"_"+col2, func(row r.Term) interface{} {
+		return []interface{}{row.Field(col1), row.Field(col2)}
+	}).Exec(s)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+			"col1":  col1,
+			"Table": table,
+			"col2":  col2,
+		}).Error("Couldn't create composite index.")
+		return err
 	}
 	return nil
 }

@@ -144,6 +144,11 @@ func tnumfile(s *r.Session, dbname string) error {
 		log.WithError(err).Error("Couldn't create indexes.")
 		return err
 	}
+	err = createCompoundIndex(s, dbname, "NumFile", "Username", "SubmittedAt")
+	if err != nil {
+		log.WithError(err).Error("Couldn't create compound index.")
+		return err
+	}
 	return err
 }
 
@@ -179,6 +184,11 @@ func tmessage(s *r.Session, dbname string) error {
 		log.WithError(err).Error("Couldn't create indexes.")
 		return err
 	}
+	err = createCompoundIndex(s, dbname, "Message", "Username", "QueuedAt")
+	if err != nil {
+		log.WithError(err).Error("Couldn't create compound index.")
+		return err
+	}
 	return err
 }
 
@@ -203,6 +213,11 @@ func tcampaign(s *r.Session, dbname string) error {
 	})
 	if err != nil {
 		log.WithError(err).Error("Couldn't create indexes.")
+		return err
+	}
+	err = createCompoundIndex(s, dbname, "Campaign", "Username", "SubmittedAt")
+	if err != nil {
+		log.WithError(err).Error("Couldn't create compound index.")
 		return err
 	}
 	return err

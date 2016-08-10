@@ -101,7 +101,11 @@ func (nf *NumFile) Delete() error {
 
 // GetNumFiles filters files based on criteria
 func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
-	var f []NumFile
+	var (
+		f          []NumFile
+		indexUsed  bool
+		filterUsed bool
+	)
 	s, err := db.GetSession()
 	if err != nil {
 		log.WithError(err).Error("Couldn't get session.")
@@ -135,6 +139,26 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 			from = c.From
 		}
 	}
+	if from != nil || c.SubmittedAfter+c.SubmittedBefore != 0 {
+		indexUsed = true
+	}
+	if c.OrderByKey == "" {
+		c.OrderByKey = "SubmittedAt"
+	}
+	if !indexUsed {
+		if c.Username != "" {
+			if c.OrderByKey == SubmittedAt && !indexUsed {
+				t = t.Between([]interface{}{c.Username, r.MinVal}, []interface{}{c.Username, r.MaxVal}, r.BetweenOpts{
+					Index: "Username_SubmittedAt",
+				})
+				c.OrderByKey = "Username_SubmittedAt"
+			} else {
+				t = t.GetAllByIndex("Username", c.Username)
+				indexUsed = true
+			}
+			c.Username = ""
+		}
+	}
 	// keep between before Eq
 	betweenFields := map[string]map[string]int64{
 		"SubmittedAt": {
@@ -142,7 +166,7 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 			"before": c.SubmittedBefore,
 		},
 	}
-	t = filterBetweenInt(betweenFields, t)
+	t, filterUsed = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
 		"LocalName": c.LocalName,
 		"Username":  c.Username,
@@ -150,12 +174,12 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 		"Type":      string(c.Type),
 		"Name":      c.Name,
 	}
-	t = filterEqStr(strFields, t)
-	t = t.Filter(map[string]bool{"Deleted": c.Deleted})
-	if c.OrderByKey == "" {
-		c.OrderByKey = "SubmittedAt"
-	}
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t, true)
+	var filtered bool
+	t, filtered = filterEqStr(strFields, t)
+	filterUsed = filterUsed || filtered
+	//we won't do it for now... because it fucks up  orderByIndex
+	//t = t.Filter(map[string]bool{"Deleted": c.Deleted})
+	t = orderBy(c.OrderByKey, c.OrderByDir, from, t, indexUsed, filterUsed)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}

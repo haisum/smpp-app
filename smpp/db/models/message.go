@@ -326,19 +326,33 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 	t := r.DB(db.DBName).Table("Message")
 	indexUsed := false
+	filterUsed := false
 	if from != nil || c.QueuedAfter+c.QueuedBefore+c.DeliveredAfter+c.DeliveredBefore+c.SentAfter+c.SentBefore+c.ScheduledAfer+c.ScheduledBefore != 0 {
 		indexUsed = true
+	}
+	if c.OrderByKey == "" {
+		c.OrderByKey = QueuedAt
 	}
 	if !indexUsed {
 		if c.CampaignID != "" {
 			t = t.GetAllByIndex("CampaignID", c.CampaignID)
 			c.CampaignID = ""
+			indexUsed = true
 		} else if c.Username != "" && !strings.HasPrefix(c.Username, "(re)") {
-			t = t.GetAllByIndex("Username", c.Username)
+			if c.OrderByKey == QueuedAt && !indexUsed {
+				t = t.Between([]interface{}{c.Username, r.MinVal}, []interface{}{c.Username, r.MaxVal}, r.BetweenOpts{
+					Index: "Username_QueuedAt",
+				})
+				c.OrderByKey = "Username_QueuedAt"
+			} else {
+				t = t.GetAllByIndex("Username", c.Username)
+				indexUsed = true
+			}
 			c.Username = ""
 		} else if c.RespID != "" {
 			t = t.GetAllByIndex("RespID", c.RespID)
 			c.RespID = ""
+			indexUsed = true
 		}
 	}
 	// note to self: keep between before Eq filters.
@@ -360,7 +374,9 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 			"before": c.ScheduledBefore,
 		},
 	}
-	t = filterBetweenInt(betweenFields, t)
+	var filtered bool
+	t, filtered = filterBetweenInt(betweenFields, t)
+	filterUsed = filterUsed || filtered
 	strFields := map[string]string{
 		"RespID":          c.RespID,
 		"Connection":      c.Connection,
@@ -378,24 +394,26 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		t = t.Filter(func(t r.Term) r.Term {
 			return t.Field("Username").Match(strings.TrimPrefix(c.Username, "(re)"))
 		})
+		filterUsed = true
 	}
-	t = filterEqStr(strFields, t)
+	t, filtered = filterEqStr(strFields, t)
+	filterUsed = filtered || filterUsed
 	if c.Msg != "" {
 		t = t.Filter(func(t r.Term) r.Term {
 			return t.Field("Msg").Match(c.Msg)
 		})
+		filterUsed = true
 	}
 	if c.Total > 0 {
 		t = t.Filter(map[string]int{"Total": c.Total})
+		filterUsed = true
 	}
 	if c.Priority > 0 {
 		t = t.Filter(map[string]int{"Priority": c.Priority})
-	}
-	if c.OrderByKey == "" {
-		c.OrderByKey = QueuedAt
+		filterUsed = true
 	}
 	if !c.DisableOrder {
-		t = orderBy(c.OrderByKey, c.OrderByDir, from, t, true)
+		t = orderBy(c.OrderByKey, c.OrderByDir, from, t, indexUsed, filterUsed)
 	}
 	return t
 }
