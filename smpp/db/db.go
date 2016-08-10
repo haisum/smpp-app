@@ -11,7 +11,7 @@ import (
 var (
 	s *r.Session
 	//DBName is rethinkdb name
-	DBName = "hsmppdb_test"
+	DBName = "hsmppdb"
 	//DBTestName is db name used for tests
 	DBTestName = "hsmpptestdb"
 	//DBHost is host address of rethink db
