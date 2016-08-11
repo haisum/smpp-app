@@ -81,6 +81,8 @@ $.extend(app, {
         $("#page-title").html("Campaign");
         $.ajax("/templates/campaign.html").done(function(data){
             $("#inner-content").html(data);
+            $("#Msg").on("keyup", utils.detectUCS);
+            $("#Msg").on("change", utils.detectUCS);
             $('.materialize-textarea').characterCounter();
             app.renderCampaignFiles();
             app.renderCampaignList();
