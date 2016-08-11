@@ -106,8 +106,8 @@ $.extend(app, {
                     "Src" : $("#Src").val(),
                     "Token" : localStorage.getItem("auth_token"),
                     "Description": $("#Description").val(),
-                    "SendAfter" : $("#SendAfter").val(),
-                    "SendBefore" : $("#SendBefore").val(),
+                    "SendAfter" : utils.toUTCTime($("#SendAfter").val()),
+                    "SendBefore" : utils.toUTCTime($("#SendBefore").val()),
                     "ScheduledAt" : utils.dateFieldToEpoch("ScheduledAt"),
                 }
                 $.ajax({

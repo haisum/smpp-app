@@ -141,8 +141,8 @@ var app = {
                     "Enc" : $("#Enc").prop("checked") ? "ucs" : "latin",
                     "Msg" : $("#Msg").val(),
                     "Dst" : $("#Dst").val(),
-                    "SendAfter" : $("#SendAfter").val(),
-                    "SendBefore" : $("#SendBefore").val(),
+                    "SendAfter" : utils.toUTCTime($("#SendAfter").val()),
+                    "SendBefore" : utils.toUTCTime($("#SendBefore").val()),
                     "ScheduledAt" : utils.dateFieldToEpoch("ScheduledAt"),
                     "Src" : $("#Src").val(),
                     "Priority" : parseInt($("#Priority").val()) > 0 ? parseInt($("#Priority").val()) : 0,
@@ -462,6 +462,13 @@ var utils = {
         var datetime = Date.parse(date + " " + time);
         var d = new Date(datetime);
         return d.getTime() / 1000;
+    },
+    toUTCTime : function(timeString) {
+      parts = timeString.split(":");
+      d = new Date();
+      d.setHours(parts[0]);
+      d.setMinutes(parts[1]);
+      return d.getUTCHours() + ":" + d.getUTCMinutes();
     },
     showErrors : function(errors) {
         console.log("Following errors occured:");

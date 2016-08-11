@@ -91,18 +91,26 @@ func send(i queue.Item) {
 		hour, _ := strconv.ParseInt(afterParts[0], 10, 32)
 		minute, _ := strconv.ParseInt(afterParts[1], 10, 32)
 		now := time.Now().UTC()
+		//7  or 23
 		afterTime := time.Date(now.Year(), now.Month(), now.Day(), int(hour), int(minute), 0, 0, now.Location())
 		hour, _ = strconv.ParseInt(beforeParts[0], 10, 32)
 		minute, _ = strconv.ParseInt(beforeParts[1], 10, 32)
+		//19 or 1
 		beforeTime := time.Date(now.Year(), now.Month(), now.Day(), int(hour), int(minute), 0, 0, now.Location())
 		fmt.Println(now.String())
 		fmt.Println(beforeTime.String())
 		fmt.Println(afterTime.String())
+		//if 1 is less than 23
+		// then 1 is on next day
 		if beforeTime.Unix() < afterTime.Unix() {
 			beforeTime.AddDate(0, 0, 1)
 		}
 		log.WithFields(log.Fields{"after": afterTime.String(), "before": beforeTime.String(), "now": now.String()}).Info("Scheduling")
-		if !(now.After(afterTime) && now.Before(beforeTime)) {
+		// if 2 is greater than 23 and 2 is lesser than 01 the next day //false, schedule it
+		// if 00:01 is greater than 23 and 00:01 is lesser than 01 the next day // true, send it now
+		// if 16 is greater than 7 and 16 is lesser than 19 // true, send it now
+		// if 20 is greater than 7 and 20 is lesser than 19// false, schedule it next day at 7:01
+		if !(now.Unix() > afterTime.Unix() && now.Unix() < beforeTime.Unix()) {
 			//don't send msg here
 			scheduledTime := afterTime.AddDate(0, 0, 1).Add(time.Minute)
 			log.WithField("time", scheduledTime.String()).Info("Scheduling message.")
