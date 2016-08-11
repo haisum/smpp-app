@@ -161,9 +161,8 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	errCh := make(chan error, 1)
 	okCh := make(chan bool, len(numbers))
 	burstCh := make(chan int, 1000)
-	total := smpp.Total(uReq.Msg, uReq.Enc)
 	for _, nr := range numbers {
-		go func(nr models.NumFileRow) {
+		go func(nr models.NumFileRow, realMsg string) {
 			var (
 				queuedTime int64                = time.Now().UTC().Unix()
 				status     models.MessageStatus = models.MsgQueued
@@ -172,13 +171,17 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				queuedTime = 0
 				status = models.MsgScheduled
 			}
+			maskedMsg := c.Msg
 			for search, replace := range nr.Params {
-				msg = strings.Replace(msg, "{{"+search+"}}", replace, -1)
+				realMsg = strings.Replace(realMsg, "{{"+search+"}}", replace, -1)
+				maskedMsg = strings.Replace(maskedMsg, "{{"+search+"}}", replace, -1)
 			}
+			total := smpp.Total(realMsg, uReq.Enc)
 			m := models.Message{
 				ConnectionGroup: u.ConnectionGroup,
 				Username:        u.Username,
-				Msg:             c.Msg,
+				Msg:             maskedMsg,
+				RealMsg:         realMsg,
 				Enc:             uReq.Enc,
 				Dst:             nr.Destination,
 				Src:             uReq.Src,
@@ -202,7 +205,6 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				qItem := queue.Item{
 					MsgID: msgID,
 					Total: total,
-					Msg:   msg,
 				}
 				respJSON, _ := qItem.ToJSON()
 				errP := q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
@@ -214,7 +216,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			okCh <- true
 			//free one burst
 			<-burstCh
-		}(nr)
+		}(nr, msg)
 		//proceed if you can feed the burst channel
 		burstCh <- 1
 	}

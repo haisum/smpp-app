@@ -92,8 +92,6 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-	total := smpp.Total(uReq.Msg, uReq.Enc)
-	log.WithField("total", total).Info("Total messages.")
 	var (
 		queuedTime int64                = time.Now().UTC().Unix()
 		status     models.MessageStatus = models.MsgQueued
@@ -115,7 +113,6 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		ScheduledAt:     uReq.ScheduledAt,
 		SendAfter:       uReq.SendAfter,
 		SendBefore:      uReq.SendBefore,
-		Total:           total,
 	}
 	msg := uReq.Msg
 	if uReq.Mask {
@@ -127,6 +124,9 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 			m.Msg = strings.Replace(m.Msg, "[["+val+"]]", strings.Repeat("X", len(val)), -1)
 		}
 	}
+	m.RealMsg = msg
+	m.Total = smpp.Total(msg, uReq.Enc)
+	log.WithField("total", m.Total).Info("Total messages.")
 	msgID, err := m.Save()
 	if err != nil {
 		log.WithField("err", err).Error("Couldn't insert in db.")
@@ -147,8 +147,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		key := matchKey(keys, uReq.Dst, noKey)
 		qItem := queue.Item{
 			MsgID: msgID,
-			Total: total,
-			Msg:   msg,
+			Total: m.Total,
 		}
 		respJSON, _ := qItem.ToJSON()
 		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))

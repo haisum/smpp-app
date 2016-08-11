@@ -128,7 +128,7 @@ func send(i queue.Item) {
 			}
 			<-sendTick.C
 			start := time.Now()
-			respID, err = s.Send(m.Src, m.Dst, m.Enc, i.Msg)
+			respID, err = s.Send(m.Src, m.Dst, m.Enc, m.RealMsg)
 			go inf.AddPoint(&influx.Point{
 				Measurement: "message",
 				Tags: influx.Tags{
@@ -153,7 +153,7 @@ func send(i queue.Item) {
 			break
 		}
 	} else {
-		sm, parts := s.SplitLong(m.Src, m.Dst, m.Enc, i.Msg)
+		sm, parts := s.SplitLong(m.Src, m.Dst, m.Enc, m.RealMsg)
 		for i, p := range parts {
 			for j := 1; j <= 10; j++ {
 				bucket <- 1

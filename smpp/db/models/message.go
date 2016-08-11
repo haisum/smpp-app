@@ -23,20 +23,22 @@ type Message struct {
 	Total           int
 	Username        string
 	Msg             string
-	Enc             string
-	Dst             string
-	Src             string
-	Priority        int
-	QueuedAt        int64
-	SentAt          int64
-	DeliveredAt     int64
-	CampaignID      string
-	Campaign        string
-	Status          MessageStatus
-	Error           string
-	SendBefore      string
-	SendAfter       string
-	ScheduledAt     int64
+	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
+	RealMsg     string `json:"-"`
+	Enc         string
+	Dst         string
+	Src         string
+	Priority    int
+	QueuedAt    int64
+	SentAt      int64
+	DeliveredAt int64
+	CampaignID  string
+	Campaign    string
+	Status      MessageStatus
+	Error       string
+	SendBefore  string
+	SendAfter   string
+	ScheduledAt int64
 }
 
 // MessageCriteria represents filters we can give to GetMessages method.

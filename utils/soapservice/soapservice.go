@@ -66,6 +66,7 @@ func main() {
 			ConnectionGroup: u.ConnectionGroup,
 			Username:        u.Username,
 			Msg:             e.Body.Request.Message,
+			RealMsg:         e.Body.Request.Message,
 			Enc:             enc,
 			Dst:             e.Body.Request.Dst,
 			Src:             e.Body.Request.Src,
@@ -90,7 +91,6 @@ func main() {
 		qItem := queue.Item{
 			MsgID: msgID,
 			Total: total,
-			Msg:   m.Msg,
 		}
 		respJSON, _ := qItem.ToJSON()
 		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(0))
