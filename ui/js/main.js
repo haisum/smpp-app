@@ -464,6 +464,9 @@ var utils = {
         return d.getTime() / 1000;
     },
     toUTCTime : function(timeString) {
+      if (timeString == ""){
+        return "";
+      }
       parts = timeString.split(":");
       d = new Date();
       d.setHours(parts[0]);
