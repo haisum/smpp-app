@@ -174,7 +174,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				maskedMsg = strings.Replace(maskedMsg, "{{"+search+"}}", replace, -1)
 			}
 			enc := smpp.EncLatin
-			if !smpp.IsASCII(uReq.Msg) {
+			if !smpp.IsASCII(realMsg) {
 				enc = smpp.EncUCS
 			}
 			total := smpp.Total(realMsg, enc)
