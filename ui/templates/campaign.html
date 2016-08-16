@@ -39,10 +39,6 @@
               <label for="Msg">Message</label>
             </div>
             <div class="input-field col s6">
-              <input type="checkbox" id="Enc" name="Enc" />
-              <label for="Enc">Non-English</label>
-            </div>
-            <div class="input-field col s6">
               <input type="number" class="validate" id="Priority" name="Priority" />
               <label for="Priority">Priority</label>
             </div>
@@ -104,7 +100,6 @@
             <tr>
                 <th data-field="name">Source</th>
                 <th data-field="price">File</th>
-                <th data-field="id">Encoding</th>
                 <th data-field="id">Submitted</th>
                 <th data-field="id">Scheduled</th>
                 <th data-field="id">Send Before</th>
@@ -116,7 +111,6 @@
             <tr>
               <td>{{Src}}</td>
               <td>{{FileName}}</td>
-              <td>{{Enc}}</td>
               <td>{{prettyDate SubmittedAt}}</td>
               <td>{{prettyDate ScheduledAt}}</td>
               <td>{{SendBefore}}</td>

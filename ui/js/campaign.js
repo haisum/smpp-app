@@ -81,8 +81,6 @@ $.extend(app, {
         $("#page-title").html("Campaign");
         $.ajax("/templates/campaign.html").done(function(data){
             $("#inner-content").html(data);
-            $("#Msg").on("keyup", utils.detectUCS);
-            $("#Msg").on("change", utils.detectUCS);
             $('.materialize-textarea').characterCounter();
             app.renderCampaignFiles();
             app.renderCampaignList();
@@ -99,7 +97,6 @@ $.extend(app, {
                 e.preventDefault();
                 $("#campaign-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
                 var campReq = {
-                    "Enc" : $("#Enc").prop("checked") ? "ucs" : "latin",
                     "Msg" : $("#Msg").val(),
                     "FileID" : $("#FileID").val(),
                     "Priority" : parseInt($("#Priority").val()) > 0 ? parseInt($("#Priority").val()) : 0,

@@ -122,8 +122,6 @@ var app = {
         $("#page-title").html("Message");
         $.ajax("/templates/message.html").done(function(data){
             $("#inner-content").html(data);
-            $("#Msg").on("keyup", utils.detectUCS);
-            $("#Msg").on("change", utils.detectUCS);
             $(".button-collapse").sideNav();
             $('.datepicker').pickadate({
                 selectMonths: true, // Creates a dropdown to control month
@@ -138,7 +136,6 @@ var app = {
                 e.preventDefault();
                 $("#message-form").find("button[type=submit]").addClass("disabled").next(".preloader-wrapper").addClass("active");
                 var msgReq = {
-                    "Enc" : $("#Enc").prop("checked") ? "ucs" : "latin",
                     "Msg" : $("#Msg").val(),
                     "Dst" : $("#Dst").val(),
                     "SendAfter" : utils.toUTCTime($("#SendAfter").val()),
@@ -483,12 +480,5 @@ var utils = {
         errHtml += "</ul>"
         var toastContent = '<div class="red-text">' + errHtml + '</div>';
         Materialize.toast(toastContent, 5000)
-    },
-    detectUCS: function(){
-      if(/[^\u0000-\u00ff]/.test($("#Msg").val())){
-        $("#Enc").prop("checked", true);
-      } else {
-        $("#Enc").prop("checked", false);
-      }
     }
 }
