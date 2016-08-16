@@ -23,7 +23,6 @@ type campaignRequest struct {
 	Priority    int
 	Src         string
 	Msg         string
-	Enc         string
 	ScheduledAt int64
 	SendBefore  string
 	SendAfter   string
@@ -93,7 +92,6 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	}
 	c := models.Campaign{
 		Description: uReq.Description,
-		Enc:         uReq.Enc,
 		Src:         uReq.Src,
 		Msg:         uReq.Msg,
 		FileID:      uReq.FileID,
@@ -168,7 +166,6 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				status     models.MessageStatus = models.MsgQueued
 			)
 			if uReq.ScheduledAt > 0 {
-				queuedTime = 0
 				status = models.MsgScheduled
 			}
 			maskedMsg := c.Msg
@@ -176,13 +173,17 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				realMsg = strings.Replace(realMsg, "{{"+search+"}}", replace, -1)
 				maskedMsg = strings.Replace(maskedMsg, "{{"+search+"}}", replace, -1)
 			}
-			total := smpp.Total(realMsg, uReq.Enc)
+			enc := smpp.EncLatin
+			if !smpp.IsASCII(uReq.Msg) {
+				enc = smpp.EncUCS
+			}
+			total := smpp.Total(realMsg, enc)
 			m := models.Message{
 				ConnectionGroup: u.ConnectionGroup,
 				Username:        u.Username,
 				Msg:             maskedMsg,
 				RealMsg:         realMsg,
-				Enc:             uReq.Enc,
+				Enc:             enc,
 				Dst:             nr.Destination,
 				Src:             uReq.Src,
 				Priority:        uReq.Priority,
@@ -282,13 +283,6 @@ func validateCampaign(c campaignRequest) []routes.ResponseError {
 			Message: "Source address can't be empty.",
 		})
 	}
-	if c.Enc != "ucs" && c.Enc != "latin" {
-		errors = append(errors, routes.ResponseError{
-			Type:    routes.ErrorTypeForm,
-			Field:   "Enc",
-			Message: "Encoding can either be latin or UCS.",
-		})
-	}
 	if (c.SendAfter == "" && c.SendBefore != "") || (c.SendBefore == "" && c.SendAfter != "") {
 		errors = append(errors, routes.ResponseError{
 			Type:    routes.ErrorTypeRequest,
@@ -306,7 +300,7 @@ func validateCampaign(c campaignRequest) []routes.ResponseError {
 		} else {
 			hour, errH := strconv.ParseInt(parts[0], 10, 32)
 			minute, errM := strconv.ParseInt(parts[1], 10, 32)
-			if errH != nil || errM != nil || hour < 0 || hour > 24 || minute < 1 || minute > 59 {
+			if errH != nil || errM != nil || hour < 0 || hour > 24 || minute < 0 || minute > 59 {
 				errors = append(errors, routes.ResponseError{
 					Type:    routes.ErrorTypeForm,
 					Field:   "SendAfter",
@@ -326,7 +320,7 @@ func validateCampaign(c campaignRequest) []routes.ResponseError {
 		} else {
 			hour, errH := strconv.ParseInt(parts[0], 10, 32)
 			minute, errM := strconv.ParseInt(parts[1], 10, 32)
-			if errH != nil || errM != nil || hour < 0 || hour > 24 || minute < 1 || minute > 59 {
+			if errH != nil || errM != nil || hour < 0 || hour > 24 || minute < 0 || minute > 59 {
 				errors = append(errors, routes.ResponseError{
 					Type:    routes.ErrorTypeForm,
 					Field:   "SendBefore",
@@ -335,11 +329,11 @@ func validateCampaign(c campaignRequest) []routes.ResponseError {
 			}
 		}
 	}
-	if c.ScheduledAt != 0 && c.ScheduledAt < time.Now().Add(time.Minute*2).UTC().Unix() {
+	if c.ScheduledAt != 0 && c.ScheduledAt < time.Now().UTC().Unix() {
 		errors = append(errors, routes.ResponseError{
 			Type:    routes.ErrorTypeForm,
 			Field:   "ScheduledAt",
-			Message: "Schedule time must be at least 2 minutes in future.",
+			Message: "Schedule time must be in future.",
 		})
 	}
 	return errors

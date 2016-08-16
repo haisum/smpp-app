@@ -16,7 +16,6 @@ import (
 )
 
 type messageReq struct {
-	Enc         string
 	Priority    int
 	Src         string
 	Dst         string
@@ -97,14 +96,17 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		status     models.MessageStatus = models.MsgQueued
 	)
 	if uReq.ScheduledAt > 0 {
-		queuedTime = 0
 		status = models.MsgScheduled
+	}
+	enc := smpp.EncLatin
+	if !smpp.IsASCII(uReq.Msg) {
+		enc = smpp.EncUCS
 	}
 	m := models.Message{
 		ConnectionGroup: u.ConnectionGroup,
 		Username:        u.Username,
 		Msg:             uReq.Msg,
-		Enc:             uReq.Enc,
+		Enc:             enc,
 		Dst:             uReq.Dst,
 		Src:             uReq.Src,
 		Priority:        uReq.Priority,
@@ -125,7 +127,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		}
 	}
 	m.RealMsg = msg
-	m.Total = smpp.Total(msg, uReq.Enc)
+	m.Total = smpp.Total(msg, m.Enc)
 	log.WithField("total", m.Total).Info("Total messages.")
 	msgID, err := m.Save()
 	if err != nil {
@@ -168,6 +170,8 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 			resp.Send(w, *r, http.StatusInternalServerError)
 			return
 		}
+	} else {
+		log.WithField("ScheduledAt", time.Unix(m.ScheduledAt, 0).UTC().String()).Info("Scheduling message.")
 	}
 	uResp.ID = msgID
 	resp := routes.Response{
@@ -199,13 +203,6 @@ func validateMsg(msg messageReq) []routes.ResponseError {
 			Type:    routes.ErrorTypeForm,
 			Field:   "Src",
 			Message: "Source address can't be empty.",
-		})
-	}
-	if msg.Enc != "ucs" && msg.Enc != "latin" {
-		errors = append(errors, routes.ResponseError{
-			Type:    routes.ErrorTypeForm,
-			Field:   "Enc",
-			Message: "Encoding can either be latin or UCS",
 		})
 	}
 	if (msg.SendAfter == "" && msg.SendBefore != "") || (msg.SendBefore == "" && msg.SendAfter != "") {
@@ -254,11 +251,11 @@ func validateMsg(msg messageReq) []routes.ResponseError {
 			}
 		}
 	}
-	if msg.ScheduledAt != 0 && msg.ScheduledAt < time.Now().Add(time.Minute*2).UTC().Unix() {
+	if msg.ScheduledAt != 0 && msg.ScheduledAt < time.Now().UTC().Unix() {
 		errors = append(errors, routes.ResponseError{
 			Type:    routes.ErrorTypeForm,
 			Field:   "ScheduledAt",
-			Message: "Schedule time must be at least 2 minutes in future.",
+			Message: "Schedule time must be in future.",
 		})
 	}
 	return errors

@@ -103,7 +103,7 @@ func send(i queue.Item) {
 		//if 1 is less than 23
 		// then 1 is on next day
 		if beforeTime.Unix() < afterTime.Unix() {
-			beforeTime.AddDate(0, 0, 1)
+			beforeTime = beforeTime.AddDate(0, 0, 1)
 		}
 		log.WithFields(log.Fields{"after": afterTime.String(), "before": beforeTime.String(), "now": now.String()}).Info("Scheduling")
 		// if 2 is greater than 23 and 2 is lesser than 01 the next day //false, schedule it
@@ -112,7 +112,16 @@ func send(i queue.Item) {
 		// if 20 is greater than 7 and 20 is lesser than 19// false, schedule it next day at 7:01
 		if !(now.Unix() > afterTime.Unix() && now.Unix() < beforeTime.Unix()) {
 			//don't send msg here
-			scheduledTime := afterTime.AddDate(0, 0, 1).Add(time.Minute)
+			scheduledTime := afterTime.Add(time.Second * 1)
+			// 3:53 and 7 so 11:53 and 3
+			log.WithFields(log.Fields{
+				"now":    now.String(),
+				"before": beforeTime.String(),
+			}).Info("Scheduling")
+			if now.Unix() > beforeTime.Unix() {
+				log.Info("Adding date")
+				scheduledTime = scheduledTime.AddDate(0, 0, 1)
+			}
 			log.WithField("time", scheduledTime.String()).Info("Scheduling message.")
 			m.ScheduledAt = scheduledTime.Unix()
 			m.Status = models.MsgScheduled

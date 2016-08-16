@@ -15,6 +15,8 @@ const (
 	MaxUCSChars = 70
 	//EncUCS is string representation of ucs encoding
 	EncUCS = "ucs"
+	//EncLatin is string representation of latin encoding
+	EncLatin = "latin"
 )
 
 // Sender holds smpp transmitter and a channel indicating when smpp connection
