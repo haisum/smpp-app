@@ -144,11 +144,11 @@ func GetReport(id string) (CampaignReport, error) {
 		return cr, fmt.Errorf("Couldn't load in cr.MsgSize")
 	}
 	cur.Close()
-	cur, err = r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Min("QueuedAt").Field("QueuedAt").Run(s)
+	cur, err = r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Min("SentAt").Field("SentAt").Run(s)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Min("QueuedAt").Field("QueuedAt").String(),
+			"Query": r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Min("SentAt").Field("SentAt").String(),
 		}).Error("Error executing min queued at query")
 		return cr, fmt.Errorf("Could't run query.")
 	}

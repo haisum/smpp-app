@@ -159,6 +159,16 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	errCh := make(chan error, 1)
 	okCh := make(chan bool, len(numbers))
 	burstCh := make(chan int, 1000)
+	enc := smpp.EncLatin
+	if len(numbers) > 0 {
+		encMsg := msg
+		for search, replace := range numbers[0].Params {
+			encMsg = strings.Replace(encMsg, "{{"+search+"}}", replace, -1)
+		}
+		if !smpp.IsASCII(encMsg) {
+			enc = smpp.EncUCS
+		}
+	}
 	for _, nr := range numbers {
 		go func(nr models.NumFileRow, realMsg string) {
 			var (
@@ -172,10 +182,6 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			for search, replace := range nr.Params {
 				realMsg = strings.Replace(realMsg, "{{"+search+"}}", replace, -1)
 				maskedMsg = strings.Replace(maskedMsg, "{{"+search+"}}", replace, -1)
-			}
-			enc := smpp.EncLatin
-			if !smpp.IsASCII(realMsg) {
-				enc = smpp.EncUCS
 			}
 			total := smpp.Total(realMsg, enc)
 			m := models.Message{
