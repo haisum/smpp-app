@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
@@ -82,8 +81,6 @@ func send(i queue.Item) {
 		log.Info("Message is stopped skipping.")
 		return
 	}
-	log.WithField("Status", m.Status).Info("Message Status")
-
 	if m.SendAfter != "" && m.SendBefore != "" {
 		afterParts := strings.Split(m.SendAfter, ":")
 		beforeParts := strings.Split(m.SendBefore, ":")
@@ -97,15 +94,11 @@ func send(i queue.Item) {
 		minute, _ = strconv.ParseInt(beforeParts[1], 10, 32)
 		//19 or 1
 		beforeTime := time.Date(now.Year(), now.Month(), now.Day(), int(hour), int(minute), 0, 0, now.Location())
-		fmt.Println(now.String())
-		fmt.Println(beforeTime.String())
-		fmt.Println(afterTime.String())
 		//if 1 is less than 23
 		// then 1 is on next day
 		if beforeTime.Unix() < afterTime.Unix() {
 			beforeTime = beforeTime.AddDate(0, 0, 1)
 		}
-		log.WithFields(log.Fields{"after": afterTime.String(), "before": beforeTime.String(), "now": now.String()}).Info("Scheduling")
 		// if 2 is greater than 23 and 2 is lesser than 01 the next day //false, schedule it
 		// if 00:01 is greater than 23 and 00:01 is lesser than 01 the next day // true, send it now
 		// if 16 is greater than 7 and 16 is lesser than 19 // true, send it now
@@ -113,13 +106,7 @@ func send(i queue.Item) {
 		if !(now.Unix() > afterTime.Unix() && now.Unix() < beforeTime.Unix()) {
 			//don't send msg here
 			scheduledTime := afterTime.Add(time.Second * 1)
-			// 3:53 and 7 so 11:53 and 3
-			log.WithFields(log.Fields{
-				"now":    now.String(),
-				"before": beforeTime.String(),
-			}).Info("Scheduling")
 			if now.Unix() > beforeTime.Unix() {
-				log.Info("Adding date")
 				scheduledTime = scheduledTime.AddDate(0, 0, 1)
 			}
 			log.WithField("time", scheduledTime.String()).Info("Scheduling message.")
