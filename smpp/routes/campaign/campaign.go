@@ -169,6 +169,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			enc = smpp.EncUCS
 		}
 	}
+	total := smpp.Total(msg, enc)
 	for _, nr := range numbers {
 		go func(nr models.NumFileRow, realMsg string) {
 			var (
@@ -183,7 +184,10 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				realMsg = strings.Replace(realMsg, "{{"+search+"}}", replace, -1)
 				maskedMsg = strings.Replace(maskedMsg, "{{"+search+"}}", replace, -1)
 			}
-			total := smpp.Total(realMsg, enc)
+			realTotal := total
+			if msg != realMsg {
+				realTotal = smpp.Total(realMsg, enc)
+			}
 			m := models.Message{
 				ConnectionGroup: u.ConnectionGroup,
 				Username:        u.Username,
@@ -199,7 +203,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				SendBefore:      uReq.SendBefore,
 				SendAfter:       uReq.SendAfter,
 				ScheduledAt:     uReq.ScheduledAt,
-				Total:           total,
+				Total:           realTotal,
 				Campaign:        uReq.Description,
 			}
 			msgID, errSave := m.Save()
@@ -211,7 +215,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 				key := matchKey(keys, nr.Destination, noKey)
 				qItem := queue.Item{
 					MsgID: msgID,
-					Total: total,
+					Total: realTotal,
 				}
 				respJSON, _ := qItem.ToJSON()
 				errP := q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))

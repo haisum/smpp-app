@@ -34,7 +34,7 @@ const (
 	//ThrottlingError is 0x00000058 status
 	ThrottlingError = "throttling error"
 	//RetryCount is number of times we should retry sending throttling error messsages
-	RetryCount = 10
+	RetryCount = 30
 )
 
 // Handler is called by rabbitmq library after a queue has been bound/
