@@ -82,6 +82,11 @@ $.extend(app, {
         $.ajax("/templates/campaign.html").done(function(data){
             $("#inner-content").html(data);
             $('.materialize-textarea').characterCounter();
+            $("#clear-send").on("click", function(){
+              $("#SendAfter").val("");
+              $("#SendBefore").val("");
+              return false;
+            });
             app.renderCampaignFiles();
             app.renderCampaignList();
             app.renderCampaignSelect();
