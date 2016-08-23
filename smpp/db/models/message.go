@@ -126,6 +126,24 @@ func (m *Message) Save() (string, error) {
 	return id, nil
 }
 
+// SaveBulk saves a list of message structs in Message table
+func SaveBulk(m []Message) ([]string, error) {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Error("Couldn't get session.")
+		return nil, err
+	}
+	resp, err := r.DB(db.DBName).Table("Message").Insert(m).RunWrite(s)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+			"Query": r.DB(db.DBName).Table("Message").Insert(m).String(),
+		}).Error("Error in inserting message.")
+		return nil, err
+	}
+	return resp.GeneratedKeys, nil
+}
+
 // Update updates an existing message in Message table
 func (m *Message) Update() error {
 	s, err := db.GetSession()
@@ -145,24 +163,20 @@ func (m *Message) Update() error {
 }
 
 // SaveDelivery updates an existing message in Message table and adds delivery status
-func SaveDelivery(respID, src, status string) error {
+func SaveDelivery(respID, status string) error {
 	s, err := db.GetSession()
 	if err != nil {
 		log.WithError(err).Error("Couldn't get session.")
 		return err
 	}
-	resp, err := r.DB(db.DBName).Table("Message").GetAllByIndex("RespID", respID).Filter(map[string]string{
-		"Src": src,
-	}).Update(map[string]interface{}{
+	resp, err := r.DB(db.DBName).Table("Message").GetAllByIndex("RespID", respID).Update(map[string]interface{}{
 		"Status":      status,
 		"DeliveredAt": time.Now().UTC().Unix(),
 	}).RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB(db.DBName).Table("Message").GetAllByIndex("respID", respID).Filter(map[string]string{
-				"Src": src,
-			}).Update(map[string]interface{}{
+			"Query": r.DB(db.DBName).Table("Message").GetAllByIndex("respID", respID).Update(map[string]interface{}{
 				"Status":      status,
 				"DeliveredAt": time.Now().UTC().Unix(),
 			}),

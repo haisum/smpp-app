@@ -120,11 +120,11 @@ func (u *User) Update(s *r.Session, passwdChanged bool) error {
 func GetUser(s *r.Session, username string) (User, error) {
 	var u User
 	cur, err := r.DB(db.DBName).Table("User").Filter(r.Row.Field("Username").Eq(username)).Run(s)
-	defer cur.Close()
 	if err != nil {
 		log.WithError(err).Error("Couldn't get user.")
 		return u, err
 	}
+	defer cur.Close()
 	cur.One(&u)
 	defer cur.Close()
 	return u, nil

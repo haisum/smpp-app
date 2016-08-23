@@ -33,6 +33,11 @@ type campaignResponse struct {
 	ID string
 }
 
+const (
+	// MaxBulkInsert is number of msgs to insert at a time.
+	MaxBulkInsert = 200
+)
+
 // CampaignHandler allows starting a campaign
 var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	uResp := campaignResponse{}
@@ -156,9 +161,6 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	noKey := group.DefaultPfx
-	errCh := make(chan error, 1)
-	okCh := make(chan bool, len(numbers))
-	burstCh := make(chan int, 1000)
 	enc := smpp.EncLatin
 	if len(numbers) > 0 {
 		encMsg := msg
@@ -170,86 +172,95 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	total := smpp.Total(msg, enc)
-	for _, nr := range numbers {
-		go func(nr models.NumFileRow, realMsg string) {
-			var (
-				queuedTime int64                = time.Now().UTC().Unix()
-				status     models.MessageStatus = models.MsgQueued
-			)
-			if uReq.ScheduledAt > 0 {
-				status = models.MsgScheduled
-			}
-			maskedMsg := c.Msg
-			for search, replace := range nr.Params {
-				realMsg = strings.Replace(realMsg, "{{"+search+"}}", replace, -1)
-				maskedMsg = strings.Replace(maskedMsg, "{{"+search+"}}", replace, -1)
-			}
-			realTotal := total
-			if msg != realMsg {
-				realTotal = smpp.Total(realMsg, enc)
-			}
-			m := models.Message{
-				ConnectionGroup: u.ConnectionGroup,
-				Username:        u.Username,
-				Msg:             maskedMsg,
-				RealMsg:         realMsg,
-				Enc:             enc,
-				Dst:             nr.Destination,
-				Src:             uReq.Src,
-				Priority:        uReq.Priority,
-				QueuedAt:        queuedTime,
-				Status:          status,
-				CampaignID:      campaignID,
-				SendBefore:      uReq.SendBefore,
-				SendAfter:       uReq.SendAfter,
-				ScheduledAt:     uReq.ScheduledAt,
-				Total:           realTotal,
-				Campaign:        uReq.Description,
-			}
-			msgID, errSave := m.Save()
-			if errSave != nil {
-				errCh <- errSave
+	var ms []models.Message
+	for i, nr := range numbers {
+		var (
+			queuedTime int64                = time.Now().UTC().Unix()
+			status     models.MessageStatus = models.MsgQueued
+		)
+		if uReq.ScheduledAt > 0 {
+			status = models.MsgScheduled
+		}
+		maskedMsg := c.Msg
+		realMsg := msg
+		for search, replace := range nr.Params {
+			realMsg = strings.Replace(realMsg, "{{"+search+"}}", replace, -1)
+			maskedMsg = strings.Replace(maskedMsg, "{{"+search+"}}", replace, -1)
+		}
+		realTotal := total
+		if msg != realMsg {
+			realTotal = smpp.Total(realMsg, enc)
+		}
+		m := models.Message{
+			ConnectionGroup: u.ConnectionGroup,
+			Username:        u.Username,
+			Msg:             maskedMsg,
+			RealMsg:         realMsg,
+			Enc:             enc,
+			Dst:             nr.Destination,
+			Src:             uReq.Src,
+			Priority:        uReq.Priority,
+			QueuedAt:        queuedTime,
+			Status:          status,
+			CampaignID:      campaignID,
+			SendBefore:      uReq.SendBefore,
+			SendAfter:       uReq.SendAfter,
+			ScheduledAt:     uReq.ScheduledAt,
+			Total:           realTotal,
+			Campaign:        uReq.Description,
+		}
+		ms = append(ms, m)
+		// if we have 200 msgs or last few messages
+		if (i+1)%MaxBulkInsert == 0 || (i+1) == len(numbers) {
+			ids, err := models.SaveBulk(ms)
+			if err != nil {
+				//error agaya bhai
+				log.WithFields(log.Fields{
+					"error": err,
+					"uReq":  uReq,
+				}).Error("Couldn't save messages.")
+				resp := routes.Response{
+					Errors: []routes.ResponseError{
+						{
+							Type:    routes.ErrorTypeQueue,
+							Message: "Couldn't save messages.",
+						},
+					},
+					Request: uReq,
+				}
+				resp.Send(w, *r, http.StatusInternalServerError)
 				return
 			}
-			if m.ScheduledAt == 0 {
-				key := matchKey(keys, nr.Destination, noKey)
-				qItem := queue.Item{
-					MsgID: msgID,
-					Total: realTotal,
-				}
-				respJSON, _ := qItem.ToJSON()
-				errP := q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
-				if errP != nil {
-					errCh <- errP
-					return
+			for j, m := range ms {
+				if m.ScheduledAt == 0 {
+					key := matchKey(keys, m.Dst, noKey)
+					qItem := queue.Item{
+						MsgID: ids[j], //m.ID is empty.
+						Total: m.Total,
+					}
+					respJSON, _ := qItem.ToJSON()
+					err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
+					if err != nil {
+						//error here too
+						log.WithFields(log.Fields{
+							"error": err,
+							"uReq":  uReq,
+						}).Error("Couldn't publish message.")
+						resp := routes.Response{
+							Errors: []routes.ResponseError{
+								{
+									Type:    routes.ErrorTypeQueue,
+									Message: "Couldn't queue message.",
+								},
+							},
+							Request: uReq,
+						}
+						resp.Send(w, *r, http.StatusInternalServerError)
+						return
+					}
 				}
 			}
-			okCh <- true
-			//free one burst
-			<-burstCh
-		}(nr, msg)
-		//proceed if you can feed the burst channel
-		burstCh <- 1
-	}
-	for i := 0; i < len(numbers); i++ {
-		select {
-		case <-errCh:
-			log.WithFields(log.Fields{
-				"error": err,
-				"uReq":  uReq,
-			}).Error("Couldn't publish message.")
-			resp := routes.Response{
-				Errors: []routes.ResponseError{
-					{
-						Type:    routes.ErrorTypeQueue,
-						Message: "Couldn't queue message.",
-					},
-				},
-				Request: uReq,
-			}
-			resp.Send(w, *r, http.StatusInternalServerError)
-			return
-		case <-okCh:
+			ms = []models.Message{}
 		}
 	}
 	log.Info("All campaign messages queued")

@@ -13,7 +13,7 @@ func CheckExpiry() {
 	msgPrinted := false
 	for {
 		now := time.Now().UTC()
-		if now.Unix() > time.Date(2016, time.August, 25, 0, 0, 0, 0, now.Location()).Unix() {
+		if now.Unix() > time.Date(2016, time.August, 30, 0, 0, 0, 0, now.Location()).Unix() {
 			if !msgPrinted {
 				log.Error("License has expired. Please purchase full version to continue usage.")
 				msgPrinted = true

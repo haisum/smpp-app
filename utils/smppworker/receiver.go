@@ -51,7 +51,7 @@ func saveDeliverySM(deliverSM pdufield.Map) {
 	} else {
 		status = string(models.MsgNotDelivered)
 	}
-	models.SaveDelivery(id, deliverSM["destination_addr"].String(), status)
+	models.SaveDelivery(id, status)
 }
 
 func callReceiver(deliverSM pdufield.Map) {
