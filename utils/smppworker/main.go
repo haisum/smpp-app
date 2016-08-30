@@ -148,18 +148,15 @@ func send(i queue.Item) {
 				Time: time.Now(),
 			})
 			<-bucket
-			if err != nil {
-				if err.Error() != ThrottlingError {
-					break
-				}
-				log.WithError(err).Infof("Error occured, retrying for %d time.", j)
+			if err == nil || (err != nil && err.Error() != ThrottlingError) {
+				break
 			}
-			break
+			log.WithError(err).Infof("Error occured, retrying.")
 		}
 	} else {
 		sm, parts := s.SplitLong(m.Src, m.Dst, m.Enc, m.RealMsg)
 		for i, p := range parts {
-			for j := 1; j <= 10; j++ {
+			for {
 				bucket <- 1
 				if sent == 0 {
 					sent = time.Now().UTC().Unix()
@@ -183,13 +180,10 @@ func send(i queue.Item) {
 				})
 				<-bucket
 				log.WithField("part", i+1).Info("Sent part")
-				if err != nil {
-					if err.Error() != ThrottlingError {
-						break
-					}
-					log.WithError(err).Infof("Error occured, retrying for %d time.", j)
+				if err == nil || (err != nil && err.Error() != ThrottlingError) {
+					break
 				}
-				break
+				log.WithError(err).Infof("Error occured, retrying.")
 			}
 		}
 	}
