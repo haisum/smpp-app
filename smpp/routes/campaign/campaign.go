@@ -19,6 +19,7 @@ type campaignRequest struct {
 	URL         string
 	Token       string
 	FileID      string
+	Numbers     string
 	Description string
 	Priority    int
 	Src         string
@@ -68,32 +69,48 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
-	files, err := models.GetNumFiles(models.NumFileCriteria{
-		ID: uReq.FileID,
-	})
-	if err != nil || len(files) == 0 {
+	var numbers []models.NumFileRow
+	if uReq.FileID != "" {
+		var files []models.NumFile
+		files, err = models.GetNumFiles(models.NumFileCriteria{
+			ID: uReq.FileID,
+		})
+		if err != nil || len(files) == 0 {
+			resp := routes.Response{}
+			resp.Errors = []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeForm,
+					Message: "Couldn't get any file.",
+					Field:   "FileID",
+				},
+			}
+			resp.Send(w, *r, http.StatusBadRequest)
+		}
+		numbers, err = files[0].ToNumbers()
+		if err != nil {
+			log.WithError(err).Error("Couldn't read numbers from file.")
+			resp := routes.Response{}
+			resp.Errors = []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeForm,
+					Message: "Couldn't read numbers from file.",
+					Field:   "FileID",
+				},
+			}
+			resp.Send(w, *r, http.StatusInternalServerError)
+		}
+	} else if uReq.Numbers != "" {
+		numbers = models.NumbersFromString(uReq.Numbers)
+	} else {
+		log.WithError(err).Error("No numbers provided.")
 		resp := routes.Response{}
 		resp.Errors = []routes.ResponseError{
 			{
-				Type:    routes.ErrorTypeForm,
-				Message: "Couldn't get any file.",
-				Field:   "FileID",
+				Type:    routes.ErrorTypeRequest,
+				Message: "No numbers provided. You should either select a file or send comma separated list of numbers",
 			},
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
-	}
-	numbers, err := files[0].ToNumbers()
-	if err != nil {
-		log.WithError(err).Error("Couldn't read numbers from file.")
-		resp := routes.Response{}
-		resp.Errors = []routes.ResponseError{
-			{
-				Type:    routes.ErrorTypeForm,
-				Message: "Couldn't read numbers from file.",
-				Field:   "FileID",
-			},
-		}
-		resp.Send(w, *r, http.StatusInternalServerError)
 	}
 	c := models.Campaign{
 		Description: uReq.Description,
@@ -276,13 +293,6 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 
 func validateCampaign(c campaignRequest) []routes.ResponseError {
 	var errors []routes.ResponseError
-	if c.FileID == "" {
-		errors = append(errors, routes.ResponseError{
-			Type:    routes.ErrorTypeForm,
-			Field:   "FileID",
-			Message: "File can't be empty.",
-		})
-	}
 	if c.Msg == "" {
 		errors = append(errors, routes.ResponseError{
 			Type:    routes.ErrorTypeForm,

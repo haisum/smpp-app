@@ -246,6 +246,21 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 	return id, nil
 }
 
+// NumbersFromString makes a NumFileRow list from comma separated numbers
+func NumbersFromString(numbers string) []NumFileRow {
+	var nums []NumFileRow
+	if numbers == "" {
+		return nums
+	}
+	parts := strings.Split(numbers, ",")
+	for _, num := range parts {
+		nums = append(nums, NumFileRow{
+			Destination: num,
+		})
+	}
+	return nums
+}
+
 // ToNumbers reads a csv or xlsx file and returns array of NumFileRow with Destination and Params map
 func (nf *NumFile) ToNumbers() ([]NumFileRow, error) {
 	var nums []NumFileRow

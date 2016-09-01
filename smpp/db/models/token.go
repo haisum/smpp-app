@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	// TokenValidity is No. of days token is valid for if unaccessed
-	TokenValidity int = 30
+	// DefaultTokenValidity is default No. of days token is valid for if unaccessed
+	DefaultTokenValidity int = 30
 	// TokenSize is length of token
 	TokenSize int = 40
 )
@@ -23,6 +23,7 @@ type Token struct {
 	LastAccessed int64
 	Token        []byte
 	Username     string
+	Validity     int
 }
 
 // GetToken looks for token in Token table and returns it or error if
@@ -44,8 +45,11 @@ func GetToken(s *r.Session, token string) (Token, error) {
 	}
 	defer cur.Close()
 	now := time.Now()
+	if t.Validity == 0 {
+		t.Validity = DefaultTokenValidity
+	}
 	// TokenValidity days ago
-	then := time.Date(now.Year(), now.Month(), now.Day()-TokenValidity, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location()).Unix()
+	then := time.Date(now.Year(), now.Month(), now.Day()-t.Validity, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location()).Unix()
 	// if token was accessed an year ago, delete it and return error.
 	if t.LastAccessed < then {
 		return t, fmt.Errorf("Token has expired.")
@@ -64,12 +68,16 @@ func GetToken(s *r.Session, token string) (Token, error) {
 }
 
 // CreateToken should be called to create a new token for a user
-func CreateToken(s *r.Session, username string) (string, error) {
+func CreateToken(s *r.Session, username string, validity int) (string, error) {
 	token := secureRandomAlphaString(TokenSize)
+	if validity == 0 {
+		validity = DefaultTokenValidity
+	}
 	t := Token{
 		Token:        toSHA1(token),
 		LastAccessed: time.Now().UTC().Unix(),
 		Username:     username,
+		Validity:     validity,
 	}
 	err := r.DB(db.DBName).Table("Token").Insert(t).Exec(s)
 	if err != nil {

@@ -1,8 +1,9 @@
 package models
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"testing"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
 )
 
 func TestGetToken(t *testing.T) {
@@ -10,11 +11,11 @@ func TestGetToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok1, err := CreateToken(s, "user1")
+	tok1, err := CreateToken(s, "user1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok2, err := CreateToken(s, "user2")
+	tok2, err := CreateToken(s, "user2", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +40,7 @@ func TestToken_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok, err := CreateToken(s, "user1")
+	tok, err := CreateToken(s, "user1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,11 +62,11 @@ func TestToken_DeleteAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok1, err := CreateToken(s, "user1")
+	tok1, err := CreateToken(s, "user1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok2, err := CreateToken(s, "user1")
+	tok2, err := CreateToken(s, "user1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

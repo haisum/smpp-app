@@ -13,6 +13,7 @@ type authRequest struct {
 	URL      string
 	Username string
 	Password string
+	Validity int
 }
 
 type authResponse struct {
@@ -97,7 +98,7 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	token, _ := models.CreateToken(s, u.Username)
+	token, _ := models.CreateToken(s, u.Username, uReq.Validity)
 	uResp.Token = token
 	resp.Obj = uResp
 	resp.Ok = true
