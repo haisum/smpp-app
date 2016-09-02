@@ -8,7 +8,6 @@
 *.log
 *.zip
 .vscode
-docs
 ansible/hosts
 *.sublime*
 make.sh

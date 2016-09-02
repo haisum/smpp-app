@@ -70,8 +70,8 @@ func main() {
 	r.Handle("/api/file/upload", handlers.MethodHandler{"POST": file.UploadHandler})
 	r.Handle("/api/file/delete", handlers.MethodHandler{"POST": file.DeleteHandler})
 	r.Handle("/api/file/filter", file.FilterHandler)
-	ui := http.FileServer(http.Dir("./ui/"))
-	r.PathPrefix("/").Handler(ui)
+	static := http.FileServer(http.Dir("./static/"))
+	r.PathPrefix("/").Handler(static)
 	log.Info("Loading message workers.")
 	_, err = supervisor.Execute("reload")
 	if err != nil {
