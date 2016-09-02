@@ -12,7 +12,7 @@
     "basePath": "/api",
     "tags": [{
         "name": "sms",
-        "description": "Sending single sms/campaigns"
+        "description": "Sending single sms/bulk campaigns"
     }, {
         "name": "files",
         "description": "Operations about uploading and managing files."
@@ -72,6 +72,7 @@
                 }
             }
         }
+        
     },
     "definitions": {
         "ScheduledAt": {
