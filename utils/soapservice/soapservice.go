@@ -57,7 +57,7 @@ func main() {
 			return
 		}
 		enc := "latin"
-		if e.Body.Request.Coding == 2 {
+		if !smpp.IsASCII(e.Body.Request.Message) {
 			enc = "ucs"
 		}
 		total := smpp.Total(e.Body.Request.Message, enc)
@@ -67,6 +67,7 @@ func main() {
 			Username:        u.Username,
 			Msg:             e.Body.Request.Message,
 			RealMsg:         e.Body.Request.Message,
+			Priority:        e.Body.Request.Priority,
 			Enc:             enc,
 			Dst:             e.Body.Request.Dst,
 			Src:             e.Body.Request.Src,
@@ -93,7 +94,7 @@ func main() {
 			Total: total,
 		}
 		respJSON, _ := qItem.ToJSON()
-		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(0))
+		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(m.Priority))
 		if err != nil {
 			log.WithError(err).Error("Error sending message.")
 			fmt.Fprintf(w, soap.Response, "Error in queueing message.", "")

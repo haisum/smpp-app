@@ -15,7 +15,7 @@ type Req struct {
 	Dst        string `xml:"toMobile"`
 	Src        string `xml:"sender"`
 	Message    string `xml:"smsText"`
-	Coding     int    `xml:"coding"`
+	Priority   int    `xml:"priority"`
 	Username   string `xml:"username"`
 	Password   string `xml:"password"`
 	SendAfter  string `xml:"sendAfter"`

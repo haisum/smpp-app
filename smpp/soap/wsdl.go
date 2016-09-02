@@ -36,7 +36,7 @@ const (
      <element name="toMobile" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
      <element name="sender" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
      <element name="smsText" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
-     <element name="coding" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
+     <element name="priority" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>
 		 <element name="username" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
 		 <element name="password" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="false"/>
 		 <element name="sendAfter" type="xsd:string" minOccurs="1" maxOccurs="1" nillable="true"/>

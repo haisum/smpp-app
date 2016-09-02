@@ -76,14 +76,16 @@ func (c *Campaign) Save() (string, error) {
 		log.WithError(err).Error("Couldn't get session.")
 		return id, err
 	}
-	f, _ := GetNumFiles(NumFileCriteria{
-		ID: c.FileID,
-	})
-	if len(f) != 1 {
-		return id, fmt.Errorf("Couldn't find file.")
+	if c.FileID != "" {
+		f, _ := GetNumFiles(NumFileCriteria{
+			ID: c.FileID,
+		})
+		if len(f) != 1 {
+			return id, fmt.Errorf("Couldn't find file.")
+		}
+		c.FileLocalName = f[0].LocalName
+		c.FileName = f[0].Name
 	}
-	c.FileLocalName = f[0].LocalName
-	c.FileName = f[0].Name
 	resp, err := r.DB(db.DBName).Table("Campaign").Insert(c).RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
