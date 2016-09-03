@@ -71,8 +71,54 @@
                     }
                 }
             }
+        },
+        "/message/filter" : {
+          "get" : {
+            "tags" : ["sms"],
+            "summary" : "Fetches reports about sent sms from database.",
+            "description" : "This endpoint queries Message table and fetches records based on filters and order provided. User must have \"List messages\" permission to use this endpoint.",
+            "consumes": ["application/json"],
+            "produces": ["application/json"],
+            "parameters": [{
+                "in": "body",
+                "name": "body",
+                "description": "Message filter request object that contains necessary parameters.",
+                "required": true,
+                "schema": {
+                    "$ref": "#/definitions/MessageFilter"
+                }
+            }],
+            "responses": {
+                "200": {
+                  "description" : "Request completed successfully",
+                  "schema": {
+                    "$ref": "#/definitions/MessageFilterResponse"
+                  }
+                },
+                "400": {
+                    "description": "Bad request. Occurs, when we submit json/form request with wrong input type or format.",
+                    "schema": {
+                      "$ref": "#/definitions/BadRequestResponse"
+                    }
+                },
+                "401": {
+                    "description": "Unauthorized. This error happens when either token is invalid, user no longer exists or user is suspended.",
+                    "schema": {
+                      "$ref": "#/definitions/MessageFilterResponse"
+                    }
+                },
+                "403": {
+                    "description": "This error occurs when user is trying to perform an action that they don't have permission to perform.",
+                    "schema": {
+                      "$ref": "#/definitions/MessageFilterResponse"
+                    }
+                },
+                "500": {
+                    "description": "Internal server error."
+                }
+            }
+          }
         }
-        
     },
     "definitions": {
         "ScheduledAt": {
@@ -145,6 +191,151 @@
                 }
             }
         },
+        "MessageFilter" : {
+          "type": "object",
+          "required": ["Token"],
+          "properties" : {
+            "Token": {
+              "$ref": "#/definitions/Token"
+            },
+            "ReportCols" : {
+              "type" : "string"
+            },
+            "XLSX" : {
+              "type" : "boolean"
+            },
+            "Stats": {
+              "type" : "boolean"
+            },
+            "TZ" : {
+              "type" : "string"
+            },
+            "RespID" : {
+              "type" : "string"
+            },
+            "ConnectionGroup" : {
+              "type" : "string"
+            },
+            "Connection" : {
+              "type" : "string"
+            },
+            "Username" : {
+              "type" : "string"
+            },
+            "Enc" : {
+              "type" : "string"
+            },
+            "Src" : {
+              "$ref" : "#/definitions/Src"
+            },
+            "Dst" : {
+              "$ref" : "#/definitions/Dst"
+            },
+            "Msg" : {
+              "$ref" : "#/definitions/Msg"
+            },
+            "QueuedBefore" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "QueuedAfter" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "SentBefore" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "SentAfter" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "DeliveredBefore" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "DeliveredAfter" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "Total" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "Priority" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "CampaignID" : {
+              "type" : "string"
+            },
+            "Status" : {
+              "type" : "string",
+              "enum" : ["Queued", "Sent", "Error", "Delivered", "Not Delivered", "Scheduled", "Stopped"]
+            },
+            "Error" : {
+              "type" : "string"
+            },
+            "ScheduledAfer" : {
+              "type" : "string"
+            },
+            "ScheduledBefore" : {
+              "type" : "string"
+            },
+            "OrderByKey" : {
+              "type" : "string"
+            },
+            "OrderByDir" : {
+              "type" : "string"
+            },
+            "From" : {
+              "type" : "string"
+            },
+            "PerPage" : {
+              "type" : "string"
+            },
+            "DisableOrder" : {
+              "type" : "string"
+            }
+          }
+        },
+        "MessageStats" : {
+          "type": "object",
+          "properties" : {
+            "Queued" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "Sent" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "Error" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "Delivered" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "NotDelivered" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "Scheduled" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "Stopped" : {
+              "type" : "integer",
+              "format" : "int64"
+            },
+            "Total" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          }
+        },
         "ResponseError" : {
           "type": "object",
           "properties": {
@@ -209,6 +400,32 @@
                 },
                 "Request": {
                   "$ref": "#/definitions/Message"
+                }
+              }
+            }
+          ]
+        },
+        "MessageFilterResponse":{
+          "required": ["Errors", "Ok", "Request", "Response"],
+          "allOf":[
+            { "$ref": "#/definitions/Response" },
+            { "properties": {
+                "Response": {
+                    "type": "object",
+                    "properties" : {
+                      "Messages" :{
+                        "type": "array",
+                        "items" : {
+                          "$ref" : "#/definitions/Message"
+                        }
+                      },
+                      "Stats" : {
+                        "$ref" : "#/definitions/MessageStats"
+                      }
+                    }
+                },
+                "Request": {
+                  "$ref": "#/definitions/MessageFilter"
                 }
               }
             }
