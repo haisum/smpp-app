@@ -82,7 +82,7 @@
           "get" : {
             "tags" : ["sms", "reports"],
             "summary" : "Fetches reports about sent sms from database.",
-            "description" : "This endpoint queries Message table and fetches records based on filters and order provided. User must have \"List messages\" permission to use this endpoint.",
+            "description" : "This endpoint queries Message table and fetches records based on filters and order provided. User must have \"List messages\" permission to use this endpoint.<br/><br/> Be cautious when using this endpoint, a very broad criteria may load a lot of records in memory and cause issues in database. Filter criterias which act on more than 100,000 records are not supported. You can split such reports in multiple smaller units.",
             "consumes": ["application/json"],
             "produces": ["application/json"],
             "parameters": [{
@@ -299,10 +299,32 @@
         "/file/upload" :{
           "post":{
             "tags" : ["files"],
-            "summary" : "",
-            "description" : "",
-            "consumes": ["application/json"],
-            "produces": ["application/json"]
+            "summary" : "Upload and save files with list of numbers to use in campaign.",
+            "description" : "When uploading csv, make sure each number is at least 5 characters long, otherwise an error will be returned.<br/><br/>Excel files should have a sheet with \"Destination\" written at A1 as first column. Headers in B1, C1... should be dynamic placeholders you want to use when sending campaign. Numbers and parameter values should be placed row 2 onwards.<br/><br/>As an example, one can set first row as Destination,Parameter1,Parameter2,Parameter3 and second row as 0239349,value1,value2,value3. When sending campaign we can use placeholders in sms text. Example message using parameters in this excel file will be \"Hello {{Parameter1}}, welcome to {{Parameter2}}. You are our {{Parameter3}} customer.\"",
+            "consumes": ["multipart/form-data"],
+            "produces": ["application/json"],
+            "parameters" : [
+              {
+                "name": "File",
+                "in" : "formData",
+                "description" : "XLSX or CSV File to upload.",
+                "required" : true,
+                "type" : "file"
+              },
+              {
+                "name": "Description",
+                "in" : "formData",
+                "description" : "Description of file.",
+                "type" : "textarea"
+              },
+              {
+                "name": "Token",
+                "in" : "formData",
+                "description" : "Authentication token.",
+                "type" : "text",
+                "required" : true
+              }
+            ]
           }
         },
         "/file/filter" :{
@@ -365,6 +387,11 @@
           "default": false,
           "description": "When set to true, all values in sms enclosed in two square brackets [[]] are masked. User must have masking permissions to do this."
         },
+        "ConnectionGroup" : {
+          "type" : "string",
+          "description" : "Connection groups are a way to organize operator connections into groups. SMS sent by user with connection group A will only be able to use operator connections in group A. This can be used to achieve multi tenancy in our application.",
+          "default" : "Default"
+        },
         "Message": {
             "type": "object",
             "required": ["Token", "Src", "Dst", "Msg"],
@@ -403,31 +430,43 @@
               "$ref": "#/definitions/Token"
             },
             "ReportCols" : {
-              "type" : "string"
+              "type" : "string",
+              "description": "Comma separated list of columns you want to be inside Excel report. By default all available columns are printed in excel report. If you want to reduce them or change order, you can define a custom list via this parameter. Available columns are: \"ID,Connection,ConnectionGroup,Status,Error,RespID,Total,Username,Msg,Enc,Dst,Src,CampaignID,Campaign,Priority,QueuedAt,SentAt,DeliveredAt,ScheduledAt,SendBefore,SendAfter\""
             },
             "XLSX" : {
-              "type" : "boolean"
+              "type" : "boolean",
+              "default" : false,
+              "description" : "When set to true, an excel file is generated and made available for download instead of returning a json response."
             },
             "Stats": {
-              "type" : "boolean"
+              "type" : "boolean",
+              "default" : false,
+              "description" : "When set to true, stats are generated and made available in response's Stats object. This is costly query therefore is disabled by default."
             },
             "TZ" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "Excel reports contain UTC time by default, if you want to generated report to contain time in other time zones, you can pass valid IANA TZ database location. A list of possible TZ names is available at https://en.wikipedia.org/wiki/List_of_tz_database_time_zones in TZ column.",
+              "example" : "America/New_York"
             },
             "RespID" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "When SubmitSM pdu is submitted to operator, it acknowledges and returns an ID that we can use later to check delivery status etc. RespID is ID returned by operator for a sms."
             },
             "ConnectionGroup" : {
-              "type" : "string"
+              "$ref" : "#/definitions/ConnectionGroup"
             },
             "Connection" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "Connection is string name of connection used for sending this message."
             },
             "Username" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "Name of user who sent this message."
             },
             "Enc" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "Encoding used to send this message.",
+              "enum" : ["ucs", "latin"]
             },
             "Src" : {
               "$ref" : "#/definitions/Src"
@@ -440,66 +479,88 @@
             },
             "QueuedBefore" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Time in UTC Unix timestamp before which messages were queued."
             },
             "QueuedAfter" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Time in UTC Unix timestamp after which messages were queued."
             },
             "SentBefore" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Time in UTC Unix timestamp before which messages were sent."
             },
             "SentAfter" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Time in UTC Unix timestamp after which messages were sent."
             },
             "DeliveredBefore" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Time in UTC Unix timestamp before which messages were delivered."
             },
             "DeliveredAfter" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Time in UTC Unix timestamp after which messages were delivered."
             },
             "Total" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "When a message text exceeds 140 bits we split it automatically in multiple sms, total defines how many parts this sms was split into."
             },
             "Priority" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Ranges between 0-10. Higher priority messages take priority over other messages and bypass otherwise first come first serve queue."
             },
             "CampaignID" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "If you want all messages inside a campaign, you can pass campaignID of said campaign here. You can get campaignIDs by using /campaign/filter endpoint."
             },
             "Status" : {
               "type" : "string",
-              "enum" : ["Queued", "Sent", "Error", "Delivered", "Not Delivered", "Scheduled", "Stopped"]
+              "enum" : ["Queued", "Sent", "Error", "Delivered", "Not Delivered", "Scheduled", "Stopped"],
+              "description" : "Current status of this sms. Queued sms are saved in database and passed to rabbitmq queues. Sent sms are passed to operator. Error status means operator returned error when sending this message. Delivered means operator returned a successful delivery report for this sms. Not Delivered means operator returns failed delivery report. Scheduled means sms is scheduled for some later time. Stopped means sms was part of campaign stopped by using /campaign/stop endpoint."
             },
             "Error" : {
-              "type" : "string"
+              "type" : "string",
+              "description": "Contains textual error message returned from operator when an error occurred when sending this sms."
             },
             "ScheduledAfer" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "Time in UTC Unix timestamp after which messages are scheduled."
             },
             "ScheduledBefore" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "Time in UTC Unix timestamp before which messages were scheduled."
             },
             "OrderByKey" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "By default, returned records are sorted by QueuedAt. You can override this behaviour by passing desired field name here."
             },
             "OrderByDir" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "Whether order by should be in descending or ascending order.",
+              "enum" : ["ASC", "DESC"],
+              "default" : "DESC"
             },
             "From" : {
-              "type" : "string"
+              "type" : "string",
+              "description" : "This parameter is provided to help in pagination. It filters and returns records in field defined in OrderByKey greater than value set in this parameter. If direction is DESC, all records lesser than value defined in From are returned."
             },
             "PerPage" : {
-              "type" : "string"
+              "type" : "integer",
+              "default" : 100,
+              "description" : "Maximum number of records to return. This shouldn't exceed 100000."
             },
             "DisableOrder" : {
-              "type" : "string"
+              "type" : "boolean",
+              "default" : false,
+              "description" : "If for performance gains, you don't care about order of records you can set this to true, to disable order by."
             }
           }
         },
@@ -508,35 +569,43 @@
           "properties" : {
             "Queued" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Number of records with status set as Queueud."
             },
             "Sent" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Number of records  with status set as Sent."
             },
             "Error" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Number of records  with status set as Error."
             },
             "Delivered" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Number of records  with status set as Delivered."
             },
             "NotDelivered" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Number of records  with status set as NotDelivered."
             },
             "Scheduled" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Number of records  with status set as Scheduled."
             },
             "Stopped" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Number of records  with status set as Stopped."
             },
             "Total" : {
               "type" : "integer",
-              "format" : "int64"
+              "format" : "int64",
+              "description" : "Total number of records matching given criteria."
             }
           }
         },
