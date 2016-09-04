@@ -12,16 +12,22 @@
     "basePath": "/api",
     "tags": [{
         "name": "sms",
-        "description": "Sending single sms/bulk campaigns"
+        "description": "Sending single sms and filter sent messages."
     }, {
         "name": "files",
         "description": "Operations about uploading and managing files."
     }, {
         "name": "users",
-        "description": "Operations about user authentication, addition and modification."
+        "description": "Operations related to users."
     }, {
         "name": "services",
-        "description": "Operations about configuring smpp connections and checking service status."
+        "description": "Operations about smpp connections and app status."
+    }, {
+        "name": "campaign",
+        "description": "Stop/Retry/Start and get reports about campaigns."
+    }, {
+        "name": "reports",
+        "description": "Reports about all entities in app."
     }],
     "schemes": ["https"],
     "paths": {
@@ -74,7 +80,7 @@
         },
         "/message/filter" : {
           "get" : {
-            "tags" : ["sms"],
+            "tags" : ["sms", "reports"],
             "summary" : "Fetches reports about sent sms from database.",
             "description" : "This endpoint queries Message table and fetches records based on filters and order provided. User must have \"List messages\" permission to use this endpoint.",
             "consumes": ["application/json"],
@@ -117,6 +123,204 @@
                     "description": "Internal server error."
                 }
             }
+          }
+        },
+        "/campaign": {
+            "post": {
+                "tags": ["campaign"],
+                "summary": "Starts a new campaign.",
+                "description": "Starts a new campaign using provided csv or excel file or a list of comma separated numbers. Dynamic, variable based templates are supported via excel file. See /file endpoint for file specific information. A user must have \"Start a campaign\" permission to perform this action.",
+                "consumes": ["application/json"],
+                "produces": ["application/json"],
+                "parameters": [{
+                    "in": "body",
+                    "name": "body",
+                    "description": "Campaign request object that contains necessary parameters.",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/Campaign"
+                    }
+                }],
+                "responses": {
+                    "200": {
+                      "description" : "Request completed successfully",
+                      "schema": {
+                        "$ref": "#/definitions/CampaignResponse"
+                      }
+                    },
+                    "400": {
+                        "description": "Bad request. Occurs, when we submit json/form request with wrong input type or format.",
+                        "schema": {
+                          "$ref": "#/definitions/BadRequestResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized. This error happens when either token is invalid, user no longer exists or user is suspended.",
+                        "schema": {
+                          "$ref": "#/definitions/CampaignResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "This error occurs when user is trying to perform an action that they don't have permission to perform.",
+                        "schema": {
+                          "$ref": "#/definitions/CampaignResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error."
+                    }
+                }
+            }
+        },
+        "/campaign/filter" : {
+          "get":{
+            "tags" : ["campaign", "reports"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/campaign/retry" : {
+          "post":{
+            "tags" : ["campaign"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/campaign/stop" :{
+          "post":{
+            "tags" : ["campaign"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/campaign/report" :{
+          "get":{
+            "tags" : ["campaign", "reports"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/users" :{
+          "get":{
+            "tags" : ["users", "reports"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/users/permissions" :{
+          "get":{
+            "tags" : ["users", "reports"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/users/add" :{
+          "post":{
+            "tags" : ["users", "reports"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/users/edit" :{
+          "post":{
+            "tags" : ["users", "reports"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/user/auth" :{
+          "post":{
+            "tags" : ["users"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/user/edit" :{
+          "post":{
+            "tags" : ["users"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/user/info" :{
+          "get":{
+            "tags" : ["users"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/services/config" :{
+          "post":{
+            "tags" : ["services"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          },
+          "get":{
+            "tags" : ["services"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/services/status" :{
+          "get":{
+            "tags" : ["services"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/file/upload" :{
+          "post":{
+            "tags" : ["files"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/file/filter" :{
+          "get":{
+            "tags" : ["files"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
+          }
+        },
+        "/file/delete" :{
+          "post":{
+            "tags" : ["files"],
+            "summary" : "",
+            "description" : "",
+            "consumes": ["application/json"],
+            "produces": ["application/json"]
           }
         }
     },
