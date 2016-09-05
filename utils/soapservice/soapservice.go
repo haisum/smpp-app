@@ -62,6 +62,10 @@ func main() {
 		}
 		total := smpp.Total(e.Body.Request.Message, enc)
 
+		if e.Body.Request.Priority == 0 {
+			e.Body.Request.Priority = 7
+		}
+
 		m := models.Message{
 			ConnectionGroup: u.ConnectionGroup,
 			Username:        u.Username,
