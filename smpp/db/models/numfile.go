@@ -67,7 +67,6 @@ var (
 type NumFileCriteria struct {
 	ID              string
 	Username        string
-	LocalName       string
 	UserID          string
 	SubmittedAfter  int64
 	SubmittedBefore int64
@@ -168,11 +167,10 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	}
 	t, filterUsed = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
-		"LocalName": c.LocalName,
-		"Username":  c.Username,
-		"UserID":    c.UserID,
-		"Type":      string(c.Type),
-		"Name":      c.Name,
+		"Username": c.Username,
+		"UserID":   c.UserID,
+		"Type":     string(c.Type),
+		"Name":     c.Name,
 	}
 	var filtered bool
 	t, filtered = filterEqStr(strFields, t)
