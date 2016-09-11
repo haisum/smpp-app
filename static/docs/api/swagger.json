@@ -138,7 +138,7 @@
                     "description": "Campaign request object that contains necessary parameters.",
                     "required": true,
                     "schema": {
-                        "$ref": "#/definitions/Campaign"
+                        "$ref": "#/definitions/CampaignRequest"
                     }
                 }],
                 "responses": {
@@ -546,6 +546,56 @@
                 }
             }
         },
+        "Campaign": {
+            "type": "object",
+            "required": ["Token", "Src", "Dst", "Msg"],
+            "properties": {
+                "ID" : {
+
+                },
+                "Description" : {
+
+                },
+                "ScheduledAt" : {
+                  "$ref": "#/definitions/ScheduledAt"
+                },
+                "Token": {
+                  "$ref": "#/definitions/Token"
+                },
+                "Src": {
+                  "$ref": "#/definitions/Src"
+                },
+                "Msg": {
+
+                },
+                "Enc": {
+
+                },
+                "FileName": {
+
+                },
+                "FileLocalName": {
+
+                },
+                "FileID": {
+
+                },
+                "UserID": {
+
+                },
+                "Username": {
+
+                },
+                "SendBefore": {
+                  "$ref": "#/definitions/SendBefore"
+                },
+                "SendAfter": {
+                  "$ref": "#/definitions/SendAfter"
+                },
+                "SubmittedAt": {
+                }
+            }
+        },
         "MessageFilter" : {
           "type": "object",
           "required": ["Token"],
@@ -836,6 +886,126 @@
             }
           }
         },
+        "CampaignRequest" : {
+          "type": "object",
+          "properties" : {
+            "Token" : {
+              "$ref" : "#/definitions/Token"
+            },
+            "FileID" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "Numbers" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "Description" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "Priority" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "Src" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "Msg" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "ScheduledAt" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "SendBefore" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "SendAfter" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "Mask" : {
+              "type" : "boolean",
+              "description": "ID of file to mark as deleted."
+            }
+          }
+        },
+        "CampaignFilterRequest" : {
+          "type": "object",
+          "properties" : {
+            "Token" : {
+              "$ref" : "#/definitions/Token"
+            },
+            "ID" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "UserID" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "SubmittedAfter" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "SubmittedBefore" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "ScheduledAfter" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "ScheduledBefore" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "Username" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "FileName" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "Enc" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "Src" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "Msg" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "SendBefore" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "SendAfter" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            },
+            "OrderByKey" : {
+              "$ref" : "#/definitions/OrderByKey"
+            },
+            "OrderByDir" : {
+              "$ref" : "#/definitions/OrderByDir"
+            },
+            "From" : {
+              "$ref" : "#/definitions/From"
+            },
+            "PerPage" : {
+              "$ref" : "#/definitions/PerPage"
+            }
+          }
+        },
         "ResponseError" : {
           "type": "object",
           "properties": {
@@ -985,6 +1155,28 @@
                       "type" : "string"
                     }
                   }
+                }
+              }
+            }
+          ]
+        },
+        "CampaignResponse":{
+          "required": ["Errors", "Ok", "Request", "Response"],
+          "allOf":[
+            { "$ref": "#/definitions/Response" },
+            { "properties": {
+                "Response": {
+                    "type": "object",
+                    "properties" : {
+                      "ID" :{
+                        "type": "string",
+                        "required" : "true",
+                        "description": "ID of the campaign submitted."
+                      }
+                    }
+                },
+                "Request": {
+                  "$ref" : "#/defintions/CampaignRequest"
                 }
               }
             }
