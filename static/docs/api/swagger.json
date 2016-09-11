@@ -406,10 +406,48 @@
         "/file/delete" :{
           "post":{
             "tags" : ["files"],
-            "summary" : "",
-            "description" : "",
+            "summary" : "Marks an uploaded file as deleted.",
+            "description" : "This endpoint sets Deleted field of file object to true so it won't be fetched by default. Note that this doesn't delete actual file from file system.<br/><br/>A user must have \"Delete a number file\" permission if they want to mark a file that's not uploaded by them as deleted.",
             "consumes": ["application/json"],
-            "produces": ["application/json"]
+            "produces": ["application/json"],
+            "parameters": [{
+                "in": "body",
+                "name": "body",
+                "description": "ID of the file to delete and auth token.",
+                "required": true,
+                "schema": {
+                    "$ref": "#/definitions/FileDeleteRequest"
+                }
+            }],
+            "responses": {
+                "200": {
+                  "description" : "Request completed successfully",
+                  "schema": {
+                    "$ref": "#/definitions/FileDeleteResponse"
+                  }
+                },
+                "400": {
+                    "description": "Bad request. Occurs, when we submit json/form request with wrong input type or format.",
+                    "schema": {
+                      "$ref": "#/definitions/BadRequestResponse"
+                    }
+                },
+                "401": {
+                    "description": "Unauthorized. This error happens when either token is invalid, user no longer exists or user is suspended.",
+                    "schema": {
+                      "$ref": "#/definitions/FileDeleteResponse"
+                    }
+                },
+                "403": {
+                    "description": "This error occurs when user is trying to perform an action that they don't have permission to perform.",
+                    "schema": {
+                      "$ref": "#/definitions/FileDeleteResponse"
+                    }
+                },
+                "500": {
+                    "description": "Internal server error."
+                }
+            }
           }
         }
     },
@@ -786,6 +824,18 @@
             }
           }
         },
+        "FileDeleteRequest" : {
+          "type": "object",
+          "properties" : {
+            "Token" : {
+              "$ref" : "#/definitions/Token"
+            },
+            "ID" : {
+              "type" : "string",
+              "description": "ID of file to mark as deleted."
+            }
+          }
+        },
         "ResponseError" : {
           "type": "object",
           "properties": {
@@ -935,6 +985,21 @@
                       "type" : "string"
                     }
                   }
+                }
+              }
+            }
+          ]
+        },
+        "FileDeleteResponse":{
+          "required": ["Errors", "Ok", "Request", "Response"],
+          "allOf":[
+            { "$ref": "#/definitions/Response" },
+            { "properties": {
+                "Response": {
+                    "type": "object"
+                },
+                "Request": {
+                  "$ref" : "#/definitions/FileDeleteRequest"
                 }
               }
             }
