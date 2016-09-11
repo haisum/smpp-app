@@ -14,20 +14,20 @@
         "name": "sms",
         "description": "Sending single sms and filter sent messages."
     }, {
+        "name": "campaign",
+        "description": "Stop/Retry/Start and get reports about campaigns."
+    },{
         "name": "files",
         "description": "Operations about uploading and managing files."
+    }, {
+        "name": "reports",
+        "description": "Reports about all entities in app."
     }, {
         "name": "users",
         "description": "Operations related to users."
     }, {
         "name": "services",
         "description": "Operations about smpp connections and app status."
-    }, {
-        "name": "campaign",
-        "description": "Stop/Retry/Start and get reports about campaigns."
-    }, {
-        "name": "reports",
-        "description": "Reports about all entities in app."
     }],
     "schemes": ["https"],
     "paths": {
@@ -300,7 +300,7 @@
           "post":{
             "tags" : ["files"],
             "summary" : "Upload and save files with list of numbers to use in campaign.",
-            "description" : "When uploading csv, make sure each number is at least 5 characters long, otherwise an error will be returned.<br/><br/>Excel files should have a sheet with \"Destination\" written at A1 as first column. Headers in B1, C1... should be dynamic placeholders you want to use when sending campaign. Numbers and parameter values should be placed row 2 onwards.<br/><br/>As an example, one can set first row as Destination,Parameter1,Parameter2,Parameter3 and second row as 0239349,value1,value2,value3. When sending campaign we can use placeholders in sms text. Example message using parameters in this excel file will be \"Hello {{Parameter1}}, welcome to {{Parameter2}}. You are our {{Parameter3}} customer.\"",
+            "description" : "When uploading csv, make sure each number is at least 5 characters long, otherwise an error will be returned.<br/><br/>Excel files should have a sheet with \"Destination\" written at A1 as first column. Headers in B1, C1... should be dynamic placeholders you want to use when sending campaign. Numbers and parameter values should be placed row 2 onwards.<br/><br/>As an example, one can set first row as Destination,Parameter1,Parameter2,Parameter3 and second row as 0239349,value1,value2,value3. When sending campaign we can use placeholders in sms text. Example message using parameters in this excel file will be \"Hello {{Parameter1}}, welcome to {{Parameter2}}. You are our {{Parameter3}} customer.\"<br/><br/>Files larger than 5MB are not supported and return 417 Expectation Failed header.",
             "consumes": ["multipart/form-data"],
             "produces": ["application/json"],
             "parameters" : [
@@ -315,25 +315,92 @@
                 "name": "Description",
                 "in" : "formData",
                 "description" : "Description of file.",
-                "type" : "textarea"
+                "type" : "string"
               },
               {
                 "name": "Token",
                 "in" : "formData",
                 "description" : "Authentication token.",
-                "type" : "text",
+                "type" : "string",
                 "required" : true
               }
-            ]
+            ],
+            "responses": {
+                "200": {
+                  "description" : "Request completed successfully",
+                  "schema": {
+                    "$ref": "#/definitions/FileUploadResponse"
+                  }
+                },
+                "400": {
+                    "description": "Bad request. Occurs, when we submit json/form request with wrong input type or format.",
+                    "schema": {
+                      "$ref": "#/definitions/BadRequestResponse"
+                    }
+                },
+                "401": {
+                    "description": "Unauthorized. This error happens when either token is invalid, user no longer exists or user is suspended.",
+                    "schema": {
+                      "$ref": "#/definitions/FileUploadResponse"
+                    }
+                },
+                "417": {
+                    "description": "This error occurs when size of file plus post request is larger than 5MB.",
+                    "schema": {
+                      "$ref": "#/definitions/BadRequestResponse"
+                    }
+                },
+                "500": {
+                    "description": "Internal server error."
+                }
+            }
           }
         },
         "/file/filter" :{
           "get":{
             "tags" : ["files"],
-            "summary" : "",
-            "description" : "",
+            "summary" : "Filters files based on given criteria",
+            "description" : "This endpoint lists recently uploaded files and allows user to search for uploaded files based on given criteria. A user may search their own files by passing Username=myusername. Filtering other user's files requires \"List number files\" permission.",
             "consumes": ["application/json"],
-            "produces": ["application/json"]
+            "produces": ["application/json"],
+            "parameters": [{
+                "in": "body",
+                "name": "body",
+                "description": "File filter request object that contains necessary parameters.",
+                "required": true,
+                "schema": {
+                    "$ref": "#/definitions/FileFilterRequest"
+                }
+            }],
+            "responses": {
+                "200": {
+                  "description" : "Request completed successfully",
+                  "schema": {
+                    "$ref": "#/definitions/FileFilterResponse"
+                  }
+                },
+                "400": {
+                    "description": "Bad request. Occurs, when we submit json/form request with wrong input type or format.",
+                    "schema": {
+                      "$ref": "#/definitions/BadRequestResponse"
+                    }
+                },
+                "401": {
+                    "description": "Unauthorized. This error happens when either token is invalid, user no longer exists or user is suspended.",
+                    "schema": {
+                      "$ref": "#/definitions/FileFilterResponse"
+                    }
+                },
+                "403": {
+                    "description": "This error occurs when user is trying to perform an action that they don't have permission to perform.",
+                    "schema": {
+                      "$ref": "#/definitions/FileFilterResponse"
+                    }
+                },
+                "500": {
+                    "description": "Internal server error."
+                }
+            }
           }
         },
         "/file/delete" :{
@@ -391,6 +458,25 @@
           "type" : "string",
           "description" : "Connection groups are a way to organize operator connections into groups. SMS sent by user with connection group A will only be able to use operator connections in group A. This can be used to achieve multi tenancy in our application.",
           "default" : "Default"
+        },
+        "OrderByKey" : {
+          "type" : "string",
+          "description" : "By default, returned records are sorted by QueuedAt. You can override this behaviour by passing desired field name here."
+        },
+        "OrderByDir" : {
+          "type" : "string",
+          "description" : "Whether order by should be in descending or ascending order.",
+          "enum" : ["ASC", "DESC"],
+          "default" : "DESC"
+        },
+        "From" : {
+          "type" : "string",
+          "description" : "This parameter is provided to help in pagination. It filters and returns records in field defined in OrderByKey greater than value set in this parameter. If direction is DESC, all records lesser than value defined in From are returned."
+        },
+        "PerPage" : {
+          "type" : "integer",
+          "default" : 100,
+          "description" : "Maximum number of records to return. This shouldn't exceed 100000."
         },
         "Message": {
             "type": "object",
@@ -539,23 +625,16 @@
               "description" : "Time in UTC Unix timestamp before which messages were scheduled."
             },
             "OrderByKey" : {
-              "type" : "string",
-              "description" : "By default, returned records are sorted by QueuedAt. You can override this behaviour by passing desired field name here."
+              "$ref" : "#/definitions/OrderByKey"
             },
             "OrderByDir" : {
-              "type" : "string",
-              "description" : "Whether order by should be in descending or ascending order.",
-              "enum" : ["ASC", "DESC"],
-              "default" : "DESC"
+              "$ref" : "#/definitions/OrderByDir"
             },
             "From" : {
-              "type" : "string",
-              "description" : "This parameter is provided to help in pagination. It filters and returns records in field defined in OrderByKey greater than value set in this parameter. If direction is DESC, all records lesser than value defined in From are returned."
+              "$ref" : "#/definitions/From"
             },
             "PerPage" : {
-              "type" : "integer",
-              "default" : 100,
-              "description" : "Maximum number of records to return. This shouldn't exceed 100000."
+              "$ref" : "#/definitions/PerPage"
             },
             "DisableOrder" : {
               "type" : "boolean",
@@ -606,6 +685,104 @@
               "type" : "integer",
               "format" : "int64",
               "description" : "Total number of records matching given criteria."
+            }
+          }
+        },
+        "NumFile" : {
+          "type": "object",
+          "properties" : {
+            "ID" : {
+              "type" : "string",
+              "description": "ID of uploaded file."
+            },
+            "Username" : {
+              "type" : "string",
+              "description": "Username of user that uploaded file."
+            },
+            "UserID" : {
+              "type" : "string",
+              "description": "UserID of user that uploaded file"
+            },
+            "SubmittedAt" : {
+              "type" : "integer",
+              "format" : "int64",
+              "description": "UTC Unix timestamp at which file was uploaded."
+            },
+            "Type" : {
+              "type" : "string",
+              "description": "Extension of uploaded file.",
+              "enum" : [".csv", ".txt", ".xlsx"]
+            },
+            "Name" : {
+              "type" : "string",
+              "description": "Name of the uploaded file"
+            },
+            "LocalName" : {
+              "type" : "string",
+              "description": "Name by which file is saved in local file system."
+            },
+            "Description" : {
+              "type" : "string",
+              "description": "File description provided by uploader."
+            },
+            "Deleted" : {
+              "type" : "boolean",
+              "description": "When calling /file/delete endpoint, this flag is set to true. By default deleted files don't appear but if you want to look for deleted files, set this flag to true."
+            }
+          }
+        },
+        "FileFilterRequest" : {
+          "type": "object",
+          "properties" : {
+            "Token" : {
+              "$ref" : "#/definitions/Token"
+            },
+            "ID" : {
+              "type" : "string",
+              "description": "ID of uploaded file."
+            },
+            "Username" : {
+              "type" : "string",
+              "description": "Username of user that uploaded file."
+            },
+            "UserID" : {
+              "type" : "string",
+              "description": "UserID of user that uploaded file"
+            },
+            "SubmittedAfter" : {
+              "type" : "integer",
+              "format" : "int64",
+              "description": "UTC Unix timestamp after which file was uploaded."
+            },
+            "SubmittedBefore" : {
+              "type" : "integer",
+              "format" : "int64",
+              "description": "UTC Unix timestamp before which file was uploaded."
+            },
+            "Type" : {
+              "type" : "string",
+              "description": "Extension of uploaded file.",
+              "enum" : [".csv", ".txt", ".xlsx"]
+            },
+            "Name" : {
+              "type" : "string",
+              "description": "Name of the uploaded file"
+            },
+            "Deleted" : {
+              "type" : "boolean",
+              "description": "When calling /file/delete endpoint, this flag is set to true. By default deleted files don't appear but if you want to look for deleted files, set this flag to true."
+            },
+            "OrderByKey" : {
+              "$ref" : "#/definitions/OrderByKey"
+            },
+            "OrderByDir" : {
+              "$ref" : "#/definitions/OrderByDir"
+            },
+            "From" : {
+              "$ref" : "#/definitions/From"
+            },
+            "PerPage" : {
+              "$ref" : "#/definitions/PerPage"
             }
           }
         },
@@ -699,6 +876,65 @@
                 },
                 "Request": {
                   "$ref": "#/definitions/MessageFilter"
+                }
+              }
+            }
+          ]
+        },
+        "FileFilterResponse":{
+          "required": ["Errors", "Ok", "Request", "Response"],
+          "allOf":[
+            { "$ref": "#/definitions/Response" },
+            { "properties": {
+                "Response": {
+                    "type": "object",
+                    "properties" : {
+                      "NumFiles" :{
+                        "type": "array",
+                        "items" : {
+                          "$ref" : "#/definitions/NumFile"
+                        }
+                      }
+                    }
+                },
+                "Request": {
+                  "$ref": "#/definitions/FileFilterRequest"
+                }
+              }
+            }
+          ]
+        },
+        "FileUploadResponse":{
+          "required": ["Errors", "Ok", "Request", "Response"],
+          "allOf":[
+            { "$ref": "#/definitions/Response" },
+            { "properties": {
+                "Response": {
+                    "type": "object",
+                    "properties" : {
+                      "ID" :{
+                        "type": "string",
+                        "required" : "true",
+                        "description": "ID of the file we just submitted."
+                      }
+                    }
+                },
+                "Request": {
+                  "type": "object",
+                  "properties" : {
+                    "Description" : {
+                      "description" : "Description of file.",
+                      "type" : "string"
+                    },
+                    "Token" : {
+                      "description" : "Authentication token.",
+                      "type" : "string"
+                    },
+                    "URL" : {
+                      "description" : "URL used to access this resource.",
+                      "type" : "string"
+                    }
+                  }
                 }
               }
             }
