@@ -28,7 +28,11 @@ type Token struct {
 
 // GetToken looks for token in Token table and returns it or error if
 // it's not found.
-func GetToken(s *r.Session, token string) (Token, error) {
+func GetToken(token string) (Token, error) {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't get session")
+	}
 	var t Token
 	cur, err := r.DB(db.DBName).Table("Token").Filter(r.Row.Field("Token").Eq(toSHA1(token))).Run(s)
 	if err != nil {
@@ -68,7 +72,11 @@ func GetToken(s *r.Session, token string) (Token, error) {
 }
 
 // CreateToken should be called to create a new token for a user
-func CreateToken(s *r.Session, username string, validity int) (string, error) {
+func CreateToken(username string, validity int) (string, error) {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't get session")
+	}
 	token := secureRandomAlphaString(TokenSize)
 	if validity == 0 {
 		validity = DefaultTokenValidity
@@ -79,7 +87,7 @@ func CreateToken(s *r.Session, username string, validity int) (string, error) {
 		Username:     username,
 		Validity:     validity,
 	}
-	err := r.DB(db.DBName).Table("Token").Insert(t).Exec(s)
+	err = r.DB(db.DBName).Table("Token").Insert(t).Exec(s)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":   err,
@@ -92,8 +100,12 @@ func CreateToken(s *r.Session, username string, validity int) (string, error) {
 
 // Delete deletes a previously created token
 // This may be called when user logs out
-func (t *Token) Delete(s *r.Session) error {
-	err := r.DB(db.DBName).Table("Token").Get(t.ID).Delete().Exec(s)
+func (t *Token) Delete() error {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't get session")
+	}
+	err = r.DB(db.DBName).Table("Token").Get(t.ID).Delete().Exec(s)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":   err,
@@ -106,8 +118,12 @@ func (t *Token) Delete(s *r.Session) error {
 // DeleteAll deletes all tokens of which have same username as this token
 // This may be called when user changes password/get suspended or wants
 // to logout from all devices.
-func (t *Token) DeleteAll(s *r.Session) error {
-	err := r.DB(db.DBName).Table("Token").Filter(r.Row.Field("Username").Eq(t.Username)).Delete().Exec(s)
+func (t *Token) DeleteAll() error {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't get session")
+	}
+	err = r.DB(db.DBName).Table("Token").Filter(r.Row.Field("Username").Eq(t.Username)).Delete().Exec(s)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":   err,

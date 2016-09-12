@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
@@ -49,21 +48,6 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermAddUsers); !ok {
 		return
 	}
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Error in getting session.")
-		resp := routes.Response{}
-		resp.Ok = false
-		resp.Errors = []routes.ResponseError{
-			{
-				Type:    routes.ErrorTypeDB,
-				Message: "Couldn't connect to database.",
-			},
-		}
-		resp.Request = uReq
-		resp.Send(w, *r, http.StatusInternalServerError)
-		return
-	}
 	u := models.User{
 		Email:           uReq.Email,
 		ConnectionGroup: uReq.ConnectionGroup,
@@ -94,7 +78,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	id, err := u.Add(s)
+	id, err := u.Add()
 	if err != nil {
 		log.WithError(err).Error("Couldn't add user.")
 		resp = routes.Response{

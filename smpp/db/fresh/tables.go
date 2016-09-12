@@ -9,7 +9,7 @@ import (
 	r "github.com/dancannon/gorethink"
 )
 
-func tconfig(s *r.Session, dbname string) error {
+func tconfig(s r.QueryExecutor, dbname string) error {
 	_, err := r.DB(dbname).TableCreate("Config").RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -103,7 +103,7 @@ func tconfig(s *r.Session, dbname string) error {
 	return err
 }
 
-func ttoken(s *r.Session, dbname string) error {
+func ttoken(s r.QueryExecutor, dbname string) error {
 	_, err := r.DB(dbname).TableCreate("Token").RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -121,7 +121,7 @@ func ttoken(s *r.Session, dbname string) error {
 	return err
 }
 
-func tnumfile(s *r.Session, dbname string) error {
+func tnumfile(s r.QueryExecutor, dbname string) error {
 	_, err := r.DB(dbname).TableCreate("NumFile").RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -152,7 +152,7 @@ func tnumfile(s *r.Session, dbname string) error {
 	return err
 }
 
-func tmessage(s *r.Session, dbname string) error {
+func tmessage(s r.QueryExecutor, dbname string) error {
 	_, err := r.DB(dbname).TableCreate("Message").RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -192,7 +192,7 @@ func tmessage(s *r.Session, dbname string) error {
 	return err
 }
 
-func tcampaign(s *r.Session, dbname string) error {
+func tcampaign(s r.QueryExecutor, dbname string) error {
 	_, err := r.DB(dbname).TableCreate("Campaign").RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -223,7 +223,7 @@ func tcampaign(s *r.Session, dbname string) error {
 	return err
 }
 
-func tuser(s *r.Session, dbname string) error {
+func tuser(s r.QueryExecutor, dbname string) error {
 	_, err := r.DB(dbname).TableCreate("User").RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{

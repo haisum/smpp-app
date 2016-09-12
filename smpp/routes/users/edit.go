@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
@@ -48,8 +47,7 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermEditUsers); !ok {
 		return
 	}
-	s, _ := db.GetSession()
-	u, err := models.GetUser(s, uReq.Username)
+	u, err := models.GetUser(uReq.Username)
 	if err != nil {
 		log.WithError(err).Error("Error getting user.")
 		resp := routes.Response{
@@ -106,7 +104,7 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	err = u.Update(s, len(uReq.Password) > 1)
+	err = u.Update(len(uReq.Password) > 1)
 	if err != nil {
 		log.WithError(err).Error("Couldn't update user.")
 		resp = routes.Response{

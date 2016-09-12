@@ -27,7 +27,7 @@ func jsonPrint(v interface{}) string {
 	return string(b[:])
 }
 
-func createIndexes(s *r.Session, dbname, table string, indexes []string) error {
+func createIndexes(s r.QueryExecutor, dbname, table string, indexes []string) error {
 	for _, index := range indexes {
 		err := r.DB(dbname).Table(table).IndexCreate(index).Exec(s)
 		if err != nil {
@@ -42,7 +42,7 @@ func createIndexes(s *r.Session, dbname, table string, indexes []string) error {
 	return nil
 }
 
-func createCompoundIndex(s *r.Session, dbname, table, col1, col2 string) error {
+func createCompoundIndex(s r.QueryExecutor, dbname, table, col1, col2 string) error {
 	err := r.DB(dbname).Table(table).IndexCreateFunc(col1+"_"+col2, func(row r.Term) interface{} {
 		return []interface{}{row.Field(col1), row.Field(col2)}
 	}).Exec(s)

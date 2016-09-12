@@ -33,12 +33,12 @@ func main() {
 			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't understand soap request.", ""), http.StatusBadRequest)
 			return
 		}
-		s, err := db.GetSession()
+		_, err = db.GetSession()
 		if err != nil {
 			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't connect to database.", ""), http.StatusInternalServerError)
 			return
 		}
-		u, err := models.GetUser(s, e.Body.Request.Username)
+		u, err := models.GetUser(e.Body.Request.Username)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong.", ""), http.StatusUnauthorized)
 			return

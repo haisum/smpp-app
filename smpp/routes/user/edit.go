@@ -3,7 +3,6 @@ package user
 import (
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
@@ -77,8 +76,7 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	s, _ := db.GetSession()
-	err = u.Update(s, len(uReq.Password) > 1)
+	err = u.Update(len(uReq.Password) > 1)
 	if err != nil {
 		log.WithError(err).Error("Couldn't update user.")
 		resp = routes.Response{

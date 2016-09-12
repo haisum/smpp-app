@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	log "github.com/Sirupsen/logrus"
 )
@@ -17,19 +16,7 @@ func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token 
 	resp := Response{
 		Request: req,
 	}
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		resp.Errors = []ResponseError{
-			{
-				Type:    ErrorTypeDB,
-				Message: "Couldn't connect database.",
-			},
-		}
-		resp.Send(w, r, http.StatusInternalServerError)
-		return u, false
-	}
-	t, err := models.GetToken(s, token)
+	t, err := models.GetToken(token)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get token.")
 		resp.Errors = []ResponseError{
@@ -41,7 +28,7 @@ func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token 
 		resp.Send(w, r, http.StatusUnauthorized)
 		return u, false
 	}
-	u, err = models.GetUser(s, t.Username)
+	u, err = models.GetUser(t.Username)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get user.")
 		resp.Errors = []ResponseError{

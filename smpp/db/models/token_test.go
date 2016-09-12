@@ -1,25 +1,17 @@
 package models
 
-import (
-	"testing"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-)
+import "testing"
 
 func TestGetToken(t *testing.T) {
-	s, err := db.GetSession()
+	tok1, err := CreateToken("user1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok1, err := CreateToken(s, "user1", 0)
+	tok2, err := CreateToken("user2", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok2, err := CreateToken(s, "user2", 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	gTok, err := GetToken(s, tok1)
+	gTok, err := GetToken(tok1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +19,7 @@ func TestGetToken(t *testing.T) {
 		t.Fatalf("Expected username user1. Got %s", gTok.Username)
 	}
 
-	gTok, err = GetToken(s, tok2)
+	gTok, err = GetToken(tok2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,49 +28,41 @@ func TestGetToken(t *testing.T) {
 	}
 }
 func TestToken_Delete(t *testing.T) {
-	s, err := db.GetSession()
+	tok, err := CreateToken("user1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok, err := CreateToken(s, "user1", 0)
+	gTok, err := GetToken(tok)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gTok, err := GetToken(s, tok)
+	err = gTok.Delete()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = gTok.Delete(s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = GetToken(s, tok)
+	_, err = GetToken(tok)
 	if err == nil {
 		t.Fatal("Token was not deleted.")
 	}
 }
 func TestToken_DeleteAll(t *testing.T) {
-	s, err := db.GetSession()
+	tok1, err := CreateToken("user1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok1, err := CreateToken(s, "user1", 0)
+	tok2, err := CreateToken("user1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tok2, err := CreateToken(s, "user1", 0)
+	gTok, err := GetToken(tok1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	gTok, err := GetToken(s, tok1)
+	err = gTok.DeleteAll()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = gTok.DeleteAll(s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = GetToken(s, tok2)
+	_, err = GetToken(tok2)
 	if err == nil {
 		t.Fatal("Expected to get error, still got tok2")
 	}

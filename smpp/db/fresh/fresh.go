@@ -8,7 +8,7 @@ import (
 )
 
 // Create creates a fresh database, tables, indexes and populates primary data
-func Create(s *r.Session, dbname string) error {
+func Create(s r.QueryExecutor, dbname string) error {
 	w, err := r.DBCreate(dbname).RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -48,7 +48,7 @@ func Create(s *r.Session, dbname string) error {
 }
 
 // Drop drops existing database
-func Drop(s *r.Session, name string) error {
+func Drop(s r.QueryExecutor, name string) error {
 	w, err := r.DBDrop(name).RunWrite(s)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -69,7 +69,7 @@ func Drop(s *r.Session, name string) error {
 }
 
 // Exists checks if a database exists
-func Exists(s *r.Session, name string) bool {
+func Exists(s r.QueryExecutor, name string) bool {
 	cur, err := r.DBList().Run(s)
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't get database list.")

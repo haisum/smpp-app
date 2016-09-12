@@ -53,7 +53,11 @@ const (
 )
 
 // Add adds a user to database and returns its primary key
-func (u *User) Add(s *r.Session) (string, error) {
+func (u *User) Add() (string, error) {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't get session")
+	}
 	verrors, err := u.Validate()
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -62,7 +66,7 @@ func (u *User) Add(s *r.Session) (string, error) {
 		}).Error("Invalid user data supplied to Add.")
 		return "", err
 	}
-	if UserExists(s, u.Username) {
+	if UserExists(u.Username) {
 		return "", fmt.Errorf("User already exists.")
 	}
 	u.Password, err = hash(u.Password)
@@ -89,7 +93,11 @@ func (u *User) Add(s *r.Session) (string, error) {
 }
 
 // Update updates an existing user
-func (u *User) Update(s *r.Session, passwdChanged bool) error {
+func (u *User) Update(passwdChanged bool) error {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't get session")
+	}
 	verrors, err := u.Validate()
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -117,7 +125,11 @@ func (u *User) Update(s *r.Session, passwdChanged bool) error {
 }
 
 // GetUser gets a single user identified by username
-func GetUser(s *r.Session, username string) (User, error) {
+func GetUser(username string) (User, error) {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't get session")
+	}
 	var u User
 	cur, err := r.DB(db.DBName).Table("User").Filter(r.Row.Field("Username").Eq(username)).Run(s)
 	if err != nil {
@@ -131,7 +143,11 @@ func GetUser(s *r.Session, username string) (User, error) {
 }
 
 // GetIDUser gets a single user identified by an id
-func GetIDUser(s *r.Session, id string) (User, error) {
+func GetIDUser(id string) (User, error) {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't get session")
+	}
 	var u User
 	cur, err := r.DB(db.DBName).Table("User").Get(id).Run(s)
 	defer cur.Close()
@@ -145,7 +161,11 @@ func GetIDUser(s *r.Session, id string) (User, error) {
 }
 
 // GetUsers filters users by a criteria and returns filtered users
-func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
+func GetUsers(c UserCriteria) ([]User, error) {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't get session")
+	}
 	var users []User
 	log.WithField("Criteria", c).Info("Making query.")
 	t := r.DB(db.DBName).Table("User")
@@ -250,7 +270,11 @@ func GetUsers(s *r.Session, c UserCriteria) ([]User, error) {
 }
 
 // UserExists checks if another user with same username exists
-func UserExists(s *r.Session, username string) bool {
+func UserExists(username string) bool {
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't get session")
+	}
 	f := map[string]string{"Username": username}
 	cur, err := r.DB(db.DBName).Table("User").Filter(f).Count().Run(s)
 	if err != nil {

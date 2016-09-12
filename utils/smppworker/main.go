@@ -15,13 +15,13 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	log "github.com/Sirupsen/logrus"
-	smppstatus "github.com/fiorix/go-smpp/smpp"
+	fiorix "github.com/fiorix/go-smpp/smpp"
 	"github.com/streadway/amqp"
 )
 
 var (
 	c        *smpp.Config
-	s        *smpp.Sender
+	s        smpp.Sender
 	sconn    *smpp.Conn
 	connid   = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
 	group    = flag.String("group", "", "Group name of connection.")
@@ -193,22 +193,22 @@ func send(i queue.Item) {
 			"Dst":    m.Dst,
 			"err":    err,
 			"Enc":    m.Enc,
-			"Fields": s.Fields,
+			"Fields": s.GetFields(),
 		}).Error("Couldn't send message.")
-		if err == smppstatus.ErrNotConnected {
+		if err == fiorix.ErrNotConnected {
 			log.Error("SMPP not connected. Aborting worker.")
 			//exit code 2, because supervisord wont restart this
 			os.Exit(2)
 		}
-		go updateMessage(m, respID, sconn.ID, err.Error(), s.Fields, sent)
+		go updateMessage(m, respID, sconn.ID, err.Error(), s.GetFields(), sent)
 	} else {
 		log.WithFields(log.Fields{
 			"Src":    m.Src,
 			"Dst":    m.Dst,
 			"Enc":    m.Enc,
-			"Fields": s.Fields,
+			"Fields": s.GetFields(),
 		}).Info("Sent message.")
-		go updateMessage(m, respID, sconn.ID, "", s.Fields, sent)
+		go updateMessage(m, respID, sconn.ID, "", s.GetFields(), sent)
 	}
 	log.WithField("RespID", respID).Info("response id")
 }
@@ -242,17 +242,15 @@ func bind() {
 		"Conn":   sconn,
 		"c":      c,
 	}).Info("Dialing")
-	s = &smpp.Sender{}
-	s.Connect(sconn.URL, sconn.User, sconn.Passwd, receiver)
-	defer s.Tx.Close()
-	s.Fields = sconn.Fields
-	log.Info("Waiting for smpp connection")
-	select {
-	case <-s.Connected:
-	case <-time.After(time.Duration(time.Second * 5)):
-		log.Error("Timed out waiting for smpp connection. Exiting.")
-		os.Exit(2)
-	}
+	s = smpp.GetSender()
+	s.Connect(&fiorix.Transceiver{
+		Addr:    sconn.URL,
+		User:    sconn.User,
+		Passwd:  sconn.Passwd,
+		Handler: receiver,
+	})
+	defer s.Close()
+	s.SetFields(sconn.Fields)
 	log.WithField("conn", sconn).Info("Binding")
 	if err != nil {
 		log.WithField("connid", connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")

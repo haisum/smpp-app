@@ -9,13 +9,27 @@ import (
 )
 
 var (
-	q *Rabbit
+	q MQ
 )
 
-// GetQueue returns a Rabbit object. It makes one connection per process life and reuses same rabbitmq connection.
-func GetQueue(url string, ex string, pCount int) (*Rabbit, error) {
+// MQ is interface implemented by messaging queue backend's client library
+type MQ interface {
+	Init(url string, ex string, pCount int) error
+	Publish(key string, msg []byte, priority Priority) error
+	Bind(group string, keys []string, handler Handler) error
+	Close() error
+}
+
+// SetQueue sets queue equal to object that implements MQ interface. This function shouldn't be used unless you're testing.
+// GetQueue takes care of setting a rabbitmq object if q is not set yet.
+func setQueue(mq MQ) {
+	q = mq
+}
+
+// GetQueue returns a rabbit object. It makes one connection per process life and reuses same rabbitmq connection.
+func GetQueue(url string, ex string, pCount int) (MQ, error) {
 	if q == nil {
-		q = &Rabbit{}
+		setQueue(&rabbit{})
 		err := q.Init(url, ex, pCount)
 		return q, err
 	}
@@ -29,8 +43,8 @@ type Priority uint8
 // Handler is a function which accepts deliveries channel and a error channel to indicate when processing is done
 type Handler func(<-chan amqp.Delivery, chan error)
 
-// Rabbit holds host and port to connect to for rabbit mq and other properties for internal use
-type Rabbit struct {
+// rabbit implements MQ interface and holds host and port to connect to for rabbit mq and other properties for internal use
+type rabbit struct {
 	url    string
 	ex     string
 	pCount int
@@ -42,7 +56,7 @@ type Rabbit struct {
 
 // Init takes url, exchange name and burst count as argument and
 // creates a new exchange, on rabbitmq url
-func (r *Rabbit) Init(url string, ex string, pCount int) error {
+func (r *rabbit) Init(url string, ex string, pCount int) error {
 	r.url = url
 	r.ex = ex
 	r.pCount = pCount
@@ -57,7 +71,7 @@ func (r *Rabbit) Init(url string, ex string, pCount int) error {
 
 //Close closes the connection to rabbitmq
 //call this with defer after calling Init function
-func (r *Rabbit) Close() error {
+func (r *rabbit) Close() error {
 	if err := r.Conn.Close(); err != nil {
 		log.WithField("err", err).Error("AMQP connection close error")
 		return err
@@ -70,7 +84,7 @@ func (r *Rabbit) Close() error {
 }
 
 // Connects and makes channel to given amqp url
-func (r *Rabbit) connect() error {
+func (r *rabbit) connect() error {
 	var err error
 	r.Conn, err = amqp.Dial(r.url)
 	if err != nil {
@@ -93,7 +107,7 @@ func (r *Rabbit) connect() error {
 }
 
 // Declares and Starts exchange ex.This can be called multiple times and wont re-create exchange once created. This uses direct exchange. See https://www.rabbitmq.com/tutorials/tutorial-four-go.html for details.
-func (r *Rabbit) startExchange() error {
+func (r *rabbit) startExchange() error {
 	err := r.Ch.ExchangeDeclare(
 		r.ex,     // name
 		"direct", // type
@@ -113,7 +127,7 @@ func (r *Rabbit) startExchange() error {
 }
 
 // Publish takes exchange name, routing key and message as parameters and publishes message
-func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
+func (r *rabbit) Publish(key string, msg []byte, priority Priority) error {
 	err := r.Ch.Publish(
 		r.ex,  // exchange
 		key,   // routing key
@@ -150,7 +164,7 @@ func (r *Rabbit) Publish(key string, msg []byte, priority Priority) error {
 
 // Bind binds to queue defined by routing keys on exchange supplied to Init method.
 // This method must be called after Init, otherwise it would fail.
-func (r *Rabbit) Bind(group string, keys []string, handler Handler) error {
+func (r *rabbit) Bind(group string, keys []string, handler Handler) error {
 	for _, k := range keys {
 		k = fmt.Sprintf("%s-%s", group, k)
 		q, err := r.Ch.QueueDeclare(

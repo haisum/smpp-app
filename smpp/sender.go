@@ -19,48 +19,91 @@ const (
 	EncLatin = "latin"
 )
 
-// Sender holds smpp transmitter and a channel indicating when smpp connection
+var (
+	snd Sender
+)
+
+// SetQueue sets queue equal to object that implements MQ interface. This function shouldn't be used unless you're testing.
+// GetQueue takes care of setting a rabbitmq object if q is not set yet.
+func setSender(sender Sender) {
+	snd = sender
+}
+
+// GetSender builds a new sender object that implements Sender interface if s is not already assigned and returns it
+func GetSender() Sender {
+	if snd == nil {
+		setSender(&sender{})
+	}
+	return snd
+}
+
+// Sender is implemented by smpp sender client code or mock test object
+type Sender interface {
+	Connect(tx SenderTX)
+	Send(src, dst, enc, msg string) (string, error)
+	SplitLong(src, dst, enc, msg string) (*smpp.ShortMessage, []pdu.Body)
+	SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error)
+	Close() error
+	SetFields(p PduFields)
+	GetFields() PduFields
+	ConnectOrDie(conn <-chan smpp.ConnStatus)
+}
+
+// SenderTX is implemented by tx object of smpp sender to handle transaction with smpp provider
+type SenderTX interface {
+	Bind() <-chan smpp.ConnStatus
+	Submit(sm *smpp.ShortMessage) (*smpp.ShortMessage, error)
+	SplitLong(sm *smpp.ShortMessage) []pdu.Body
+	SubmitPart(sm *smpp.ShortMessage, p pdu.Body) (*smpp.ShortMessage, error)
+	Close() error
+}
+
+// sender holds smpp transmitter and a channel indicating when smpp connection
 // becomes connected.
-type Sender struct {
-	Tx        *smpp.Transceiver
-	Connected chan bool
-	Fields    PduFields
+type sender struct {
+	tx     SenderTX
+	fields PduFields
 }
 
 // Connect connects to smpp server given by addr, user and passwd
 // This function triggers a go routine that checks for smpp connection status
 // If connection is lost at some point, this retries after 10 seconds.
-// Channel Sender.Connected is filled if smpp gets connected. Other routines
+// Channel sender.Connected is filled if smpp gets connected. Other routines
 // that depend on smpp connection should wait for Connected channel before
 // proceeding.
-func (s *Sender) Connect(addr, user, passwd string, handler smpp.HandlerFunc) {
-	s.Tx = &smpp.Transceiver{
-		Addr:    addr,
-		User:    user,
-		Passwd:  passwd,
-		Handler: handler,
-	}
-	log.WithFields(log.Fields{
-		"Addr":   addr,
-		"User":   user,
-		"Passwd": passwd,
-	}).Info("Connecting with these credentials.")
-	conn := s.Tx.Bind() // make persistent connection.
-	s.Connected = make(chan bool, 1)
-	go func() {
-		for c := range conn {
-			st := c.Status()
-			log.WithField("st", st).Info("SMPP connection status changed.")
-			if st != smpp.Connected {
-				log.WithFields(log.Fields{
-					"st":  st,
-					"err": c.Error(),
-				}).Fatal("SMPP connection failed. Aborting.")
-				return
-			}
-			s.Connected <- true
+func (s *sender) Connect(tx SenderTX) {
+	s.tx = tx
+	conn := s.tx.Bind() // make persistent connection.
+	go s.ConnectOrDie(conn)
+}
+
+func (s *sender) ConnectOrDie(conn <-chan smpp.ConnStatus) {
+	for c := range conn {
+		st := c.Status()
+		log.WithField("st", st).Info("SMPP connection status changed.")
+		if st != smpp.Connected {
+			log.WithFields(log.Fields{
+				"st":  st,
+				"err": c.Error(),
+			}).Fatal("SMPP connection failed. Aborting.")
+			return
 		}
-	}()
+	}
+}
+
+// Close closes connection with smpp provider
+func (s *sender) Close() error {
+	return s.tx.Close()
+}
+
+// SetFields sets pdu fields to given value
+func (s *sender) SetFields(fields PduFields) {
+	s.fields = fields
+}
+
+// GetFields gets current pdu fields
+func (s *sender) GetFields() PduFields {
+	return s.fields
 }
 
 // Total counts number of messages in one text string
@@ -78,27 +121,27 @@ func Total(msg, enc string) int {
 
 // Send sends sms to given source and destination with latin as encoding
 // or ucs if asked.
-func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
+func (s *sender) Send(src, dst, enc, msg string) (string, error) {
 	var text pdutext.Codec
 	if enc == EncUCS {
 		text = pdutext.UCS2(msg)
 	} else {
 		text = pdutext.Raw(msg)
 	}
-	sm, err := s.Tx.Submit(&smpp.ShortMessage{
+	sm, err := s.tx.Submit(&smpp.ShortMessage{
 		Src:                  src,
 		Dst:                  dst,
 		Text:                 text,
-		ServiceType:          s.Fields.ServiceType,
-		SourceAddrTON:        s.Fields.SourceAddrTON,
-		SourceAddrNPI:        s.Fields.SourceAddrNPI,
-		DestAddrTON:          s.Fields.DestAddrTON,
-		DestAddrNPI:          s.Fields.DestAddrNPI,
-		ProtocolID:           s.Fields.ProtocolID,
-		PriorityFlag:         s.Fields.PriorityFlag,
-		ScheduleDeliveryTime: s.Fields.ScheduleDeliveryTime,
-		ReplaceIfPresentFlag: s.Fields.ReplaceIfPresentFlag,
-		SMDefaultMsgID:       s.Fields.SMDefaultMsgID,
+		ServiceType:          s.fields.ServiceType,
+		SourceAddrTON:        s.fields.SourceAddrTON,
+		SourceAddrNPI:        s.fields.SourceAddrNPI,
+		DestAddrTON:          s.fields.DestAddrTON,
+		DestAddrNPI:          s.fields.DestAddrNPI,
+		ProtocolID:           s.fields.ProtocolID,
+		PriorityFlag:         s.fields.PriorityFlag,
+		ScheduleDeliveryTime: s.fields.ScheduleDeliveryTime,
+		ReplaceIfPresentFlag: s.fields.ReplaceIfPresentFlag,
+		SMDefaultMsgID:       s.fields.SMDefaultMsgID,
 		Register:             smpp.FinalDeliveryReceipt,
 	})
 	if err != nil {
@@ -117,7 +160,7 @@ func (s *Sender) Send(src, dst, enc, msg string) (string, error) {
 }
 
 //SplitLong splits a long message in parts and returns pdu.Body which can be sent individually using SendPart method
-func (s *Sender) SplitLong(src, dst, enc, msg string) (*smpp.ShortMessage, []pdu.Body) {
+func (s *sender) SplitLong(src, dst, enc, msg string) (*smpp.ShortMessage, []pdu.Body) {
 	var text pdutext.Codec
 	if enc == EncUCS {
 		text = pdutext.UCS2(msg)
@@ -128,25 +171,25 @@ func (s *Sender) SplitLong(src, dst, enc, msg string) (*smpp.ShortMessage, []pdu
 		Src:                  src,
 		Dst:                  dst,
 		Text:                 text,
-		ServiceType:          s.Fields.ServiceType,
-		SourceAddrTON:        s.Fields.SourceAddrTON,
-		SourceAddrNPI:        s.Fields.SourceAddrNPI,
-		DestAddrTON:          s.Fields.DestAddrTON,
-		DestAddrNPI:          s.Fields.DestAddrNPI,
-		ProtocolID:           s.Fields.ProtocolID,
-		PriorityFlag:         s.Fields.PriorityFlag,
-		ScheduleDeliveryTime: s.Fields.ScheduleDeliveryTime,
-		ReplaceIfPresentFlag: s.Fields.ReplaceIfPresentFlag,
-		SMDefaultMsgID:       s.Fields.SMDefaultMsgID,
+		ServiceType:          s.fields.ServiceType,
+		SourceAddrTON:        s.fields.SourceAddrTON,
+		SourceAddrNPI:        s.fields.SourceAddrNPI,
+		DestAddrTON:          s.fields.DestAddrTON,
+		DestAddrNPI:          s.fields.DestAddrNPI,
+		ProtocolID:           s.fields.ProtocolID,
+		PriorityFlag:         s.fields.PriorityFlag,
+		ScheduleDeliveryTime: s.fields.ScheduleDeliveryTime,
+		ReplaceIfPresentFlag: s.fields.ReplaceIfPresentFlag,
+		SMDefaultMsgID:       s.fields.SMDefaultMsgID,
 		Register:             smpp.FinalDeliveryReceipt,
 	}
-	return sm, s.Tx.SplitLong(sm)
+	return sm, s.tx.SplitLong(sm)
 }
 
 // SendPart sends a part of long sms obtained from calling SplitLong message
-func (s *Sender) SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error) {
+func (s *sender) SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error) {
 	var err error
-	sm, err = s.Tx.SubmitPart(sm, p)
+	sm, err = s.tx.SubmitPart(sm, p)
 	if err != nil {
 		if err == smpp.ErrNotConnected {
 			log.WithFields(log.Fields{

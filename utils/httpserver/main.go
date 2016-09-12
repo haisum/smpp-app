@@ -20,6 +20,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
 	"bitbucket.org/codefreak/hsmpp/smpp/supervisor"
 	log "github.com/Sirupsen/logrus"
+	r "github.com/dancannon/gorethink"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
@@ -37,7 +38,7 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't setup database connection.")
 	}
-	defer s.Close()
+	defer s.(*r.Session).Close()
 
 	log.Info("Connecting with rabbitmq.")
 	q, err := queue.GetQueue(*amqpURL, "smppworker-exchange", 1)

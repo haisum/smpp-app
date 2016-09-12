@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	s *r.Session
+	s r.QueryExecutor
 	//DBName is rethinkdb name
 	DBName = "hsmppdb"
 	//DBTestName is db name used for tests
@@ -21,7 +21,7 @@ var (
 )
 
 // Connect makes a new session to rethinkdb
-func Connect() (*r.Session, error) {
+func Connect() (r.QueryExecutor, error) {
 	r.SetVerbose(true)
 	opt := getOpts()
 	var err error
@@ -33,11 +33,21 @@ func Connect() (*r.Session, error) {
 		}).Error("Couldn't connect to rethinkdb.")
 		return s, err
 	}
+	return CheckAndCreateDB()
+}
+
+//MockConnect makes a mock session to rethinkdb to assist in unit tests
+func MockConnect() (r.QueryExecutor, error) {
+	return r.NewMock(getOpts()), nil
+}
+
+//CheckAndCreateDB Checks if db exists, if not, creates one with basic tables, admin user and indexes
+func CheckAndCreateDB() (r.QueryExecutor, error) {
+	var err error
 	if !fresh.Exists(s, DBName) {
 		err = fresh.Create(s, DBName)
 		if err != nil {
 			log.WithError(err).Fatal("Couldn't create database.")
-			return s, err
 		}
 	}
 	return s, err
@@ -45,7 +55,7 @@ func Connect() (*r.Session, error) {
 
 // GetSession returns rethinkdb session created earlier. If there isn't
 // already a session, it creates it.
-func GetSession() (*r.Session, error) {
+func GetSession() (r.QueryExecutor, error) {
 	var err error
 	if s == nil {
 		_, err = Connect()
