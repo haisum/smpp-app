@@ -7,6 +7,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bitbucket.org/codefreak/hsmpp/smpp/supervisor"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -34,7 +35,7 @@ var PostConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermEditConfig); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermEditConfig); !ok {
 		return
 	}
 	err = models.SetConfig(uReq.Config)

@@ -1,4 +1,4 @@
-package smpp
+package user
 
 // Permission represents access of a user to an operation
 type Permission string

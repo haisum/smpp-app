@@ -3,9 +3,9 @@ package user
 import (
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 )
 
 type infoRequest struct {
@@ -18,7 +18,7 @@ type infoResponse struct {
 	Name            string
 	Email           string
 	ConnectionGroup string
-	Permissions     []smpp.Permission
+	Permissions     []user.Permission
 	RegisteredAt    int64
 	Suspended       bool
 }

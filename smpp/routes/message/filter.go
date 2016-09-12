@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 	"github.com/tealeg/xlsx"
 )
@@ -65,7 +65,7 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if u.Username != uReq.Username {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermListMessages); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermListMessages); !ok {
 			return
 		}
 	}

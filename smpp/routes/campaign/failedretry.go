@@ -9,6 +9,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -44,7 +45,7 @@ var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 		u  models.User
 		ok bool
 	)
-	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermRetryCampaign); !ok {
+	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermRetryCampaign); !ok {
 		return
 	}
 	msgs, err := models.GetErrorMessages(uReq.CampaignID)

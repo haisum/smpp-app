@@ -1,6 +1,7 @@
 package smpp
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp"
 	"github.com/fiorix/go-smpp/smpp/pdu"
@@ -9,14 +10,6 @@ import (
 
 const (
 	esmClassUdhiMask uint8 = 0x40
-	//MaxLatinChars is number of characters allowed in single latin encoded text message
-	MaxLatinChars = 160
-	//MaxUCSChars is number of characters allowed in single ucs encoded text message
-	MaxUCSChars = 70
-	//EncUCS is string representation of ucs encoding
-	EncUCS = "ucs"
-	//EncLatin is string representation of latin encoding
-	EncLatin = "latin"
 )
 
 var (
@@ -108,24 +101,11 @@ func (s *sender) GetFields() PduFields {
 	return s.fields
 }
 
-// Total counts number of messages in one text string
-func Total(msg, enc string) int {
-	var text pdutext.Codec
-	if enc == EncUCS {
-		text = pdutext.UCS2(msg)
-	} else {
-		text = pdutext.Raw(msg)
-	}
-	maxLen := 134 // 140-6 (UDH)
-	rawMsg := text.Encode()
-	return int(len(rawMsg)/maxLen) + 1
-}
-
 // Send sends sms to given source and destination with latin as encoding
 // or ucs if asked.
 func (s *sender) Send(src, dst, enc, msg string) (string, error) {
 	var text pdutext.Codec
-	if enc == EncUCS {
+	if enc == smtext.EncUCS {
 		text = pdutext.UCS2(msg)
 	} else {
 		text = pdutext.Raw(msg)
@@ -164,7 +144,7 @@ func (s *sender) Send(src, dst, enc, msg string) (string, error) {
 //SplitLong splits a long message in parts and returns pdu.Body which can be sent individually using SendPart method
 func (s *sender) SplitLong(src, dst, enc, msg string) (*smpp.ShortMessage, []pdu.Body) {
 	var text pdutext.Codec
-	if enc == EncUCS {
+	if enc == smtext.EncUCS {
 		text = pdutext.UCS2(msg)
 	} else {
 		text = pdutext.Raw(msg)

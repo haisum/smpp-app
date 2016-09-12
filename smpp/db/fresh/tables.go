@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 )
@@ -249,7 +250,7 @@ func tuser(s r.QueryExecutor, dbname string) error {
 		Email           string
 		Username        string
 		ConnectionGroup string
-		Permissions     []smpp.Permission
+		Permissions     []user.Permission
 		RegisteredAt    int64
 	}{
 		Name:            "Admin",
@@ -257,7 +258,7 @@ func tuser(s r.QueryExecutor, dbname string) error {
 		Email:           "admin@localhost.dev",
 		Username:        "admin",
 		ConnectionGroup: "Default",
-		Permissions:     smpp.GetPermissions(),
+		Permissions:     user.GetPermissions(),
 		RegisteredAt:    time.Now().UTC().Unix(),
 	}
 	u.Password, err = hash(u.Password)

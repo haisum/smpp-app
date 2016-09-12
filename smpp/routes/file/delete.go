@@ -3,9 +3,9 @@ package file
 import (
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -61,7 +61,7 @@ var DeleteHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	} else if files[0].Username != u.Username {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermDeleteNumFile); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermDeleteNumFile); !ok {
 			return
 		}
 	}

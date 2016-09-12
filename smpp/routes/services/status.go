@@ -3,9 +3,9 @@ package services
 import (
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bitbucket.org/codefreak/hsmpp/smpp/supervisor/services"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -31,7 +31,7 @@ var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermShowConfig); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermShowConfig); !ok {
 		return
 	}
 	st, err := services.GetStatus()

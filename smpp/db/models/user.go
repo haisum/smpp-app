@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 	"golang.org/x/crypto/bcrypt"
@@ -22,7 +22,7 @@ type User struct {
 	Name            string
 	Email           string
 	ConnectionGroup string
-	Permissions     []smpp.Permission
+	Permissions     []user.Permission
 	RegisteredAt    int64
 	Suspended       bool
 }
@@ -40,7 +40,7 @@ type UserCriteria struct {
 	ConnectionGroup  string
 	From             string
 	PerPage          int
-	Permissions      []smpp.Permission
+	Permissions      []user.Permission
 }
 
 const (
@@ -305,7 +305,7 @@ func (u *User) Validate() (map[string]string, error) {
 	}
 	for _, x := range u.Permissions {
 		var isValidPerm bool
-		for _, y := range smpp.GetPermissions() {
+		for _, y := range user.GetPermissions() {
 			if x == y {
 				isValidPerm = true
 				break

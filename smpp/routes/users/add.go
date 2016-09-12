@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -15,7 +15,7 @@ type addRequest struct {
 	Token           string
 	Username        string
 	Password        string
-	Permissions     []smpp.Permission
+	Permissions     []user.Permission
 	Name            string
 	Email           string
 	ConnectionGroup string
@@ -45,7 +45,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermAddUsers); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermAddUsers); !ok {
 		return
 	}
 	u := models.User{

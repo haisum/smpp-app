@@ -12,6 +12,8 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -55,11 +57,11 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		u  models.User
 		ok bool
 	)
-	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermSendMessage); !ok {
+	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermSendMessage); !ok {
 		return
 	}
 	if uReq.Mask {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermMask); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermMask); !ok {
 			return
 		}
 	}
@@ -98,9 +100,9 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	if uReq.ScheduledAt > 0 {
 		status = models.MsgScheduled
 	}
-	enc := smpp.EncLatin
-	if !smpp.IsASCII(uReq.Msg) {
-		enc = smpp.EncUCS
+	enc := smtext.EncLatin
+	if !smtext.IsASCII(uReq.Msg) {
+		enc = smtext.EncUCS
 	}
 	m := models.Message{
 		ConnectionGroup: u.ConnectionGroup,
@@ -127,7 +129,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		}
 	}
 	m.RealMsg = msg
-	m.Total = smpp.Total(msg, m.Enc)
+	m.Total = smtext.Total(msg, m.Enc)
 	log.WithField("total", m.Total).Info("Total messages.")
 	msgID, err := m.Save()
 	if err != nil {

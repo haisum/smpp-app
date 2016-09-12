@@ -12,6 +12,8 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -61,11 +63,11 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		u  models.User
 		ok bool
 	)
-	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermStartCampaign); !ok {
+	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermStartCampaign); !ok {
 		return
 	}
 	if uReq.Mask {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermMask); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermMask); !ok {
 			return
 		}
 	}
@@ -178,17 +180,17 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	noKey := group.DefaultPfx
-	enc := smpp.EncLatin
+	enc := smtext.EncLatin
 	if len(numbers) > 0 {
 		encMsg := msg
 		for search, replace := range numbers[0].Params {
 			encMsg = strings.Replace(encMsg, "{{"+search+"}}", replace, -1)
 		}
-		if !smpp.IsASCII(encMsg) {
-			enc = smpp.EncUCS
+		if !smtext.IsASCII(encMsg) {
+			enc = smtext.EncUCS
 		}
 	}
-	total := smpp.Total(msg, enc)
+	total := smtext.Total(msg, enc)
 	var ms []models.Message
 	for i, nr := range numbers {
 		var (
@@ -206,7 +208,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		}
 		realTotal := total
 		if msg != realMsg {
-			realTotal = smpp.Total(realMsg, enc)
+			realTotal = smtext.Total(realMsg, enc)
 		}
 		m := models.Message{
 			ConnectionGroup: u.ConnectionGroup,

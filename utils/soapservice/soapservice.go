@@ -13,6 +13,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
 	"bitbucket.org/codefreak/hsmpp/smpp/soap"
 	log "github.com/Sirupsen/logrus"
 )
@@ -56,11 +57,11 @@ func main() {
 			http.Error(w, fmt.Sprintf(soap.Response, "User's connection group doesn't exist in configuration.", ""), http.StatusUnauthorized)
 			return
 		}
-		enc := "latin"
-		if !smpp.IsASCII(e.Body.Request.Message) {
-			enc = "ucs"
+		enc := smtext.EncLatin
+		if !smtext.IsASCII(e.Body.Request.Message) {
+			enc = smtext.EncUCS
 		}
-		total := smpp.Total(e.Body.Request.Message, enc)
+		total := smtext.Total(e.Body.Request.Message, enc)
 
 		if e.Body.Request.Priority == 0 {
 			e.Body.Request.Priority = 7

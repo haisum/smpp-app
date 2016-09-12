@@ -3,9 +3,9 @@ package campaign
 import (
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -46,7 +46,7 @@ var CampaignsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if u.Username != uReq.Username {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermListCampaigns); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermListCampaigns); !ok {
 			return
 		}
 	}

@@ -3,9 +3,9 @@ package campaign
 import (
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -37,7 +37,7 @@ var ReportHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, smpp.PermStartCampaign); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermStartCampaign); !ok {
 		return
 	}
 	cr, err := models.GetReport(uReq.CampaignID)
