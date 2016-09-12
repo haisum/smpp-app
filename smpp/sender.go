@@ -77,6 +77,8 @@ func (s *sender) Connect(tx SenderTX) {
 	go s.ConnectOrDie(conn)
 }
 
+// ConnectOrDie checks for smpp connection status, if it becomes not connected, it aborts current application
+// This is a blocking function and must be called after a "go" statement in a separate routine
 func (s *sender) ConnectOrDie(conn <-chan smpp.ConnStatus) {
 	for c := range conn {
 		st := c.Status()
