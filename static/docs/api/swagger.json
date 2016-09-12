@@ -551,10 +551,12 @@
             "required": ["Token", "Src", "Dst", "Msg"],
             "properties": {
                 "ID" : {
-
+                  "type" : "string",
+                  "description" : "ID of campaign"
                 },
                 "Description" : {
-
+                  "type" : "string",
+                  "description" : "Description of campaign provided by user who started it."
                 },
                 "ScheduledAt" : {
                   "$ref": "#/definitions/ScheduledAt"
@@ -566,25 +568,34 @@
                   "$ref": "#/definitions/Src"
                 },
                 "Msg": {
-
+                  "type" : "string",
+                  "description" : "Text message to send to each number. To use dynamic parameters, enquote parameter name in double curly brackets {{}} to replace. To mask text, use double square brackets [[]].",
+                  "example" : "Dear {{name}} your salary [[$3000]] have been deposited to your account number [[{{account_number}}]]."
                 },
                 "Enc": {
-
+                  "type" : "string",
+                  "description" : "Encoding used when sending this message.",
+                  "enum" : ["ucs", "latin"]
                 },
                 "FileName": {
-
+                  "type" : "string",
+                  "description" : "Name of file this campaign picked destination numbers from."
                 },
                 "FileLocalName": {
-
+                  "type" : "string",
+                  "description" : "Name of file in local file system."
                 },
                 "FileID": {
-
+                  "type" : "string",
+                  "description" : "ID of file used in this campaign."
                 },
                 "UserID": {
-
+                  "type" : "string",
+                  "description" : "ID of user who started this campaign."
                 },
                 "Username": {
-
+                  "type" : "string",
+                  "description" : "Username of user who started this campaign."
                 },
                 "SendBefore": {
                   "$ref": "#/definitions/SendBefore"
@@ -593,6 +604,9 @@
                   "$ref": "#/definitions/SendAfter"
                 },
                 "SubmittedAt": {
+                  "type" : "integer",
+                  "format" : "int64",
+                  "description" : "Time at which this campaign got submitted for sending."
                 }
             }
         },
@@ -894,43 +908,40 @@
             },
             "FileID" : {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description": "ID of file used to start this campaign. This must be a valid file previously uploaded via /file/upload endpointi."
             },
             "Numbers" : {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description": "A comma separated list of numbers, this campaign should be sent to. When setting this parameter, make sure FileID parameter is empty. If FileID is provided, this parameter is ignored and numbers are taken from file."
             },
             "Description" : {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description": "Description of campaign."
             },
             "Priority" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "type" : "integer",
+              "description": "Priority of this campaign. Lowest priority is 1 and highest priority is 10."
             },
             "Src" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "$ref" : "#/definitions/Src"
             },
-            "Msg" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+            "Msg": {
+              "type": "string",
+              "description": "Message text. When message contains non latin characters, it's sent with UCS data coding. By default we use raw sms encoding. Messages larger than 140 bytes (70 chars in UCS, 160 latin) are automatically splitted in multiple sms.",
+              "example": "Hello this is test message."
             },
             "ScheduledAt" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "$ref": "#/definitions/ScheduledAt"
             },
-            "SendBefore" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+            "SendBefore": {
+              "$ref": "#/definitions/SendBefore"
             },
-            "SendAfter" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+            "SendAfter": {
+              "$ref": "#/definitions/SendAfter"
             },
             "Mask" : {
               "type" : "boolean",
-              "description": "ID of file to mark as deleted."
+              "description": "Whether to apply masking on messages. This requires masking permission."
             }
           }
         },
@@ -942,55 +953,54 @@
             },
             "ID" : {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
-            },
-            "UserID" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description": "ID of campaign."
             },
             "SubmittedAfter" : {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description": "UTC unix timestamp after which campaign was submitted."
             },
             "SubmittedBefore" : {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description": "UTC unix timestamp before which campaign was submitted."
             },
             "ScheduledAfter" : {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description": "UTC unix timestamp after which campaign was scheduled."
             },
             "ScheduledBefore" : {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description": "UTC unix timestamp before which campaign was scheduled."
             },
-            "Username" : {
+            "UserID": {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description" : "ID of user who started this campaign."
             },
-            "FileName" : {
+            "Username": {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description" : "Username of user who started this campaign."
             },
-            "Enc" : {
+            "Enc": {
               "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "description" : "Encoding used when sending this message.",
+              "enum" : ["ucs", "latin"]
+            },
+            "FileName": {
+              "type" : "string",
+              "description" : "Name of file this campaign picked destination numbers from."
             },
             "Src" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+              "$ref" : "#/definitions/Src"
             },
-            "Msg" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+            "Msg": {
+              "type": "string",
+              "description": "Message text. When message contains non latin characters, it's sent with UCS data coding. By default we use raw sms encoding. Messages larger than 140 bytes (70 chars in UCS, 160 latin) are automatically splitted in multiple sms.",
+              "example": "Hello this is test message."
             },
-            "SendBefore" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+            "SendBefore": {
+              "$ref": "#/definitions/SendBefore"
             },
-            "SendAfter" : {
-              "type" : "string",
-              "description": "ID of file to mark as deleted."
+            "SendAfter": {
+              "$ref": "#/definitions/SendAfter"
             },
             "OrderByKey" : {
               "$ref" : "#/definitions/OrderByKey"
@@ -1096,6 +1106,29 @@
                 },
                 "Request": {
                   "$ref": "#/definitions/MessageFilter"
+                }
+              }
+            }
+          ]
+        },
+        "CampaignFilterResponse":{
+          "required": ["Errors", "Ok", "Request", "Response"],
+          "allOf":[
+            { "$ref": "#/definitions/Response" },
+            { "properties": {
+                "Response": {
+                    "type": "object",
+                    "properties" : {
+                      "Messages" :{
+                        "type": "array",
+                        "items" : {
+                          "$ref" : "#/definitions/Campaign"
+                        }
+                      }
+                    }
+                },
+                "Request": {
+                  "$ref": "#/definitions/CampaignFilter"
                 }
               }
             }

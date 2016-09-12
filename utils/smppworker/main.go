@@ -231,30 +231,28 @@ func bind() {
 	var err error
 	sconn = &smpp.Conn{}
 	*sconn, err = c.GetConn(*group, *connid)
-	log.WithFields(log.Fields{
-		"connid":   *connid,
-		"username": sconn.URL,
-	}).Info("Connection id")
-	log.WithFields(log.Fields{
-		"URL":    sconn.URL,
-		"User":   sconn.User,
-		"Passwd": sconn.Passwd,
-		"Conn":   sconn,
-		"c":      c,
-	}).Info("Dialing")
+	if err != nil {
+		log.WithField("connid", connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")
+	}
 	s = smpp.GetSender()
-	s.Connect(&fiorix.Transceiver{
+	err = s.Connect(&fiorix.Transceiver{
 		Addr:    sconn.URL,
 		User:    sconn.User,
 		Passwd:  sconn.Passwd,
 		Handler: receiver,
 	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Addr":   sconn.URL,
+			"User":   sconn.User,
+			"Passwd": sconn.Passwd,
+			"Error":  err,
+		}).Error("Aborting due to connection error.")
+		os.Exit(2)
+	}
+	go s.ConnectOrDie()
 	defer s.Close()
 	s.SetFields(sconn.Fields)
-	log.WithField("conn", sconn).Info("Binding")
-	if err != nil {
-		log.WithField("connid", connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")
-	}
 	r, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get queue")

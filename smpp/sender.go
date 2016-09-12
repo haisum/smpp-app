@@ -1,6 +1,10 @@
 package smpp
 
 import (
+	"fmt"
+	"os"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp"
@@ -32,14 +36,14 @@ func GetSender() Sender {
 
 // Sender is implemented by smpp sender client code or mock test object
 type Sender interface {
-	Connect(tx SenderTX)
+	Connect(tx SenderTX) error
 	Send(src, dst, enc, msg string) (string, error)
 	SplitLong(src, dst, enc, msg string) (*smpp.ShortMessage, []pdu.Body)
 	SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error)
 	Close() error
 	SetFields(p PduFields)
 	GetFields() PduFields
-	ConnectOrDie(conn <-chan smpp.ConnStatus)
+	ConnectOrDie()
 }
 
 // SenderTX is implemented by tx object of smpp sender to handle transaction with smpp provider
@@ -56,6 +60,7 @@ type SenderTX interface {
 type sender struct {
 	tx     SenderTX
 	fields PduFields
+	conn   <-chan smpp.ConnStatus
 }
 
 // Connect connects to smpp server given by addr, user and passwd
@@ -64,24 +69,32 @@ type sender struct {
 // Channel sender.Connected is filled if smpp gets connected. Other routines
 // that depend on smpp connection should wait for Connected channel before
 // proceeding.
-func (s *sender) Connect(tx SenderTX) {
+func (s *sender) Connect(tx SenderTX) error {
 	s.tx = tx
-	conn := s.tx.Bind() // make persistent connection.
-	go s.ConnectOrDie(conn)
+	s.conn = s.tx.Bind() // make persistent connection.
+	select {
+	case c := <-s.conn:
+		st := c.Status()
+		log.WithField("st", st).Info("SMPP connection status changed.")
+		if st != smpp.Connected {
+			return fmt.Errorf("Error in establising connection. Status: %s, Error: %s", c.Status(), c.Error())
+		}
+		return nil
+	case <-time.After(time.Second * 5):
+		return fmt.Errorf("Timed out waiting for smpp connection.")
+	}
 }
 
 // ConnectOrDie checks for smpp connection status, if it becomes not connected, it aborts current application
 // This is a blocking function and must be called after a "go" statement in a separate routine
-func (s *sender) ConnectOrDie(conn <-chan smpp.ConnStatus) {
-	for c := range conn {
+func (s *sender) ConnectOrDie() {
+	log.Info("Listening for connection status change.")
+	for c := range s.conn {
 		st := c.Status()
 		log.WithField("st", st).Info("SMPP connection status changed.")
 		if st != smpp.Connected {
-			log.WithFields(log.Fields{
-				"st":  st,
-				"err": c.Error(),
-			}).Fatal("SMPP connection failed. Aborting.")
-			return
+			log.Errorf("Error in establising connection. Status: %s, Error: %s", c.Status(), c.Error())
+			os.Exit(2)
 		}
 	}
 }
