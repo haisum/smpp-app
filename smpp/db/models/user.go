@@ -218,7 +218,8 @@ func GetUsers(c UserCriteria) ([]User, error) {
 	if c.From != "" {
 		if c.OrderByDir == ASC {
 			if c.OrderByKey == RegisteredAt {
-				from, err := strconv.ParseInt(c.From, 10, 64)
+				var from int64
+				from, err = strconv.ParseInt(c.From, 10, 64)
 				if err != nil {
 					return users, fmt.Errorf("Invalid value for RegisteredAt")
 				}
@@ -234,7 +235,8 @@ func GetUsers(c UserCriteria) ([]User, error) {
 			}
 		} else {
 			if c.OrderByKey == RegisteredAt {
-				upto, err := strconv.ParseInt(c.From, 10, 64)
+				var upto int64
+				upto, err = strconv.ParseInt(c.From, 10, 64)
 				if err != nil {
 					return users, fmt.Errorf("Invalid value for RegisteredAt")
 				}

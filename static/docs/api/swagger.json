@@ -435,7 +435,7 @@
           "reports"
         ],
         "summary": "Filters users based on given criiteria",
-        "description": "This endpoint requires \"List users\" permission and should be used by admin users to manage existing users.",
+        "description": "This endpoint requires \"List users\" permission and should be used by admin users to search existing users.",
         "consumes": [
           "application/json"
         ],
@@ -504,24 +504,6 @@
               "$ref": "#/definitions/PermissionsResponse"
             }
           },
-          "400": {
-            "description": "Bad request. Occurs, when we submit json/form request with wrong input type or format.",
-            "schema": {
-              "$ref": "#/definitions/BadRequestResponse"
-            }
-          },
-          "401": {
-            "description": "Unauthorized. This error happens when either token is invalid, user no longer exists or user is suspended.",
-            "schema": {
-              "$ref": "#/definitions/PermissionsResponse"
-            }
-          },
-          "403": {
-            "description": "This error occurs when user is trying to perform an action that they don't have permission to perform.",
-            "schema": {
-              "$ref": "#/definitions/PermissionsResponse"
-            }
-          },
           "500": {
             "description": "Internal server error."
           }
@@ -586,8 +568,7 @@
     "/users/edit": {
       "post": {
         "tags": [
-          "users",
-          "reports"
+          "users"
         ],
         "summary": "Update existing user info.",
         "description": "Use this endpoint to edit information of existing user such as updating password, connection group and name.",
@@ -915,7 +896,8 @@
     "/services/status": {
       "get": {
         "tags": [
-          "services"
+          "services",
+          "reports"
         ],
         "summary": "",
         "description": "",
@@ -1145,6 +1127,11 @@
     }
   },
   "definitions": {
+    "ConnectionGroup": {
+      "type": "string",
+      "description": "Connection groups are a way to organize operator connections into groups. SMS sent by user with connection group A will only be able to use operator connections in group A. This can be used to achieve multi tenancy in our application.",
+      "default": "Default"
+    },
     "ScheduledAt": {
       "type": "integer",
       "format": "int64",
@@ -1154,6 +1141,27 @@
       "type": "string",
       "example": "kODrTQZrwfkHESKqZTwXhkhIlAucHxPkODrTQZrw",
       "description": "Token obtained after authentication"
+    },
+    "Permission": {
+      "type": "string",
+      "description": "Permission represents authorization of a user to perform some action.",
+      "enum": [
+        "Add users",
+        "Edit users",
+        "List users",
+        "Show config",
+        "Edit config",
+        "Send message",
+        "List messages",
+        "List number files",
+        "Delete a number file",
+        "List campaigns",
+        "Start a campaign",
+        "Stop campaign",
+        "Retry campaign",
+        "Get status of services",
+        "Mask Messages"
+      ]
     },
     "Src": {
       "type": "string",
@@ -1184,11 +1192,6 @@
       "type": "boolean",
       "default": false,
       "description": "When set to true, all values in sms enclosed in two square brackets [[]] are masked. User must have masking permissions to do this."
-    },
-    "ConnectionGroup": {
-      "type": "string",
-      "description": "Connection groups are a way to organize operator connections into groups. SMS sent by user with connection group A will only be able to use operator connections in group A. This can be used to achieve multi tenancy in our application.",
-      "default": "Default"
     },
     "OrderByKey": {
       "type": "string",
@@ -1573,6 +1576,51 @@
         }
       }
     },
+    "User": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "description": "ID of user. Also referred as UserID in related records."
+        },
+        "Username": {
+          "type": "string",
+          "description": "Username of user that uploaded file."
+        },
+        "Password": {
+          "type": "string",
+          "description": "Password of user",
+          "format": "password",
+          "required": true
+        },
+        "Name": {
+          "type": "string",
+          "description": "Name of user. This is used to display logged in user on UI."
+        },
+        "Email": {
+          "type": "string",
+          "description": "Email ID of user. Not used anywhere, but may be used in future."
+        },
+        "ConnectionGroup": {
+          "$ref": "#/definitions/ConnectionGroup"
+        },
+        "Permissions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Permission"
+          }
+        },
+        "RegisteredAt": {
+          "type": "integer",
+          "description": "UTC unix timestamp at which user got registered."
+        },
+        "Suspended": {
+          "type": "boolean",
+          "description": "True if user is suspended. Suspended users can't login into system.",
+          "default": false
+        }
+      }
+    },
     "RetryRequest": {
       "type": "object",
       "properties": {
@@ -1653,6 +1701,59 @@
         "Deleted": {
           "type": "boolean",
           "description": "When calling /file/delete endpoint, this flag is set to true. By default deleted files don't appear but if you want to look for deleted files, set this flag to true."
+        },
+        "OrderByKey": {
+          "$ref": "#/definitions/OrderByKey"
+        },
+        "OrderByDir": {
+          "$ref": "#/definitions/OrderByDir"
+        },
+        "From": {
+          "$ref": "#/definitions/From"
+        },
+        "PerPage": {
+          "$ref": "#/definitions/PerPage"
+        }
+      }
+    },
+    "UsersRequest": {
+      "type": "object",
+      "properties": {
+        "Token": {
+          "$ref": "#/definitions/Token"
+        },
+        "Email": {
+          "type": "string",
+          "description": "Email id of user"
+        },
+        "Username": {
+          "type": "string",
+          "description": "Username of user"
+        },
+        "RegisteredAfter": {
+          "type": "integer",
+          "format": "int64",
+          "description": "UTC Unix timestamp after which user registered."
+        },
+        "RegisteredBefore": {
+          "type": "integer",
+          "format": "int64",
+          "description": "UTC Unix timestamp before which user was registered"
+        },
+        "ConnectionGroup": {
+          "$ref": "#/definitions/ConnectionGroup"
+        },
+        "Permissions": {
+          "type": "array",
+          "description": "List of permissions that the user may have.",
+          "items": {
+            "$ref": "#/definitions/Permission"
+          }
+        },
+        "Suspended": {
+          "type": "boolean",
+          "description": "True if user is suspended. Suspended users can't login into system.",
+          "default": false
         },
         "OrderByKey": {
           "$ref": "#/definitions/OrderByKey"
@@ -1951,7 +2052,7 @@
                 "Connections": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/defintions/ConnectionCount"
+                    "$ref": "#/definitions/ConnectionCount"
                   }
                 }
               }
@@ -2116,6 +2217,37 @@
         }
       ]
     },
+    "UsersRequestResponse": {
+      "required": [
+        "Errors",
+        "Ok",
+        "Request",
+        "Response"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Response"
+        },
+        {
+          "properties": {
+            "Response": {
+              "type": "object",
+              "properties": {
+                "Users": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/User"
+                  }
+                }
+              }
+            },
+            "Request": {
+              "$ref": "#/definitions/UsersRequest"
+            }
+          }
+        }
+      ]
+    },
     "FileUploadResponse": {
       "required": [
         "Errors",
@@ -2184,7 +2316,38 @@
               }
             },
             "Request": {
-              "$ref": "#/defintions/CampaignRequest"
+              "$ref": "#/definitions/CampaignRequest"
+            }
+          }
+        }
+      ]
+    },
+    "PermissionsResponse": {
+      "required": [
+        "Errors",
+        "Ok",
+        "Request",
+        "Response"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Response"
+        },
+        {
+          "properties": {
+            "Response": {
+              "type": "object",
+              "properties": {
+                "Permissions": {
+                  "items": {
+                    "$ref" : "#/definitions/Permission"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "Request": {
+              "type" : "object"
             }
           }
         }
