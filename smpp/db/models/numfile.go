@@ -318,7 +318,6 @@ func (nf *NumFile) ToNumbers() ([]NumFileRow, error) {
 				nr.Params[keys[j]] = val
 			}
 			nums = append(nums, nr)
-			log.WithField("nums", nums).Info("nums")
 		}
 	} else {
 		return nums, fmt.Errorf("This file type isn't supported yet.")

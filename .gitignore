@@ -11,4 +11,6 @@
 ansible/hosts
 *.sublime*
 make.sh
+simplehttp
+githook
 nohup.out
