@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -10,12 +11,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp/pdu"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
-	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
 )
 
 func receiver(p pdu.Body) {
 	if p.Header().ID == pdu.DeliverSMID {
-		go saveDeliverySM(p.Fields())
+		go saveDeliverySM(p)
 	} else {
 		fields := log.Fields{
 			"pdu":    p.Header().ID.String(),
@@ -25,12 +25,16 @@ func receiver(p pdu.Body) {
 	}
 }
 
-func saveDeliverySM(deliverSM pdufield.Map) {
-	log.WithFields(log.Fields{"deliverySM": deliverSM}).Info("Received deliverySM")
+func saveDeliverySM(pdu pdu.Body) {
+	deliverSM := pdu.Fields()
+	tlvFields := pdu.TLVFields()
 	var id string
 	var err error
-	if val, ok := deliverSM["short_message"]; ok {
-		log.WithField("ucs", string(pdutext.Raw(deliverSM["short_message"].Bytes()).Decode())).Info("Decoded message")
+	if val, ok := tlvFields[pdufield.ReceiptedMessageID]; ok {
+		b := val.Bytes()
+		n := bytes.Index(b, []byte{0})
+		id = string(b[:n])
+	} else if val, ok := deliverSM["short_message"]; ok {
 		id, err = splitShortMessage(val.String(), "id:")
 		if err != nil {
 			log.Info("Couldn't find id, executing receiver")
@@ -38,7 +42,7 @@ func saveDeliverySM(deliverSM pdufield.Map) {
 			return
 		}
 	} else {
-		log.WithField("deliverySM", deliverSM).Error("Couldn't find short_message field")
+		log.WithField("deliverySM", deliverSM).Error("Couldn't find short_message field or receipted message id")
 		return
 	}
 	deliveryMap := make(map[string]string, len(deliverSM))
