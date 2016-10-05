@@ -963,8 +963,7 @@
             "name": "Token",
             "in": "formData",
             "description": "Authentication token.",
-            "type": "string",
-            "required": true
+            "type": "string"
           }
         ],
         "responses": {
@@ -1571,8 +1570,7 @@
         "Password": {
           "type": "string",
           "description": "Password of user",
-          "format": "password",
-          "required": true
+          "format": "password"
         },
         "Name": {
           "type": "string",
