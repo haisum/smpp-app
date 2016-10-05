@@ -2266,7 +2266,7 @@
               "properties": {
                 "ID": {
                   "type": "string",
-                  "required": "true",
+                  "required": true,
                   "description": "ID of the file we just submitted."
                 }
               }
