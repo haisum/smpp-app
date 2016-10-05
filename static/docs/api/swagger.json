@@ -58,7 +58,6 @@
             "in": "body",
             "name": "body",
             "description": "Message request object that contains necessary parameters.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/Message"
             }
@@ -114,7 +113,6 @@
             "in": "body",
             "name": "body",
             "description": "Message filter request object that contains necessary parameters.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/MessageFilter"
             }
@@ -169,7 +167,6 @@
             "in": "body",
             "name": "body",
             "description": "Campaign request object that contains necessary parameters.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/CampaignRequest"
             }
@@ -225,7 +222,6 @@
             "in": "body",
             "name": "body",
             "description": "Campaign filter object with required filter parameters set.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/CampaignFilterRequest"
             }
@@ -280,7 +276,6 @@
             "in": "body",
             "name": "body",
             "description": "Object with campaign id and auth token.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/RetryRequest"
             }
@@ -335,7 +330,6 @@
             "in": "body",
             "name": "body",
             "description": "Campaign ID and auth token",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/StopRequest"
             }
@@ -391,7 +385,6 @@
             "in": "body",
             "name": "body",
             "description": "Campaign ID and auth token",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/ReportRequest"
             }
@@ -447,7 +440,6 @@
             "in": "body",
             "name": "body",
             "description": "Users filter criteria object",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/UsersRequest"
             }
@@ -528,7 +520,6 @@
             "in": "body",
             "name": "body",
             "description": "User object with all required fields.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/UsersAddRequest"
             }
@@ -583,7 +574,6 @@
             "in": "body",
             "name": "body",
             "description": "UserID and information to edit.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/UsersEditRequest"
             }
@@ -638,7 +628,6 @@
             "in": "body",
             "name": "body",
             "description": "Username, password and optional validity parameter.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/UserAuthRequest"
             }
@@ -693,7 +682,6 @@
             "in": "body",
             "name": "body",
             "description": "Auth token and information to change. Blank parameters are ignored and not updated.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/UserEditRequest"
             }
@@ -748,7 +736,6 @@
             "in": "body",
             "name": "body",
             "description": "Valid token",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/UserInfoRequest"
             }
@@ -803,7 +790,6 @@
             "in": "body",
             "name": "body",
             "description": "Campaign ID and auth token",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/ReportRequest"
             }
@@ -856,7 +842,6 @@
             "in": "body",
             "name": "body",
             "description": "Campaign ID and auth token",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/ReportRequest"
             }
@@ -912,7 +897,6 @@
             "in": "body",
             "name": "body",
             "description": "Campaign ID and auth token",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/ReportRequest"
             }
@@ -967,7 +951,6 @@
             "name": "File",
             "in": "formData",
             "description": "XLSX or CSV File to upload.",
-            "required": true,
             "type": "file"
           },
           {
@@ -1033,7 +1016,6 @@
             "in": "body",
             "name": "body",
             "description": "File filter request object that contains necessary parameters.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/FileFilterRequest"
             }
@@ -1088,7 +1070,6 @@
             "in": "body",
             "name": "body",
             "description": "ID of the file to delete and auth token.",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/FileDeleteRequest"
             }
@@ -2266,7 +2247,6 @@
               "properties": {
                 "ID": {
                   "type": "string",
-                  "required": true,
                   "description": "ID of the file we just submitted."
                 }
               }
@@ -2310,7 +2290,6 @@
               "properties": {
                 "ID": {
                   "type": "string",
-                  "required": true,
                   "description": "ID of the campaign submitted."
                 }
               }
