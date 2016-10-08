@@ -1,10 +1,20 @@
 ---
 
 - name: Download grafana setup
-  get_url: url=https://grafanarel.s3.amazonaws.com/builds/grafana-3.0.4-1464167696.x86_64.rpm dest=/tmp/grafana.rpm
+  get_url: url=https://grafanarel.s3.amazonaws.com/builds/grafana-3.1.1-1470047149.x86_64.rpm dest=/tmp/grafana.rpm
+  when: ansible_os_family == "RedHat"
 
 - name: Install grafana
   yum: name="/tmp/grafana.rpm" state=present
+  when: ansible_os_family == "RedHat"
+
+- name: Download grafana setup
+  get_url: url=https://grafanarel.s3.amazonaws.com/builds/grafana_3.1.1-1470047149_amd64.deb dest=/tmp/grafana.deb
+  when: ansible_os_family == "Debian"
+
+- name: Install grafana
+  apt: deb="/tmp/grafana.deb" state=present
+  when: ansible_os_family == "Debian"
 
 - name: Make sure /opt/keys exists
   file: path="/opt/keys" state="directory"
@@ -22,4 +32,4 @@
   copy: src="grafana.db" dest="/var/lib/grafana/grafana.db"
 
 - name: Restart grafana and enable it on startup
-  service: name="grafana-server" state="restarted" enabled="yes"
+  service: name="grafana-server" state="started" enabled="yes"

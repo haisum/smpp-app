@@ -8,7 +8,6 @@
 *.log
 *.zip
 .vscode
-ansible/hosts
 *.sublime*
 make.sh
 simplehttp

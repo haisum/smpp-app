@@ -8,9 +8,9 @@
   become: yes
   roles:
     - common
-#    - rabbitmq
+    - rabbitmq
     - supervisor
     - rethinkdb
     - influxdb
-#    - telegraf
-#    - grafana
+    - telegraf
+    - grafana
