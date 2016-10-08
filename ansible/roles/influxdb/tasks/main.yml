@@ -1,13 +1,32 @@
 ---
 
 - name: Download influxdb package
-  get_url: url="https://dl.influxdata.com/influxdb/releases/influxdb-0.13.0.x86_64.rpm" dest="/tmp/influxdb.rpm"
+  get_url: url="https://dl.influxdata.com/influxdb/releases/influxdb-1.0.2.x86_64.rpm" dest="/tmp/influxdb.rpm"
+  when: ansible_os_family == 'RedHat'
+
+- name: Download influxdb package
+  get_url: url="https://dl.influxdata.com/influxdb/releases/influxdb_1.0.2_amd64.deb" dest="/tmp/influxdb.deb"
+  when: ansible_os_family == 'Debian'
 
 - name: Install influxdb
   yum: name="/tmp/influxdb.rpm" state="present"
+  when: ansible_os_family == 'RedHat'
+
+- name: Install influxdb
+  apt: deb="/tmp/influxdb.deb" state="present"
+  when: ansible_os_family == 'Debian'
+
+- name: Install influxdb python package
+  pip: name="influxdb" state="present"
 
 - name: Copy influxdb conf file
   copy: src="influxdb.conf" dest="/etc/influxdb/influxdb.conf"
 
 - name: Enable start up and restart influxdb
-  service: name="influxdb" enabled="yes" state="restarted"
+  service: name="influxdb" enabled="yes" state="started"
+
+- name: Create database telegraf
+  influxdb_database: hostname="127.0.0.1" database_name="telegraf" state=present
+
+- name: create 1 month retention policy
+  influxdb_retention_policy: hostname="127.0.0.1" database_name="telegraf" default=true  policy_name="default" duration=30d replication=1

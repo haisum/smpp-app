@@ -1,0 +1,20 @@
+---
+
+- name: Add epel for dependencies
+  yum_repository:
+      name: epel
+      description: EPEL yum repo
+      baseurl: http://download.fedoraproject.org/pub/epel/$releasever/$basearch/
+  when: ansible_os_family == 'RedHat'
+
+- name: Install python setup tools
+  yum: name="python-setuptools" state="present"
+  when: ansible_os_family == 'RedHat'
+
+- name: Install pip
+  easy_install: name=pip state=present
+  when: ansible_os_family == 'RedHat'
+
+- name: Install python pip
+  apt: name="python-pip" state="present"
+  when: ansible_os_family == 'Debian'

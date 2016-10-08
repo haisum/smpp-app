@@ -30,7 +30,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # Run Ansible from the Vagrant Host
   #
   config.vm.provision "ansible" do |ansible|
-    ansible.playbook = "ansible/setup.yml"
+    ansible.playbook = "ansible/main.yml"
   end
 
   # Share an additional folder to the guest VM. The first argument is

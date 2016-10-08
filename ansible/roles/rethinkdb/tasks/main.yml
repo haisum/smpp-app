@@ -1,8 +1,48 @@
-- name: Adding rethinkdb repo
-  get_url: url="https://download.rethinkdb.com/centos/{{ansible_distribution_major_version}}/{{ansible_architecture}}/rethinkdb.repo" dest="/etc/yum.repos.d/rethinkdb.repo"
+---
 
-- name: Install rethinkdb
-  yum: name="rethinkdb" state="present"
+# Debian
+# ------
+
+- name: Add official APT repository
+  when: ansible_os_family == 'Debian'
+  sudo: yes
+  register: _repo
+  apt_repository:
+    repo: "deb http://download.rethinkdb.com/apt {{ansible_distribution_release}} main"
+
+- name: Adding APT repository key
+  when: ansible_os_family == 'Debian'
+  register: _repo_key
+  apt_key:
+    url=https://download.rethinkdb.com/apt/pubkey.gpg
+    id=3A8F2399
+
+- name: Updating package list
+  when: ansible_pkg_mgr == 'apt' and (_repo_key.changed or _repo.changed)
+  apt:
+    update_cache: yes
+
+- name: Install RethinkDB
+  when: ansible_os_family == 'Debian'
+  apt:
+    name: "rethinkdb"
+    allow_unauthenticated: yes
+
+
+# RedHat
+# ------
+
+- name: Add official YUM repository
+  when: ansible_os_family == 'RedHat'
+  register: _repo
+  get_url: url=http://download.rethinkdb.com/centos/{{ansible_distribution_major_version}}/{{ansible_architecture}}/rethinkdb.repo dest="/etc/yum.repos.d/rethindb.repo"
+
+- name: Install RethinkDB
+  when: ansible_os_family == 'RedHat'
+  yum:
+    name: "rethinkdb"
+
+## Configuration
 
 - name: Copy config file
   copy: src="instance1.conf" dest="/etc/rethinkdb/instances.d/instance1.conf" force="no"

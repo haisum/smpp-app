@@ -1,3 +1,18 @@
-[smppserver]
-104.236.127.104 ansible_user=root 
-#127.0.0.1:2222 ansible_user=vagrant ansible_ssh_private_key_file=./.vagrant/machines/default/virtualbox/private_key
+
+bluesmpp.com ansible_host=104.236.127.104 ansible_user=deploy
+
+vagrant-ubuntu ansible_host=127.0.0.1 ansible_port=2222 ansible_user=ubuntu ansible_ssh_private_key_file=/home/haisum/ubuntubox/.vagrant/machines/default/virtualbox/private_key
+
+vagrant-centos ansible_host=127.0.0.1 ansible_port=2200 ansible_user=vagrant ansible_ssh_private_key_file=/home/haisum/centosbox/.vagrant/machines/default/virtualbox/private_key
+
+
+[local]
+vagrant-centos
+vagrant-ubuntu
+
+[remote]
+bluesmpp.com
+
+[all:children]
+local
+remote

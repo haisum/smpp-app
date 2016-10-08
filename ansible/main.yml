@@ -4,12 +4,13 @@
 #   roles:
 #     - copyfiles
 
-- hosts: all
+- hosts: "{{hosts}}"
   become: yes
   roles:
-    - rabbitmq
+    - common
+#    - rabbitmq
     - supervisor
     - rethinkdb
     - influxdb
-    - telegraf
-    - grafana
+#    - telegraf
+#    - grafana

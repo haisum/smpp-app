@@ -1,11 +1,4 @@
 ---
-- name: Install python-setuptools
-  yum: name="python-setuptools" state="present"
-
-- name: Install supervisor package
-  command: easy_install supervisor
-  register: supervisor
-  changed_when: supervisor.stdout.find("is already the active version") == -1
 
 - name: Make sure log dir exists
   file: path="{{supervisor_child_log_dir}}" state="directory"
@@ -16,17 +9,15 @@
   become: no
 
 - name: Make sure socket file exists for supervisor
-  file: path="/tmp/supervisor.sock" mode="0755" state=touch
+  copy: dest="/tmp/supervisor.sock" mode="0755" content=""
   become: no
 
+- name: Install supervisor
+  pip: name="supervisor" state="present"
+
 - name: Start supervisord
-  command: chdir="{{project_home}}" supervisord
+  shell: chdir="{{project_home}}" supervisord
   ignore_errors: yes
   register: supervisord
   become: no
   changed_when: supervisord.stderr and supervisord.stderr.find("Error") == -1
-
-# - name: Start services
-#   command: chdir="{{project_home}}" ./smppctl start all
-#   register: started
-#   changed_when: started.stdout.find("started") != -1
