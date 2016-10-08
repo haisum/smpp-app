@@ -29,7 +29,7 @@
   copy: src="grafana.ini" dest="/etc/grafana/grafana.ini"
 
 - name: Copy grafana database
-  copy: src="grafana.db" dest="/var/lib/grafana/grafana.db"
+  copy: src="grafana.db" dest="/var/lib/grafana/grafana.db" group="grafana" owner="grafana"
 
 - name: Restart grafana and enable it on startup
   service: name="grafana-server" state="started" enabled="yes"
