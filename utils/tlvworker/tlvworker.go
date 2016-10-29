@@ -19,7 +19,7 @@ const (
 	//MaxUCSChars is number of characters allowed in single ucs encoded text message
 	MaxUCSChars int = 50
 	// Latin1Type is hexcode for pdu encoding latin
-	Latin1Type int = 0x03
+	Latin1Type int = 0
 	//UCS2Type iis hexcode for pdu encoding UCS2
 	UCS2Type int = 0x08
 	// SarMsgRefNum is hexcode for sar_msg_refnum tlv field
@@ -39,6 +39,7 @@ var (
 	dst      = flag.String("dst", "", "Destination number.")
 	src      = flag.String("src", "", "Source from which message is sent.")
 	isUCS    = flag.Bool("isUCS", false, "Set this flag if data should be sent as UCS instead of latin.")
+	isFlash  = flag.Bool("isFlash", false, "Set this flag if sms should be sent as a flash message.")
 )
 
 func packUI16(n uint16) (b []byte) {
@@ -84,6 +85,13 @@ func main() {
 	if *isUCS {
 		maxLen = MaxUCSChars
 	}
+	dataCoding := Latin1Type
+	if *isUCS {
+		dataCoding = UCS2Type
+	}
+	if *isFlash {
+		dataCoding = dataCoding | 0x10
+	}
 	runeLength := len([]rune(*message))
 	rand.Seed(time.Now().UnixNano())
 	randRefNum := uint16(rand.Intn(math.MaxUint16))
@@ -104,11 +112,10 @@ func main() {
 		msgPart := string([]rune(*message)[i:end])
 		if *isUCS {
 			text = string(pdutext.UCS2(msgPart).Encode())
-			params[smpp.DATA_CODING] = UCS2Type
 		} else {
 			text = string(pdutext.Latin1(msgPart).Encode())
-			params[smpp.DATA_CODING] = Latin1Type
 		}
+		params[smpp.DATA_CODING] = dataCoding
 		// Send SubmitSm
 		p, err := trx.Smpp.SubmitSm(*src, *dst, text, &params)
 
