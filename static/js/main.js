@@ -148,6 +148,7 @@ var app = {
                     "ScheduledAt" : utils.dateFieldToEpoch("ScheduledAt"),
                     "Src" : $("#Src").val(),
                     "Priority" : parseInt($("#Priority").val()) > 0 ? parseInt($("#Priority").val()) : 0,
+                    "IsFlash" : $("#IsFlash").prop("checked"),
                     "Token" : localStorage.getItem("auth_token")
                 }
                 $.ajax({

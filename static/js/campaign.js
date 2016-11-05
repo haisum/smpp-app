@@ -111,6 +111,7 @@ $.extend(app, {
                     "SendAfter" : utils.toUTCTime($("#SendAfter").val()),
                     "SendBefore" : utils.toUTCTime($("#SendBefore").val()),
                     "ScheduledAt" : utils.dateFieldToEpoch("ScheduledAt"),
+                    "IsFlash" : $("#IsFlash").prop("checked"),
                 }
                 $.ajax({
                     "url": "/api/campaign",
