@@ -90,7 +90,7 @@ func main() {
 		dataCoding = UCS2Type
 	}
 	if *isFlash {
-		dataCoding = dataCoding | 0x10
+		dataCoding = ((dataCoding | 0x10) & 0xFC)
 	}
 	runeLength := len([]rune(*message))
 	rand.Seed(time.Now().UnixNano())
@@ -126,7 +126,6 @@ func main() {
 		}
 
 		fmt.Printf("SarRef: %d, total:  %d, this: %d\n", randRefNum, (runeLength/maxLen)+1, (i/maxLen)+1)
-
 		p.SetTLVField(SarMsgRefNum, 2, msgRefNum)
 		p.SetTLVField(SarSegmentSeqnum, 1, packUI8(uint8((i/maxLen)+1)))
 		p.SetTLVField(SarTotalSegments, 1, packUI8(uint8((runeLength/maxLen)+1)))

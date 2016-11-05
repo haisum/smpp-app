@@ -27,9 +27,10 @@ type messagesRequest struct {
 
 var (
 	labels = map[string]string{
-		"Dst": "Mobile Number",
-		"Src": "Sender ID",
-		"Msg": "Message",
+		"Dst":     "Mobile Number",
+		"Src":     "Sender ID",
+		"Msg":     "Message",
+		"IsFlash": "Flash Message",
 	}
 )
 
@@ -135,6 +136,7 @@ func toXLS(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 		"ScheduledAt",
 		"SendBefore",
 		"SendAfter",
+		"isFlash",
 	}
 	if len(cols) == 0 || (len(cols) == 1 && cols[0] == "") {
 		cols = availableCols
@@ -209,6 +211,7 @@ func toXLS(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 			"ScheduledAt":     scheduled,
 			"SendBefore":      v.SendBefore,
 			"SendAfter":       v.SendAfter,
+			"IsFlash":         strconv.FormatBool(v.IsFlash),
 		}
 		row = sheet.AddRow()
 		for _, v := range cols {

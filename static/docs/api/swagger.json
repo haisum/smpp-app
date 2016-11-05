@@ -1227,6 +1227,10 @@
         },
         "Mask": {
           "$ref": "#/definitions/Mask"
+        },
+        "IsFlash": {
+          "type": "boolean",
+          "description": "If true, message is sent as flash message (Class 0 SMPP)."
         }
       }
     },
@@ -1802,6 +1806,10 @@
         "Mask": {
           "type": "boolean",
           "description": "Whether to apply masking on messages. This requires masking permission."
+        },
+        "IsFlash": {
+          "type": "boolean",
+          "description": "If true, messages are sent as flash messages (Class 0 SMPP)."
         }
       }
     },

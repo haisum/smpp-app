@@ -132,7 +132,7 @@ func send(i queue.Item) {
 			}
 			<-sendTick.C
 			start := time.Now()
-			respID, err = s.Send(m.Src, m.Dst, m.Enc, m.RealMsg)
+			respID, err = s.Send(m.Src, m.Dst, m.Enc, m.RealMsg, m.IsFlash)
 			go inf.AddPoint(&influx.Point{
 				Measurement: "message",
 				Tags: influx.Tags{
@@ -154,7 +154,7 @@ func send(i queue.Item) {
 			log.WithError(err).Infof("Error occured, retrying.")
 		}
 	} else {
-		sm, parts := s.SplitLong(m.Src, m.Dst, m.Enc, m.RealMsg)
+		sm, parts := s.SplitLong(m.Src, m.Dst, m.Enc, m.RealMsg, m.IsFlash)
 		for i, p := range parts {
 			for {
 				bucket <- 1

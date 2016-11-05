@@ -37,8 +37,8 @@ func GetSender() Sender {
 // Sender is implemented by smpp sender client code or mock test object
 type Sender interface {
 	Connect(tx SenderTX) error
-	Send(src, dst, enc, msg string) (string, error)
-	SplitLong(src, dst, enc, msg string) (*smpp.ShortMessage, []pdu.Body)
+	Send(src, dst, enc, msg string, isFlash bool) (string, error)
+	SplitLong(src, dst, enc, msg string, isFlash bool) (*smpp.ShortMessage, []pdu.Body)
 	SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error)
 	Close() error
 	SetFields(p PduFields)
@@ -116,7 +116,7 @@ func (s *sender) GetFields() PduFields {
 
 // Send sends sms to given source and destination with latin as encoding
 // or ucs if asked.
-func (s *sender) Send(src, dst, enc, msg string) (string, error) {
+func (s *sender) Send(src, dst, enc, msg string, isFlash bool) (string, error) {
 	var text pdutext.Codec
 	if enc == smtext.EncUCS {
 		text = pdutext.UCS2(msg)
@@ -138,6 +138,7 @@ func (s *sender) Send(src, dst, enc, msg string) (string, error) {
 		ReplaceIfPresentFlag: s.fields.ReplaceIfPresentFlag,
 		SMDefaultMsgID:       s.fields.SMDefaultMsgID,
 		Register:             smpp.FinalDeliveryReceipt,
+		IsFlash:              isFlash,
 	})
 	if err != nil {
 		if err == smpp.ErrNotConnected {
@@ -155,7 +156,7 @@ func (s *sender) Send(src, dst, enc, msg string) (string, error) {
 }
 
 //SplitLong splits a long message in parts and returns pdu.Body which can be sent individually using SendPart method
-func (s *sender) SplitLong(src, dst, enc, msg string) (*smpp.ShortMessage, []pdu.Body) {
+func (s *sender) SplitLong(src, dst, enc, msg string, isFlash bool) (*smpp.ShortMessage, []pdu.Body) {
 	var text pdutext.Codec
 	if enc == smtext.EncUCS {
 		text = pdutext.UCS2(msg)
@@ -177,6 +178,7 @@ func (s *sender) SplitLong(src, dst, enc, msg string) (*smpp.ShortMessage, []pdu
 		ReplaceIfPresentFlag: s.fields.ReplaceIfPresentFlag,
 		SMDefaultMsgID:       s.fields.SMDefaultMsgID,
 		Register:             smpp.FinalDeliveryReceipt,
+		IsFlash:              isFlash,
 	}
 	return sm, s.tx.SplitLong(sm)
 }

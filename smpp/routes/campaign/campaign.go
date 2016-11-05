@@ -30,6 +30,7 @@ type campaignRequest struct {
 	SendBefore  string
 	SendAfter   string
 	Mask        bool
+	IsFlash     bool
 }
 
 type campaignResponse struct {
@@ -227,6 +228,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			ScheduledAt:     uReq.ScheduledAt,
 			Total:           realTotal,
 			Campaign:        uReq.Description,
+			IsFlash:         uReq.IsFlash,
 		}
 		ms = append(ms, m)
 		// if we have 200 msgs or last few messages

@@ -39,6 +39,7 @@ type Message struct {
 	SendBefore  string
 	SendAfter   string
 	ScheduledAt int64
+	IsFlash     bool
 }
 
 // MessageCriteria represents filters we can give to GetMessages method.

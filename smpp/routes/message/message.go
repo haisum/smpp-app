@@ -25,6 +25,7 @@ type messageReq struct {
 	URL         string
 	Token       string
 	ScheduledAt int64
+	IsFlash     bool
 	SendBefore  string
 	SendAfter   string
 	Mask        bool
@@ -117,6 +118,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		ScheduledAt:     uReq.ScheduledAt,
 		SendAfter:       uReq.SendAfter,
 		SendBefore:      uReq.SendBefore,
+		IsFlash:         uReq.IsFlash,
 	}
 	msg := uReq.Msg
 	if uReq.Mask {

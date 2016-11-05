@@ -111,11 +111,11 @@ func (r *rabbit) startExchange() error {
 	err := r.Ch.ExchangeDeclare(
 		r.ex,     // name
 		"direct", // type
-		true,     // durable
+		false,    // durable
 		false,    // auto-deleted
 		false,    // internal
 		false,    // no-wait
-		amqp.Table{"x-max-priority": 10}, // arguments
+		amqp.Table{"x-max-priority": int16(10)}, // arguments
 	)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -173,7 +173,7 @@ func (r *rabbit) Bind(group string, keys []string, handler Handler) error {
 			false, // delete when usused
 			false, // exclusive
 			false, // no-wait
-			amqp.Table{"x-max-priority": 10}, // arguments
+			amqp.Table{"x-max-priority": int16(10)}, // arguments
 		)
 		if err != nil {
 			log.WithField("err", err).Error("Failed to create a queue.")
