@@ -262,6 +262,7 @@ func NumbersFromString(numbers string) []NumFileRow {
 // ToNumbers reads a csv or xlsx file and returns array of NumFileRow with Destination and Params map
 func (nf *NumFile) ToNumbers() ([]NumFileRow, error) {
 	var nums []NumFileRow
+	nummap := make(map[string]NumFileRow) // used for unique numbers
 	numfilePath := fmt.Sprintf("%s/%s/%s", NumFilePath, nf.UserID, nf.LocalName)
 	b, err := ioutil.ReadFile(numfilePath)
 	if err != nil {
@@ -273,7 +274,7 @@ func (nf *NumFile) ToNumbers() ([]NumFileRow, error) {
 			if len(num) > 15 || len(num) < 5 {
 				return nums, fmt.Errorf("Entry number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
 			}
-			nums = append(nums, NumFileRow{Destination: num})
+			nummap[num] = NumFileRow{Destination: num}
 		}
 	} else if nf.Type == NumFileXLSX {
 		xlFile, err := xlsx.OpenBinary(b)
@@ -317,13 +318,16 @@ func (nf *NumFile) ToNumbers() ([]NumFileRow, error) {
 				}
 				nr.Params[keys[j]] = val
 			}
-			nums = append(nums, nr)
+			nummap[nr.Destination] = nr
 		}
 	} else {
 		return nums, fmt.Errorf("This file type isn't supported yet.")
 	}
-	if len(nums) < 1 {
+	if len(nummap) < 1 {
 		return nums, fmt.Errorf("No Numbers given in file.")
+	}
+	for _, v := range nummap {
+		nums = append(nums, v)
 	}
 	return nums, nil
 }
