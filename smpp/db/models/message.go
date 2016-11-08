@@ -355,6 +355,10 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 			t = t.GetAllByIndex("CampaignID", c.CampaignID)
 			c.CampaignID = ""
 			indexUsed = true
+		} else if c.Dst != "" {
+			t = t.GetAllByIndex("Dst", c.Dst)
+			c.Dst = ""
+			indexUsed = true
 		} else if c.Username != "" && !strings.HasPrefix(c.Username, "(re)") {
 			if c.OrderByKey == QueuedAt && !indexUsed {
 				t = t.Between([]interface{}{c.Username, r.MinVal}, []interface{}{c.Username, r.MaxVal}, r.BetweenOpts{

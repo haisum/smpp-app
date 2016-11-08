@@ -175,9 +175,8 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	var filtered bool
 	t, filtered = filterEqStr(strFields, t)
 	filterUsed = filterUsed || filtered
-	//we won't do it for now... because it fucks up  orderByIndex
-	//t = t.Filter(map[string]bool{"Deleted": c.Deleted})
 	t = orderBy(c.OrderByKey, c.OrderByDir, from, t, indexUsed, filterUsed)
+	t = t.Filter(map[string]bool{"Deleted": c.Deleted})
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}

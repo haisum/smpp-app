@@ -70,6 +70,7 @@ func main() {
 	r.Handle("/api/services/status", handlers.MethodHandler{"GET": services.StatusHandler, "POST": services.StatusHandler})
 	r.Handle("/api/file/upload", handlers.MethodHandler{"POST": file.UploadHandler})
 	r.Handle("/api/file/delete", handlers.MethodHandler{"POST": file.DeleteHandler})
+	r.Handle("/api/file/download", handlers.MethodHandler{"GET": file.DownloadHandler})
 	r.Handle("/api/file/filter", file.FilterHandler)
 	static := http.FileServer(http.Dir("./static/"))
 	r.PathPrefix("/").Handler(static)
