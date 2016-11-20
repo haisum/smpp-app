@@ -17,11 +17,17 @@ func filterBetweenInt(fields map[string]map[string]int64, t r.Term) (r.Term, boo
 			filtered = true
 		} else {
 			if vals["after"] > 0 {
-				t = t.Filter(r.Row.Field(field).Gt(vals["after"]))
+				t = t.Between(vals["after"], r.MaxVal, r.BetweenOpts{
+					Index:      field,
+					RightBound: "closed",
+				})
 				filtered = true
 			}
 			if vals["before"] > 0 {
-				t = t.Filter(r.Row.Field(field).Lt(vals["before"]))
+				t = t.Between(r.MinVal, vals["before"], r.BetweenOpts{
+					Index:      field,
+					RightBound: "closed",
+				})
 				filtered = true
 			}
 		}
