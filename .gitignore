@@ -13,3 +13,6 @@ make.sh
 simplehttp
 githook
 nohup.out
+*.exe
+*~
+supervisord.conf

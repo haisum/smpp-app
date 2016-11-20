@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
@@ -77,7 +78,11 @@ func main() {
 	log.Info("Loading message workers.")
 	_, err = supervisor.Execute("reload")
 	if err != nil {
-		log.Fatal("Couldn't executing supervisor to start workers.")
+		if runtime.GOOS == "windows" {
+			log.Error("Couldn't executing supervisor to start workers.")
+		} else {
+			log.Fatal("Couldn't executing supervisor to start workers.")
+		}
 	}
 
 	//Listen for termination signals from OS
