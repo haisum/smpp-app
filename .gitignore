@@ -16,3 +16,4 @@ nohup.out
 *.exe
 *~
 supervisord.conf
+files/

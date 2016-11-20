@@ -271,7 +271,20 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 	}
 	t = t.Limit(c.PerPage)
 	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
-	cur, err := t.Run(s)
+
+	var cur *r.Cursor
+	curCh := make(chan int)
+	go func() {
+		cur, err = t.Run(s)
+		curCh <- 1
+	}()
+	select {
+	case <-curCh:
+	case <-time.After(time.Minute):
+		cur.Close()
+		log.Error("Query taking long. Aborting it.")
+		err = fmt.Errorf("Query taking longer than one minute. Aborting query.")
+	}
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
 		return m, err
