@@ -11,6 +11,7 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/influx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
@@ -302,5 +303,10 @@ func main() {
 	if err != nil {
 		log.Fatal("Can't continue without settings. Exiting.")
 	}
+	spconn, err := sphinx.Connect("127.0.0.1", "9306")
+	if err != nil {
+		log.WithError(err).Fatalf("Error in connecting to sphinx.")
+	}
+	defer spconn.Close()
 	bind()
 }

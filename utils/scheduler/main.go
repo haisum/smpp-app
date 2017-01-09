@@ -9,6 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 )
@@ -22,6 +23,11 @@ func main() {
 		log.Error("Couldn't connect to rabbitmq")
 		os.Exit(2)
 	}
+	spconn, err := sphinx.Connect("127.0.0.1", "9306")
+	if err != nil {
+		log.WithError(err).Fatalf("Error in connecting to sphinx.")
+	}
+	defer spconn.Close()
 	log.Info("Waiting for scheduled messages.")
 	for {
 		now := time.Now().UTC()

@@ -16,6 +16,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
 	"bitbucket.org/codefreak/hsmpp/smpp/soap"
 	log "github.com/Sirupsen/logrus"
+	r "github.com/dancannon/gorethink"
 )
 
 const (
@@ -25,6 +26,17 @@ const (
 
 func main() {
 	go license.CheckExpiry()
+
+	s, err := db.GetSession()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't connect to rethinkdb")
+	}
+	defer s.(*r.Session).Close()
+	q, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't connect to rabbitmq")
+	}
+	defer q.Close()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 		decoder := xml.NewDecoder(r.Body)
@@ -32,11 +44,6 @@ func main() {
 		err := decoder.Decode(&e)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't understand soap request.", ""), http.StatusBadRequest)
-			return
-		}
-		_, err = db.GetSession()
-		if err != nil {
-			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't connect to database.", ""), http.StatusInternalServerError)
 			return
 		}
 		u, err := models.GetUser(e.Body.Request.Username)
@@ -48,7 +55,6 @@ func main() {
 			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong.", ""), http.StatusUnauthorized)
 			return
 		}
-		q, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
 		config, err := models.GetConfig()
 		keys := config.GetKeys(u.ConnectionGroup)
 		var noKey string

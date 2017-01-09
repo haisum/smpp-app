@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/influx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
@@ -40,7 +41,12 @@ func main() {
 		log.WithError(err).Fatal("Couldn't setup database connection.")
 	}
 	defer s.(*r.Session).Close()
-
+	log.Info("Connecting sphinx.")
+	spconn, err := sphinx.Connect("127.0.0.1", "9306")
+	if err != nil {
+		log.WithError(err).Fatalf("Error in connecting to sphinx.")
+	}
+	defer spconn.Close()
 	log.Info("Connecting with rabbitmq.")
 	q, err := queue.GetQueue(*amqpURL, "smppworker-exchange", 1)
 	if err != nil {

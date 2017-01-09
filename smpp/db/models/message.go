@@ -8,6 +8,7 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 )
@@ -21,7 +22,7 @@ type Message struct {
 	Connection      string
 	Fields          smpp.PduFields
 	Total           int
-	Username        string
+	Username        string `db:"user"`
 	Msg             string
 	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
 	RealMsg     string `json:"-"`
@@ -124,7 +125,43 @@ func (m *Message) Save() (string, error) {
 		return id, err
 	}
 	id = resp.GeneratedKeys[0]
-	return id, nil
+	m.ID = id
+	err = SaveInSphinx([]Message{*m})
+	return id, err
+}
+
+func SaveInSphinx(m []Message) error {
+	db := sphinx.Get()
+	if db == nil {
+		return fmt.Errorf("Sphinx db connection is not initialized yet")
+	}
+	if len(m) < 1 {
+		return fmt.Errorf("No messages provided to save.")
+	}
+	query := `INSERT INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst, 
+		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt, IsFlash) VALUES `
+	var valuePart []string
+	for _, v := range m {
+		params := []interface{}{
+			sphinx.Nextval(), v.Msg, v.Username, v.ConnectionGroup,
+			v.Connection, v.ID, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
+			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, string(v.Status), v.Error,
+			v.Username, v.ScheduledAt, v.IsFlash,
+		}
+		values := fmt.Sprintf(`(%d, '"%s"', '"%s"', '"%s"', '"%s"', '"%s"', '"%s"', %d, '"%s"', '"%s"', '"%s"',
+			%d , %d, %d, %d, '"%s"', '"%s"', '"%s"', '"%s"', %d)`, params...)
+		valuePart = append(valuePart, values)
+	}
+	query = query + strings.Join(valuePart, ",")
+	rs, err := db.Exec(query)
+	if err != nil {
+		return err
+	}
+	affected, _ := rs.RowsAffected()
+	if affected != int64(len(m)) {
+		return fmt.Errorf("DB couldn't insert all of rows. Expected: %d, Inserted: %d", len(m), affected)
+	}
+	return nil
 }
 
 // SaveBulk saves a list of message structs in Message table
@@ -142,7 +179,11 @@ func SaveBulk(m []Message) ([]string, error) {
 		}).Error("Error in inserting message.")
 		return nil, err
 	}
-	return resp.GeneratedKeys, nil
+	for k, v := range resp.GeneratedKeys {
+		m[k].ID = v
+	}
+	err = SaveInSphinx(m)
+	return resp.GeneratedKeys, err
 }
 
 // Update updates an existing message in Message table
@@ -158,6 +199,72 @@ func (m *Message) Update() error {
 			"Error": err,
 			"Query": r.DB(db.DBName).Table("Message").Get(m.ID).Update(m).String(),
 		}).Error("Error in updating message.")
+		return err
+	}
+	err = UpdateInSphinx(*m)
+	return err
+}
+
+func (m *Message) GetSphinxID() (int64, error) {
+	query := fmt.Sprintf(`SELECT id FROM Message WHERE MsgID = '"%s"'`, m.ID)
+	var id int64
+	db := sphinx.Get()
+	err := db.Get(&id, query)
+	return id, err
+}
+
+func SaveDeliveryInSphinx(respID string) error {
+	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE RespID = '"%s"'`, respID)
+	var id string
+	db := sphinx.Get()
+	err := db.Get(&id, query)
+	if err != nil {
+		return err
+	}
+	m, err := GetMessage(id)
+	if err != nil {
+		return err
+	}
+	return UpdateInSphinx(m)
+}
+
+func StopCampaignInSphinx(campaignID string) error {
+	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE campaignID = '"%s"'`, campaignID)
+	var ids []string
+	db := sphinx.Get()
+	err := db.Select(&ids, query)
+	if err != nil {
+		return err
+	}
+	//todo fix this could be many
+	m, err := GetMessage(campaignID)
+	if err != nil {
+		return err
+	}
+	return UpdateInSphinx(m)
+}
+
+func UpdateInSphinx(m Message) error {
+	db := sphinx.Get()
+	query := `REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst, 
+		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt) VALUES `
+	var valuePart []string
+	spID, err := m.GetSphinxID()
+	if err != nil {
+		return err
+	}
+	params := []interface{}{
+		spID, m.Msg, m.Username, m.ConnectionGroup,
+		m.Connection, m.ID, m.RespID, m.Total, m.Enc, m.Dst, m.Src, m.Priority,
+		m.QueuedAt, m.SentAt, m.DeliveredAt, m.CampaignID, string(m.Status), m.Error,
+		m.Username, m.ScheduledAt,
+	}
+	values := fmt.Sprintf(`(%d, '"%s"', '"%s"', '"%s"', '"%s"', '"%s"', '"%s"', %d, '"%s"', '"%s"', '"%s"',
+			%d , %d, %d, %d, '"%s"', '"%s"', '"%s"', '"%s"', %d)`, params...)
+	valuePart = append(valuePart, values)
+	query = query + strings.Join(valuePart, ",")
+	rs, err := db.Exec(query)
+	if err != nil {
 		return err
 	}
 	return nil
@@ -187,6 +294,10 @@ func SaveDelivery(respID, status string) error {
 	if resp.Replaced == 0 {
 		log.WithField("RespID", respID).Error("Couldn't update delivery sm. No such response id found.")
 		return fmt.Errorf("Couldn't update delivery sm. No such response id found.")
+	}
+	err = SaveDeliveryInSphinx(respID)
+	if err != nil {
+		return err
 	}
 	return nil
 }
