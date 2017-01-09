@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
@@ -62,5 +63,24 @@ var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	filepath := fmt.Sprintf("%s/%s/%s", models.NumFilePath, files[0].UserID, files[0].LocalName)
-	http.ServeFile(w, r, filepath)
+	b, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"filepath": filepath,
+			"Error":    err,
+		}).Error("Error reading file")
+		resp.Ok = false
+		resp.Errors = []routes.ResponseError{
+			{
+				Type:    routes.ErrorTypeDB,
+				Message: "Couldn't get file from file system.",
+			},
+		}
+		resp.Request = uReq
+		resp.Send(w, *r, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Disposition", "attachment; filename="+files[0].Name)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Write(b)
 })
