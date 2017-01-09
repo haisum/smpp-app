@@ -22,6 +22,7 @@ import (
 var (
 	c        *smpp.Config
 	s        smpp.Sender
+	r        queue.MQ
 	sconn    *smpp.Conn
 	connid   = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
 	group    = flag.String("group", "", "Group name of connection.")
@@ -61,6 +62,7 @@ func handler(deliveries <-chan amqp.Delivery, done chan error) {
 		d.Ack(false)
 	}
 	log.Printf("handle: deliveries channel closed")
+	log.Fatal("Exiting worker abnormally because rabbitmq has disconnected.")
 	done <- nil
 }
 
@@ -221,6 +223,7 @@ func gracefulShutdown() {
 	go func() {
 		<-sig
 		log.Print("Sutting down gracefully.")
+		s.Close()
 		os.Exit(0)
 	}()
 }
@@ -253,7 +256,7 @@ func bind() {
 	go s.ConnectOrDie()
 	defer s.Close()
 	s.SetFields(sconn.Fields)
-	r, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
+	r, err = queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get queue")
 		os.Exit(2)

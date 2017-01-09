@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
+	"runtime"
 	"strings"
 	"text/template"
 
@@ -28,20 +30,17 @@ type Program struct {
 // TplData represents data passed to supervisord.conf template
 type TplData struct {
 	Groups []Group
+	User   string
 }
 
 func (t *TplData) load(c smpp.Config) {
-	path, err := os.Getwd()
-	if err != nil {
-		log.WithField("err", err).Fatal("Couldn't determine path of app. Weird, very weird.")
-	}
 
 	var workers []Program
 	for _, g := range c.ConnGroups {
 		for _, w := range g.Conns {
 			p := Program{
 				Name:    fmt.Sprintf("smppworker-%s-%s", g.Name, w.ID),
-				Command: fmt.Sprintf("%s/./smppworker -cid='%s' -group='%s'", path, w.ID, g.Name),
+				Command: fmt.Sprintf("./smppworker -cid='%s' -group='%s'", w.ID, g.Name),
 			}
 			workers = append(workers, p)
 		}
@@ -56,7 +55,7 @@ func (t *TplData) load(c smpp.Config) {
 			Programs: []Program{
 				{
 					Name:    "scheduler",
-					Command: fmt.Sprintf("%s/./scheduler", path),
+					Command: fmt.Sprintf("./scheduler"),
 				},
 			},
 		},
@@ -65,10 +64,19 @@ func (t *TplData) load(c smpp.Config) {
 			Programs: []Program{
 				{
 					Name:    "soapservice",
-					Command: fmt.Sprintf("%s/./soapservice", path),
+					Command: fmt.Sprintf("./soapservice"),
 				},
 			},
 		},
+	}
+	user, err := user.Current()
+	if err != nil {
+		log.Fatal("Couldn't get current user!")
+	}
+	if runtime.GOOS == "windows" {
+		t.User = strings.Split(user.Username, "\\")[1]
+	} else {
+		t.User = user.Username
 	}
 }
 
