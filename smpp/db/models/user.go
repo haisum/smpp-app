@@ -197,6 +197,9 @@ func GetUsers(c UserCriteria) ([]User, error) {
 	if c.Name != "" {
 		t = t.Filter(r.Row.Field("Name").Match(c.Name))
 	}
+	if c.ConnectionGroup != "" {
+		t = t.Filter(r.Row.Field("ConnectionGroup").Match(c.ConnectionGroup))
+	}
 	if c.Suspended == true {
 		t = t.Filter(r.Row.Field("Suspended").Eq(c.Suspended))
 	}
