@@ -9,23 +9,24 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/utils"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 )
 
 // Message represents a smpp message
 type Message struct {
-	ID              string `gorethink:"id,omitempty"`
+	ID              string `gorethink:"id,omitempty",db:"msgid"`
 	RespID          string
-	DeliverySM      map[string]string
+	DeliverySM      map[string]string `gorethink:"DeliverySM,omitempty"`
 	ConnectionGroup string
 	Connection      string
-	Fields          smpp.PduFields
+	Fields          smpp.PduFields `gorethink:"Fields,omitempty"`
 	Total           int
 	Username        string `db:"user"`
-	Msg             string
+	Msg             string `gorethink:"Msg,omitempty"`
 	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
-	RealMsg     string `json:"-"`
+	RealMsg     string `json:"-",gorethink:"RealMsg,omitempty"`
 	Enc         string
 	Dst         string
 	Src         string
@@ -65,7 +66,7 @@ type MessageCriteria struct {
 	CampaignID      string
 	Status          MessageStatus
 	Error           string
-	ScheduledAfer   int64
+	ScheduledAfter  int64
 	ScheduledBefore int64
 	OrderByKey      string
 	OrderByDir      string
@@ -95,6 +96,8 @@ const (
 	MsgStopped MessageStatus = "Stopped"
 	// QueuedAt field is time at which message was put in rabbitmq queue
 	QueuedAt string = "QueuedAt"
+
+	MaxBulkInsert = 400
 )
 
 // MessageStats records number of messages in different statuses.
@@ -237,12 +240,16 @@ func StopCampaignInSphinx(campaignID string) error {
 	if err != nil {
 		return err
 	}
-	//todo fix this could be many
-	m, err := GetMessage(campaignID)
+	ms, err := GetMessages(MessageCriteria{
+		CampaignID: campaignID,
+	})
 	if err != nil {
 		return err
 	}
-	return UpdateInSphinx(m)
+	for _, m := range ms {
+		return UpdateInSphinx(m)
+	}
+	return nil
 }
 
 func UpdateInSphinx(m Message) error {
@@ -264,7 +271,7 @@ func UpdateInSphinx(m Message) error {
 			%d , %d, %d, %d, '"%s"', '"%s"', '"%s"', '"%s"', %d)`, params...)
 	valuePart = append(valuePart, values)
 	query = query + strings.Join(valuePart, ",")
-	rs, err := db.Exec(query)
+	_, err = db.Exec(query)
 	if err != nil {
 		return err
 	}
@@ -332,6 +339,11 @@ func StopPendingMessages(campID string) (int, error) {
 	resp, err := r.DB(db.DBName).Table("Message").GetAllByIndex("CampaignID", campID).Filter(r.Row.Field("Status").Eq(MsgQueued).Or(r.Row.Field("Status").Eq(MsgScheduled))).Update(map[string]MessageStatus{"Status": MsgStopped}).RunWrite(s)
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query")
+		return 0, err
+	}
+	err = StopCampaignInSphinx(campID)
+	if err != nil {
+		log.WithError(err).Error("Couldn't update records in sphinx")
 		return 0, err
 	}
 	return resp.Replaced, nil
@@ -466,67 +478,58 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 }
 
 func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
-	t := r.DB(db.DBName).Table("Message")
-	indexUsed := false
-	filterUsed := false
-	if from != nil || c.QueuedAfter+c.QueuedBefore+c.DeliveredAfter+c.DeliveredBefore+c.SentAfter+c.SentBefore+c.ScheduledAfer+c.ScheduledBefore != 0 {
-		indexUsed = true
-	}
+	qb := utils.QueryBuilder{}
+	qb.From("Message")
+
 	if c.OrderByKey == "" {
 		c.OrderByKey = QueuedAt
 	}
-	if !indexUsed {
-		if c.ID != "" {
-			t = t.Get(c.ID)
-			c.ID = ""
-			indexUsed = true
-		} else if c.CampaignID != "" {
-			t = t.GetAllByIndex("CampaignID", c.CampaignID)
-			c.CampaignID = ""
-			indexUsed = true
-		} else if c.Dst != "" {
-			t = t.GetAllByIndex("Dst", c.Dst)
-			c.Dst = ""
-			indexUsed = true
-		} else if c.Username != "" && !strings.HasPrefix(c.Username, "(re)") {
-			if c.OrderByKey == QueuedAt && !indexUsed {
-				t = t.Between([]interface{}{c.Username, r.MinVal}, []interface{}{c.Username, r.MaxVal}, r.BetweenOpts{
-					Index: "Username_QueuedAt",
-				})
-				c.OrderByKey = "Username_QueuedAt"
-			} else {
-				t = t.GetAllByIndex("Username", c.Username)
-				indexUsed = true
-			}
-			c.Username = ""
-		} else if c.RespID != "" {
-			t = t.GetAllByIndex("RespID", c.RespID)
-			c.RespID = ""
-			indexUsed = true
+	if c.Username != "" {
+		if strings.HasPrefix(c.Username, "(re)") {
+			qb.WhereAnd("match('@Username " + c.Username + "')")
+		} else {
+			qb.WhereAnd("User = '\"" + c.Username + "\"'")
 		}
 	}
-	// note to self: keep between before Eq filters.
-	betweenFields := map[string]map[string]int64{
-		"QueuedAt": {
-			"after":  c.QueuedAfter,
-			"before": c.QueuedBefore,
-		},
-		"DeliveredAt": {
-			"after":  c.DeliveredAfter,
-			"before": c.DeliveredBefore,
-		},
-		"SentAt": {
-			"after":  c.SentAfter,
-			"before": c.SentBefore,
-		},
-		"ScheduledAt": {
-			"after":  c.ScheduledAfer,
-			"before": c.ScheduledBefore,
-		},
+	if c.Msg != "" {
+		qb.WhereAnd("match('@Msg " + c.Msg + "')")
 	}
-	var filtered bool
-	t, filtered = filterBetweenInt(betweenFields, t)
-	filterUsed = filterUsed || filtered
+	if c.QueuedAfter != 0 {
+		qb.WhereAnd("QueuedAt > " + strconv.FormatInt(c.QueuedAfter, 10))
+	}
+	if c.QueuedBefore != 0 {
+		qb.WhereAnd("QueuedAt < " + strconv.FormatInt(c.QueuedBefore, 10))
+	}
+
+	if c.DeliveredAfter != 0 {
+		qb.WhereAnd("DeliveredAt > " + strconv.FormatInt(c.DeliveredAfter, 10))
+	}
+	if c.DeliveredBefore != 0 {
+		qb.WhereAnd("DeliveredAt < " + strconv.FormatInt(c.DeliveredBefore, 10))
+	}
+
+	if c.SentAfter != 0 {
+		qb.WhereAnd("SentAt > " + strconv.FormatInt(c.SentAfter, 10))
+	}
+	if c.SentBefore != 0 {
+		qb.WhereAnd("SentAt < " + strconv.FormatInt(c.SentBefore, 10))
+	}
+
+	if c.ScheduledAfter != 0 {
+		qb.WhereAnd("ScheduledAt > " + strconv.FormatInt(c.ScheduledAfter, 10))
+	}
+	if c.ScheduledBefore != 0 {
+		qb.WhereAnd("ScheduledAt < " + strconv.FormatInt(c.ScheduledBefore, 10))
+	}
+	if c.ID != "" {
+		qb.WhereAnd("MsgID = '\"" + c.ID + "\"'")
+	}
+	if c.RespID != "" {
+		qb.WhereAnd("RespID = '\"" + c.RespID + "\"'")
+	}
+	if c.Connection != "" {
+		qb.WhereAnd("Connection = '\"" + c.Connection + "\"'")
+	}
 	strFields := map[string]string{
 		"ID":              c.ID,
 		"RespID":          c.RespID,
@@ -539,22 +542,7 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		"CampaignID":      c.CampaignID,
 		"Error":           c.Error,
 	}
-	if !strings.HasPrefix(c.Username, "(re)") {
-		strFields["Username"] = c.Username
-	} else {
-		t = t.Filter(func(t r.Term) r.Term {
-			return t.Field("Username").Match(strings.TrimPrefix(c.Username, "(re)"))
-		})
-		filterUsed = true
-	}
 	t, filtered = filterEqStr(strFields, t)
-	filterUsed = filtered || filterUsed
-	if c.Msg != "" {
-		t = t.Filter(func(t r.Term) r.Term {
-			return t.Field("Msg").Match(c.Msg)
-		})
-		filterUsed = true
-	}
 	if c.Total > 0 {
 		t = t.Filter(map[string]int{"Total": c.Total})
 		filterUsed = true
