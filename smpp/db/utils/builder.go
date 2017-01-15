@@ -6,6 +6,7 @@ type QueryBuilder struct {
 	where   string
 	limit   string
 	orderBy string
+	groupBy string
 }
 
 func (q *QueryBuilder) Select(s string) *QueryBuilder {
@@ -49,16 +50,24 @@ func (q *QueryBuilder) OrderBy(orderBy string) *QueryBuilder {
 	return q
 }
 
+func (q *QueryBuilder) GroupBy(groupBy string) *QueryBuilder {
+	q.groupBy = groupBy
+	return q
+}
+
 func (q *QueryBuilder) GetQuery() string {
 	query := q.query
 	if q.where != "" {
 		query = query + " WHERE " + q.where
 	}
-	if q.limit != "" {
-		query = query + " LIMIT " + q.limit
+	if q.groupBy != "" {
+		query = query + " GROUP BY " + q.groupBy
 	}
 	if q.orderBy != "" {
 		query = query + " ORDER BY " + q.orderBy
+	}
+	if q.limit != "" {
+		query = query + " LIMIT " + q.limit
 	}
 	return query
 }

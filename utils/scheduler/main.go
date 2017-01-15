@@ -42,7 +42,7 @@ func main() {
 		for len(ms) != 0 {
 			//fetch 10k at  a time
 			ms, err = models.GetMessages(models.MessageCriteria{
-				ScheduledAfer:   after.Unix(),
+				ScheduledAfter:  after.Unix(),
 				ScheduledBefore: before.Unix(),
 				Status:          "Scheduled",
 				PerPage:         10000,

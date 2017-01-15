@@ -17,6 +17,7 @@ import (
 // Message represents a smpp message
 type Message struct {
 	ID              string `gorethink:"id,omitempty",db:"msgid"`
+	SphinxID        int    `json:"-",gorethink:"-",db:"id"`
 	RespID          string
 	DeliverySM      map[string]string `gorethink:"DeliverySM,omitempty"`
 	ConnectionGroup string
@@ -373,12 +374,10 @@ func GetErrorMessages(campID string) ([]Message, error) {
 // GetMessages filters messages based on criteria
 func GetMessages(c MessageCriteria) ([]Message, error) {
 	var m []Message
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return m, err
-	}
-	var from interface{}
+	var (
+		from interface{}
+		err  error
+	)
 	if c.From != "" && !c.DisableOrder {
 		if c.OrderByKey == QueuedAt || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" || c.OrderByKey == "ScheduledAt" {
 			from, err = strconv.ParseInt(c.From, 10, 64)
@@ -389,34 +388,15 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 			from = c.From
 		}
 	}
-	t := prepareMsgTerm(c, from)
+	qb := prepareMsgTerm(c, from)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}
-	t = t.Limit(c.PerPage)
-	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
-
-	var cur *r.Cursor
-	curCh := make(chan int)
-	go func() {
-		cur, err = t.Run(s)
-		curCh <- 1
-	}()
-	select {
-	case <-curCh:
-	case <-time.After(time.Minute):
-		cur.Close()
-		log.Error("Query taking long. Aborting it.")
-		err = fmt.Errorf("Query taking longer than one minute. Aborting query.")
-	}
+	qb.Limit(strconv.Itoa(c.PerPage))
+	log.WithFields(log.Fields{"query": qb.GetQuery(), "crtieria": c}).Info("Running query.")
+	err = sphinx.Get().Select(&m, qb.GetQuery())
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
-		return m, err
-	}
-	defer cur.Close()
-	err = cur.All(&m)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load messages.")
 	}
 	return m, err
 }
@@ -424,15 +404,10 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 // GetMessageStats filters messages based on criteria and finds total number of messages in different statuses
 func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 	var m MessageStats
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return m, err
-	}
 	var from interface{}
 	if c.From != "" {
 		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" {
-			from, err = strconv.ParseInt(c.From, 10, 64)
+			from, err := strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return m, fmt.Errorf("Invalid value for from: %s", from)
 			}
@@ -440,45 +415,41 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 			from = c.From
 		}
 	}
-	t := prepareMsgTerm(c, from)
-	t = t.Group("Status").Count()
+	qb := prepareMsgTerm(c, from)
+	qb.Select("status, count(*) as total").From("Message")
+	qb.GroupBy("Status")
 
-	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
-	cur, err := t.Run(s)
+	log.WithFields(log.Fields{"query": qb.GetQuery(), "crtieria": c}).Info("Running query.")
+	stats := make([]map[string]string, 8)
+	err := sphinx.Get().Select(&stats, qb.GetQuery())
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
 		return m, err
 	}
-	defer cur.Close()
-	stats := make([]map[string]string, 5)
-	err = cur.All(&stats)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load messages.")
-	}
 	for _, v := range stats {
-		switch MessageStatus(v["group"]) {
+		switch MessageStatus(v["status"]) {
 		case MsgDelivered:
-			m.Delivered, _ = strconv.ParseInt(v["reduction"], 10, 64)
+			m.Delivered, _ = strconv.ParseInt(v["total"], 10, 64)
 		case MsgError:
-			m.Error, _ = strconv.ParseInt(v["reduction"], 10, 64)
+			m.Error, _ = strconv.ParseInt(v["total"], 10, 64)
 		case MsgSent:
-			m.Sent, _ = strconv.ParseInt(v["reduction"], 10, 64)
+			m.Sent, _ = strconv.ParseInt(v["total"], 10, 64)
 		case MsgQueued:
-			m.Queued, _ = strconv.ParseInt(v["reduction"], 10, 64)
+			m.Queued, _ = strconv.ParseInt(v["total"], 10, 64)
 		case MsgNotDelivered:
-			m.NotDelivered, _ = strconv.ParseInt(v["reduction"], 10, 64)
+			m.NotDelivered, _ = strconv.ParseInt(v["total"], 10, 64)
 		case MsgScheduled:
-			m.Scheduled, _ = strconv.ParseInt(v["reduction"], 10, 64)
+			m.Scheduled, _ = strconv.ParseInt(v["total"], 10, 64)
 		case MsgStopped:
-			m.Stopped, _ = strconv.ParseInt(v["reduction"], 10, 64)
+			m.Stopped, _ = strconv.ParseInt(v["total"], 10, 64)
 		}
 	}
-	m.Total = m.Delivered + m.Error + m.Sent + m.Queued + m.NotDelivered + m.Stopped + m.Scheduled
 	return m, err
 }
 
-func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
+func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 	qb := utils.QueryBuilder{}
+	qb.Select("User, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt, IsFlash")
 	qb.From("Message")
 
 	if c.OrderByKey == "" {
@@ -530,31 +501,48 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 	if c.Connection != "" {
 		qb.WhereAnd("Connection = '\"" + c.Connection + "\"'")
 	}
-	strFields := map[string]string{
-		"ID":              c.ID,
-		"RespID":          c.RespID,
-		"Connection":      c.Connection,
-		"ConnectionGroup": c.ConnectionGroup,
-		"Src":             c.Src,
-		"Dst":             c.Dst,
-		"Enc":             c.Enc,
-		"Status":          string(c.Status),
-		"CampaignID":      c.CampaignID,
-		"Error":           c.Error,
+	if c.ConnectionGroup != "" {
+		qb.WhereAnd("ConnectionGroup = '\"" + c.ConnectionGroup + "\"'")
 	}
-	t, filtered = filterEqStr(strFields, t)
+	if c.Src != "" {
+		qb.WhereAnd("Src = '\"" + c.Src + "\"'")
+	}
+	if c.Dst != "" {
+		qb.WhereAnd("Dst = '\"" + c.Dst + "\"'")
+	}
+	if c.Enc != "" {
+		qb.WhereAnd("Enc = '\"" + c.Enc + "\"'")
+	}
+	if c.Status != "" {
+		qb.WhereAnd("Status = '\"" + string(c.Status) + "\"'")
+	}
+	if c.CampaignID != "" {
+		qb.WhereAnd("CampaignID = '\"" + c.CampaignID + "\"'")
+	}
+	if c.Error != "" {
+		qb.WhereAnd("Error = '\"" + string(c.Error) + "\"'")
+	}
 	if c.Total > 0 {
-		t = t.Filter(map[string]int{"Total": c.Total})
-		filterUsed = true
+		qb.WhereAnd("Total = " + strconv.Itoa(c.Total))
 	}
 	if c.Priority > 0 {
-		t = t.Filter(map[string]int{"Priority": c.Priority})
-		filterUsed = true
+		qb.WhereAnd("Priority = " + strconv.Itoa(c.Priority))
 	}
 	if !c.DisableOrder {
-		t = orderBy(c.OrderByKey, c.OrderByDir, from, t, indexUsed, filterUsed)
+		orderDir := "DESC"
+		if strings.ToUpper(c.OrderByDir) == "ASC" {
+			orderDir = "ASC"
+		}
+		if from != nil {
+			if orderDir == "ASC" {
+				qb.WhereAnd(c.OrderByKey + " > '\"" + fmt.Sprintf("%s", from) + "\"'")
+			} else {
+				qb.WhereAnd(c.OrderByKey + " < '\"" + fmt.Sprintf("%s", from) + "\"'")
+			}
+		}
+		qb.OrderBy(c.OrderByKey + " " + orderDir)
 	}
-	return t
+	return qb
 }
 
 // Validate validates a message and returns error messages if any
