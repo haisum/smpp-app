@@ -16,8 +16,8 @@ import (
 
 // Message represents a smpp message
 type Message struct {
-	ID              string `gorethink:"id,omitempty",db:"msgid"`
-	SphinxID        int    `json:"-",gorethink:"-",db:"id"`
+	ID              string `gorethink:"id,omitempty" db:"msgid"`
+	SphinxID        int    `json:"-" gorethink:"-" db:"id"`
 	RespID          string
 	DeliverySM      map[string]string `gorethink:"DeliverySM,omitempty"`
 	ConnectionGroup string
@@ -27,7 +27,7 @@ type Message struct {
 	Username        string `db:"user"`
 	Msg             string `gorethink:"Msg,omitempty"`
 	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
-	RealMsg     string `json:"-",gorethink:"RealMsg,omitempty"`
+	RealMsg     string `json:"-" gorethink:"RealMsg,omitempty"`
 	Enc         string
 	Dst         string
 	Src         string
@@ -79,6 +79,12 @@ type MessageCriteria struct {
 // MessageStatus represents current state of message in
 // a lifecycle from submitted to getting delivered
 type MessageStatus string
+
+// Scan implements scannner interface for MessageStatus
+func (st MessageStatus) Scan(src interface{}) error {
+	st = MessageStatus(src.([]uint8)[0])
+	return nil
+}
 
 const (
 	//MsgQueued shows that have been put in rabbitmq
@@ -147,19 +153,24 @@ func SaveInSphinx(m []Message) error {
 		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt, IsFlash) VALUES `
 	var valuePart []string
 	for _, v := range m {
+		isFlash := 0
+		if v.IsFlash {
+			isFlash = 1
+		}
 		params := []interface{}{
 			sphinx.Nextval(), v.Msg, v.Username, v.ConnectionGroup,
 			v.Connection, v.ID, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
 			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, string(v.Status), v.Error,
-			v.Username, v.ScheduledAt, v.IsFlash,
+			v.Username, v.ScheduledAt, isFlash,
 		}
-		values := fmt.Sprintf(`(%d, '"%s"', '"%s"', '"%s"', '"%s"', '"%s"', '"%s"', %d, '"%s"', '"%s"', '"%s"',
-			%d , %d, %d, %d, '"%s"', '"%s"', '"%s"', '"%s"', %d)`, params...)
+		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s',
+			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d)`, params...)
 		valuePart = append(valuePart, values)
 	}
 	query = query + strings.Join(valuePart, ",")
 	rs, err := db.Exec(query)
 	if err != nil {
+		log.WithFields(log.Fields{"query": query, "error": err}).Error("Couldn't insert in db.")
 		return err
 	}
 	affected, _ := rs.RowsAffected()
@@ -211,7 +222,7 @@ func (m *Message) Update() error {
 }
 
 func (m *Message) GetSphinxID() (int64, error) {
-	query := fmt.Sprintf(`SELECT id FROM Message WHERE MsgID = '"%s"'`, m.ID)
+	query := fmt.Sprintf(`SELECT id FROM Message WHERE MsgID = '%s'`, m.ID)
 	var id int64
 	db := sphinx.Get()
 	err := db.Get(&id, query)
@@ -219,7 +230,7 @@ func (m *Message) GetSphinxID() (int64, error) {
 }
 
 func SaveDeliveryInSphinx(respID string) error {
-	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE RespID = '"%s"'`, respID)
+	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE RespID = '%s'`, respID)
 	var id string
 	db := sphinx.Get()
 	err := db.Get(&id, query)
@@ -234,7 +245,7 @@ func SaveDeliveryInSphinx(respID string) error {
 }
 
 func StopCampaignInSphinx(campaignID string) error {
-	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE campaignID = '"%s"'`, campaignID)
+	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE campaignID = '%s'`, campaignID)
 	var ids []string
 	db := sphinx.Get()
 	err := db.Select(&ids, query)
@@ -268,8 +279,8 @@ func UpdateInSphinx(m Message) error {
 		m.QueuedAt, m.SentAt, m.DeliveredAt, m.CampaignID, string(m.Status), m.Error,
 		m.Username, m.ScheduledAt,
 	}
-	values := fmt.Sprintf(`(%d, '"%s"', '"%s"', '"%s"', '"%s"', '"%s"', '"%s"', %d, '"%s"', '"%s"', '"%s"',
-			%d , %d, %d, %d, '"%s"', '"%s"', '"%s"', '"%s"', %d)`, params...)
+	values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s',
+			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d)`, params...)
 	valuePart = append(valuePart, values)
 	query = query + strings.Join(valuePart, ",")
 	_, err = db.Exec(query)
@@ -420,28 +431,36 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 	qb.GroupBy("Status")
 
 	log.WithFields(log.Fields{"query": qb.GetQuery(), "crtieria": c}).Info("Running query.")
-	stats := make([]map[string]string, 8)
-	err := sphinx.Get().Select(&stats, qb.GetQuery())
+	stats := make(map[string]int64, 8)
+	rows, err := sphinx.Get().Queryx(qb.GetQuery())
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
 		return m, err
 	}
-	for _, v := range stats {
-		switch MessageStatus(v["status"]) {
+	for rows.Next() {
+		var (
+			status string
+			total  int64
+		)
+		rows.Scan(&status, &total)
+		stats[status] = total
+	}
+	for k, v := range stats {
+		switch MessageStatus(k) {
 		case MsgDelivered:
-			m.Delivered, _ = strconv.ParseInt(v["total"], 10, 64)
+			m.Delivered = v
 		case MsgError:
-			m.Error, _ = strconv.ParseInt(v["total"], 10, 64)
+			m.Error = v
 		case MsgSent:
-			m.Sent, _ = strconv.ParseInt(v["total"], 10, 64)
+			m.Sent = v
 		case MsgQueued:
-			m.Queued, _ = strconv.ParseInt(v["total"], 10, 64)
+			m.Queued = v
 		case MsgNotDelivered:
-			m.NotDelivered, _ = strconv.ParseInt(v["total"], 10, 64)
+			m.NotDelivered = v
 		case MsgScheduled:
-			m.Scheduled, _ = strconv.ParseInt(v["total"], 10, 64)
+			m.Scheduled = v
 		case MsgStopped:
-			m.Stopped, _ = strconv.ParseInt(v["total"], 10, 64)
+			m.Stopped = v
 		}
 	}
 	return m, err
@@ -449,8 +468,7 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 
 func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 	qb := utils.QueryBuilder{}
-	qb.Select("User, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt, IsFlash")
-	qb.From("Message")
+	qb.Select("ConnectionGroup, Connection, MsgID, RespID, Enc, Dst, Src, CampaignID, Status, Error, User, Total, Priority, IsFlash, QueuedAt, SentAt, DeliveredAt, ScheduledAt").From("Message")
 
 	if c.OrderByKey == "" {
 		c.OrderByKey = QueuedAt
@@ -459,7 +477,7 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 		if strings.HasPrefix(c.Username, "(re)") {
 			qb.WhereAnd("match('@Username " + c.Username + "')")
 		} else {
-			qb.WhereAnd("User = '\"" + c.Username + "\"'")
+			qb.WhereAnd("User = '" + c.Username + "'")
 		}
 	}
 	if c.Msg != "" {
@@ -493,34 +511,34 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 		qb.WhereAnd("ScheduledAt < " + strconv.FormatInt(c.ScheduledBefore, 10))
 	}
 	if c.ID != "" {
-		qb.WhereAnd("MsgID = '\"" + c.ID + "\"'")
+		qb.WhereAnd("MsgID = '" + c.ID + "'")
 	}
 	if c.RespID != "" {
-		qb.WhereAnd("RespID = '\"" + c.RespID + "\"'")
+		qb.WhereAnd("RespID = '" + c.RespID + "'")
 	}
 	if c.Connection != "" {
-		qb.WhereAnd("Connection = '\"" + c.Connection + "\"'")
+		qb.WhereAnd("Connection = '" + c.Connection + "'")
 	}
 	if c.ConnectionGroup != "" {
-		qb.WhereAnd("ConnectionGroup = '\"" + c.ConnectionGroup + "\"'")
+		qb.WhereAnd("ConnectionGroup = '" + c.ConnectionGroup + "'")
 	}
 	if c.Src != "" {
-		qb.WhereAnd("Src = '\"" + c.Src + "\"'")
+		qb.WhereAnd("Src = '" + c.Src + "'")
 	}
 	if c.Dst != "" {
-		qb.WhereAnd("Dst = '\"" + c.Dst + "\"'")
+		qb.WhereAnd("Dst = '" + c.Dst + "'")
 	}
 	if c.Enc != "" {
-		qb.WhereAnd("Enc = '\"" + c.Enc + "\"'")
+		qb.WhereAnd("Enc = '" + c.Enc + "'")
 	}
 	if c.Status != "" {
-		qb.WhereAnd("Status = '\"" + string(c.Status) + "\"'")
+		qb.WhereAnd("Status = '" + string(c.Status) + "'")
 	}
 	if c.CampaignID != "" {
-		qb.WhereAnd("CampaignID = '\"" + c.CampaignID + "\"'")
+		qb.WhereAnd("CampaignID = '" + c.CampaignID + "'")
 	}
 	if c.Error != "" {
-		qb.WhereAnd("Error = '\"" + string(c.Error) + "\"'")
+		qb.WhereAnd("Error = '" + string(c.Error) + "'")
 	}
 	if c.Total > 0 {
 		qb.WhereAnd("Total = " + strconv.Itoa(c.Total))
@@ -535,9 +553,9 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 		}
 		if from != nil {
 			if orderDir == "ASC" {
-				qb.WhereAnd(c.OrderByKey + " > '\"" + fmt.Sprintf("%s", from) + "\"'")
+				qb.WhereAnd(c.OrderByKey + " > '" + fmt.Sprintf("%s", from) + "'")
 			} else {
-				qb.WhereAnd(c.OrderByKey + " < '\"" + fmt.Sprintf("%s", from) + "\"'")
+				qb.WhereAnd(c.OrderByKey + " < '" + fmt.Sprintf("%s", from) + "'")
 			}
 		}
 		qb.OrderBy(c.OrderByKey + " " + orderDir)
