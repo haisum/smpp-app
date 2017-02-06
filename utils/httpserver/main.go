@@ -60,6 +60,7 @@ func main() {
 	r.Handle("/api/campaign/report", campaign.ReportHandler)
 	r.Handle("/api/campaign/stop", handlers.MethodHandler{"POST": campaign.StopHandler})
 	r.Handle("/api/campaign/retry", handlers.MethodHandler{"POST": campaign.RetryHandler})
+	r.Handle("/api/campaign/retryQd", handlers.MethodHandler{"POST": campaign.RetryQdHandler})
 	r.Handle("/api/users", users.UsersHandler)
 	r.Handle("/api/users/permissions", handlers.MethodHandler{"GET": users.PermissionsHandler})
 	r.Handle("/api/users/add", handlers.MethodHandler{"POST": users.AddHandler})

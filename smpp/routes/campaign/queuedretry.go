@@ -13,20 +13,20 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-type retryRequest struct {
+type retryQdRequest struct {
 	CampaignID string
 	URL        string
 	Token      string
 }
 
-type retryResponse struct {
+type retryQdResponse struct {
 	Count int
 }
 
 //RetryHandler accepts post request to restart all messages with status error of a campaign
-var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	uResp := retryResponse{}
-	var uReq retryRequest
+var RetryQdHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	uResp := retryQdResponse{}
+	var uReq retryQdRequest
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing retry request.")
@@ -48,14 +48,14 @@ var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermRetryCampaign); !ok {
 		return
 	}
-	msgs, err := models.GetErrorMessages(uReq.CampaignID)
+	msgs, err := models.GetQueuedMessages(uReq.CampaignID)
 	if err != nil {
-		log.WithError(err).Error("Error getting error messages.")
+		log.WithError(err).Error("Error getting queued messages.")
 		resp := routes.Response{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeDB,
-				Message: "Couldn't restart campaign.",
+				Message: "Couldn't retry queued messages.",
 			},
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)
@@ -80,40 +80,36 @@ var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-	errCh := make(chan error, 1)
-	okCh := make(chan bool, len(msgs))
-	burstCh := make(chan int, 1000)
-	for _, msg := range msgs {
-		go func(m models.Message) {
-			m.QueuedAt = time.Now().UTC().Unix()
-			m.Status = models.MsgQueued
-			errU := m.Update()
-			if errU != nil {
-				errCh <- errU
-				return
+	for _, m := range msgs {
+		m.QueuedAt = time.Now().UTC().Unix()
+		m.Status = models.MsgQueued
+		err = m.Update()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"uReq":  uReq,
+			}).Error("Couldn't update messages.")
+			resp := routes.Response{
+				Errors: []routes.ResponseError{
+					{
+						Type:    routes.ErrorTypeQueue,
+						Message: "Couldn't update messages.",
+					},
+				},
+				Request: uReq,
 			}
-			noKey = group.DefaultPfx
-			key := matchKey(keys, m.Dst, noKey)
-			qItem := queue.Item{
-				MsgID: m.ID,
-				Total: m.Total,
-			}
-			respJSON, _ := qItem.ToJSON()
-			errP := q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(m.Priority))
-			if errP != nil {
-				errCh <- errP
-				return
-			}
-			okCh <- true
-			//free one burst
-			<-burstCh
-		}(msg)
-		//proceed if you can feed the burst channel
-		burstCh <- 1
-	}
-	for i := 0; i < len(msgs); i++ {
-		select {
-		case <-errCh:
+			resp.Send(w, *r, http.StatusInternalServerError)
+			return
+		}
+		noKey = group.DefaultPfx
+		key := matchKey(keys, m.Dst, noKey)
+		qItem := queue.Item{
+			MsgID: m.ID,
+			Total: m.Total,
+		}
+		respJSON, _ := qItem.ToJSON()
+		err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(m.Priority))
+		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 				"uReq":  uReq,
@@ -129,10 +125,9 @@ var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 			}
 			resp.Send(w, *r, http.StatusInternalServerError)
 			return
-		case <-okCh:
 		}
 	}
-	log.Infof("%d campaign messages queued", len(msgs))
+	log.Infof("%d campaign messages re-queued", len(msgs))
 	uResp.Count = len(msgs)
 	resp := routes.Response{
 		Obj:     uResp,
