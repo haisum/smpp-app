@@ -27,13 +27,19 @@ import (
 )
 
 var (
-	port    = flag.Int("port", 8443, "Port on which http service should start.")
-	amqpURL = flag.String("amqpUrl", "amqp://guest:guest@localhost:5672/", "Amqp url for rabbitmq")
+	port        = flag.Int("port", 8443, "Port on which http service should start.")
+	amqpURL     = flag.String("amqpUrl", "amqp://guest:guest@localhost:5672/", "Amqp url for rabbitmq")
+	version     = "undefined"
+	showVersion = flag.Bool("version", false, "Show binary version number.")
 )
 
 func main() {
 	go license.CheckExpiry()
 	flag.Parse()
+	if *showVersion {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 	log.Info("Connecting database.")
 	s, err := db.GetSession()
 	if err != nil {

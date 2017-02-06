@@ -44,6 +44,7 @@ type Message struct {
 
 // MessageCriteria represents filters we can give to GetMessages method.
 type MessageCriteria struct {
+	ID              string
 	RespID          string
 	ConnectionGroup string
 	Connection      string
@@ -385,7 +386,11 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 		c.OrderByKey = QueuedAt
 	}
 	if !indexUsed {
-		if c.CampaignID != "" {
+		if c.ID != "" {
+			t = t.Get(c.ID)
+			c.ID = ""
+			indexUsed = true
+		} else if c.CampaignID != "" {
 			t = t.GetAllByIndex("CampaignID", c.CampaignID)
 			c.CampaignID = ""
 			indexUsed = true
@@ -433,6 +438,7 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) r.Term {
 	t, filtered = filterBetweenInt(betweenFields, t)
 	filterUsed = filterUsed || filtered
 	strFields := map[string]string{
+		"ID":              c.ID,
 		"RespID":          c.RespID,
 		"Connection":      c.Connection,
 		"ConnectionGroup": c.ConnectionGroup,
