@@ -382,6 +382,27 @@ func GetErrorMessages(campID string) ([]Message, error) {
 	return m, err
 }
 
+// GetQueuedMessages returns all messages with status queued in a campaign
+func GetQueuedMessages(campID string) ([]Message, error) {
+	s, err := db.GetSession()
+	var m []Message
+	if err != nil {
+		log.WithError(err).Error("Couldn't get session.")
+		return m, err
+	}
+	cur, err := r.DB(db.DBName).Table("Message").GetAllByIndex("CampaignID", campID).Filter(r.Row.Field("Status").Eq(MsgQueued)).Run(s)
+	if err != nil {
+		log.WithError(err).Error("Couldn't run query")
+		return m, err
+	}
+	defer cur.Close()
+	err = cur.All(&m)
+	if err != nil {
+		log.WithError(err).Error("Couldn't load messages")
+	}
+	return m, err
+}
+
 // GetMessages filters messages based on criteria
 func GetMessages(c MessageCriteria) ([]Message, error) {
 	var m []Message

@@ -80,8 +80,8 @@ func send(i queue.Item) {
 		}).Error("Failed in fetching message from db.")
 		return
 	}
-	if m.Status == models.MsgStopped {
-		log.Info("Message is stopped skipping.")
+	if m.Status != models.MsgQueued {
+		log.Info("Message is not queued skipping.")
 		return
 	}
 	if m.SendAfter != "" && m.SendBefore != "" {
