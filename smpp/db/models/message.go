@@ -254,12 +254,16 @@ func StopCampaignInSphinx(campaignID string) error {
 	}
 	ms, err := GetMessages(MessageCriteria{
 		CampaignID: campaignID,
+		Status:     MsgStopped,
 	})
 	if err != nil {
 		return err
 	}
 	for _, m := range ms {
-		return UpdateInSphinx(m)
+		err = UpdateInSphinx(m)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
