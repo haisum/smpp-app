@@ -7,6 +7,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 )
 
 // Campaign represents a message campaign
@@ -112,82 +113,49 @@ func GetReport(id string) (CampaignReport, error) {
 	if len(c) == 0 {
 		return cr, fmt.Errorf("No campaign with id %s could be found.", id)
 	}
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return cr, err
-	}
-
-	cur, err := r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Count().Run(s)
+	// get total in campaign
+	err = sphinx.Get().Get(&cr, "SELECT count(*) as Total from Message where campaignID='" + id + "'")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Count().String(),
-		}).Error("Error executing message count query")
+			"Query" : "SELECT count(*) as Total from Message where campaignID='" + id + "'",
+		}).Error("Error executing total msgs query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
-	err = cur.One(&cr.Total)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load in cr.Total")
-		return cr, fmt.Errorf("Couldn't load in cr.Total")
-	}
-	cur.Close()
-	cur, err = r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Limit(1).Field("Total").Run(s)
+	//select message size in campaign
+	err = sphinx.Get().Get(&cr, "SELECT Total as MsgSize from Message where campaignID='" + id + "'")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Limit(1).Field("Total").String(),
-		}).Error("Error executing message size query")
+			"Query" : "SELECT Total as MsgSize from Message where campaignID='" + id + "'",
+		}).Error("Error executing MsgSize query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
-	err = cur.One(&cr.MsgSize)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load in cr.MsgSize")
-		return cr, fmt.Errorf("Couldn't load in cr.MsgSize")
-	}
-	cur.Close()
-	cur, err = r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Min("SentAt").Field("SentAt").Run(s)
+	//select min sentat in campaign
+	err = sphinx.Get().Get(&cr, "SELECT Min(SentAt) as FirstQueued from Message where campaignID='" + id + "' AND SentAt > 0")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Min("SentAt").Field("SentAt").String(),
-		}).Error("Error executing min queued at query")
-		return cr, fmt.Errorf("Could't run query.")
+			"Query" : "SELECT Min(SentAt) as FirstQueued from Message where campaignID='" + id + "'",
+		}).Error("Error executing Min(SentAt) query")
 	}
-	err = cur.One(&cr.FirstQueued)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load in cr.FirstQueued")
-		return cr, fmt.Errorf("Couldn't load in cr.FirstQueued")
-	}
-	cur.Close()
-	cur, err = r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Max("SentAt").Field("SentAt").Run(s)
+	//select max sentat in campaign
+	err = sphinx.Get().Get(&cr, "SELECT Max(SentAt) as LastSent from Message where campaignID='" + id + "'")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Max("SentAt").Field("SentAt").String(),
-		}).Error("Error executing sent at query")
-		return cr, fmt.Errorf("Could't run query.")
+			"Query" : "SELECT Max(SentAt) as LastSent from Message where campaignID='" + id + "'",
+		}).Error("Error executing Max(SentAt) query")
 	}
-	err = cur.One(&cr.LastSent)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load in cr.LastSent")
-		return cr, fmt.Errorf("Couldn't load in cr.LastSent")
-	}
-	cur.Close()
-	cur, err = r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Group("Connection").Count().Run(s)
+	//Select connection wise
+	err = sphinx.Get().Select(&cr.Connections, "SELECT Connection as Name, count(*) as Count from Message where campaignID='" + id + "' group by Connection")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB("hsmppdb").Table("Message").GetAllByIndex("CampaignID", id).Group("Connection").Count().String(),
-		}).Error("Error executing connection count query")
+			"Query" : "SELECT Connection as Name, count(*) as Count from Message where campaignID='" + id + "' group by Connection",
+		}).Error("Error executing Connection wise query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
-	err = cur.All(&cr.Connections)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load in cr.Connections")
-		return cr, fmt.Errorf("Couldn't load in cr.Connections")
-	}
-	cur.Close()
 	cr.TotalMsgs = cr.Total * cr.MsgSize
 	if cr.LastSent == 0 {
 		cr.TotalTime = 0

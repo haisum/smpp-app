@@ -428,10 +428,31 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 		c.PerPage = 100
 	}
 	qb.Limit(strconv.Itoa(c.PerPage))
-	log.WithFields(log.Fields{"query": qb.GetQuery(), "crtieria": c}).Info("Running query.")
-	err = sphinx.Get().Select(&m, qb.GetQuery())
+	log.WithFields(log.Fields{"query": qb.GetQuery() + "  option max_matches=500000", "crtieria": c}).Info("Running query.")
+	err = sphinx.Get().Select(&m, qb.GetQuery() + "  option max_matches=500000")
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
+	}
+	if c.FetchMsg && len(m) > 0 {
+		msg, err := GetMessage(m[0].ID)
+		if err != nil {
+			log.WithError(err).Error("Something ain't right. We couldn't get sphinx msg from rethinkdb")
+			return m, err
+		}
+		if msg.RealMsg == msg.Msg && c.CampaignID == msg.CampaignID {
+			for k, _ := range m {
+				m[k].Msg = msg.Msg
+			}
+		} else {
+			for k, _ := range m {
+				msg, err = GetMessage(m[k].ID)
+				if err != nil {
+					log.WithError(err).WithField("msg", m[k]).Error("Something ain't right. We couldn't get sphinx msg from rethinkdb")
+					return m, err
+				}
+				m[k].Msg = msg.Msg
+			}
+		}
 	}
 	return m, err
 }
@@ -487,6 +508,7 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 			m.Stopped = v
 		}
 	}
+	m.Total = m.Delivered + m.Error + m.Sent + m.Queued + m.NotDelivered + m.Scheduled + m.Stopped
 	return m, err
 }
 
