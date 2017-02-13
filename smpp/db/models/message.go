@@ -74,6 +74,7 @@ type MessageCriteria struct {
 	From            string
 	PerPage         int
 	DisableOrder    bool
+	FetchMsg        bool
 }
 
 // MessageStatus represents current state of message in
