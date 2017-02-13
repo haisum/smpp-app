@@ -81,8 +81,8 @@ type MessageCriteria struct {
 type MessageStatus string
 
 // Scan implements scannner interface for MessageStatus
-func (st MessageStatus) Scan(src interface{}) error {
-	st = MessageStatus(src.([]uint8)[0])
+func (st *MessageStatus) Scan(src interface{}) error {
+	*st = MessageStatus(fmt.Sprintf("%s", src))
 	return nil
 }
 
@@ -103,8 +103,6 @@ const (
 	MsgStopped MessageStatus = "Stopped"
 	// QueuedAt field is time at which message was put in rabbitmq queue
 	QueuedAt string = "QueuedAt"
-
-	MaxBulkInsert = 400
 )
 
 // MessageStats records number of messages in different statuses.
@@ -142,8 +140,8 @@ func (m *Message) Save() (string, error) {
 }
 
 func SaveInSphinx(m []Message) error {
-	db := sphinx.Get()
-	if db == nil {
+	sp := sphinx.Get()
+	if sp == nil {
 		return fmt.Errorf("Sphinx db connection is not initialized yet")
 	}
 	if len(m) < 1 {
@@ -168,7 +166,7 @@ func SaveInSphinx(m []Message) error {
 		valuePart = append(valuePart, values)
 	}
 	query = query + strings.Join(valuePart, ",")
-	rs, err := db.Exec(query)
+	rs, err := sp.Exec(query)
 	if err != nil {
 		log.WithFields(log.Fields{"query": query, "error": err}).Error("Couldn't insert in db.")
 		return err
@@ -224,16 +222,16 @@ func (m *Message) Update() error {
 func (m *Message) GetSphinxID() (int64, error) {
 	query := fmt.Sprintf(`SELECT id FROM Message WHERE MsgID = '%s'`, m.ID)
 	var id int64
-	db := sphinx.Get()
-	err := db.Get(&id, query)
+	sp := sphinx.Get()
+	err := sp.Get(&id, query)
 	return id, err
 }
 
 func SaveDeliveryInSphinx(respID string) error {
 	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE RespID = '%s'`, respID)
 	var id string
-	db := sphinx.Get()
-	err := db.Get(&id, query)
+	sp := sphinx.Get()
+	err := sp.Get(&id, query)
 	if err != nil {
 		return err
 	}
@@ -247,8 +245,8 @@ func SaveDeliveryInSphinx(respID string) error {
 func StopCampaignInSphinx(campaignID string) error {
 	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE campaignID = '%s'`, campaignID)
 	var ids []string
-	db := sphinx.Get()
-	err := db.Select(&ids, query)
+	sp := sphinx.Get()
+	err := sp.Select(&ids, query)
 	if err != nil {
 		return err
 	}
@@ -269,7 +267,7 @@ func StopCampaignInSphinx(campaignID string) error {
 }
 
 func UpdateInSphinx(m Message) error {
-	db := sphinx.Get()
+	sp := sphinx.Get()
 	query := `REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst, 
 		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt) VALUES `
 	var valuePart []string
@@ -287,7 +285,7 @@ func UpdateInSphinx(m Message) error {
 			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d)`, params...)
 	valuePart = append(valuePart, values)
 	query = query + strings.Join(valuePart, ",")
-	_, err = db.Exec(query)
+	_, err = sp.Exec(query)
 	if err != nil {
 		return err
 	}
