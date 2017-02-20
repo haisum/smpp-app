@@ -369,6 +369,7 @@ func GetErrorMessages(campID string) ([]Message, error) {
 	m, err := GetMessages(MessageCriteria{
 		CampaignID: campID,
 		Status:     MsgError,
+		PerPage:    500000,
 	})
 	if err != nil {
 		log.WithError(err).Error("Couldn't load messages")
@@ -381,6 +382,7 @@ func GetQueuedMessages(campID string) ([]Message, error) {
 	m, err := GetMessages(MessageCriteria{
 		CampaignID: campID,
 		Status:     MsgQueued,
+		PerPage:    500000,
 	})
 	if err != nil {
 		log.WithError(err).Error("Couldn't load messages")
@@ -411,7 +413,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 	}
 	qb.Limit(strconv.Itoa(c.PerPage))
 	log.WithFields(log.Fields{"query": qb.GetQuery() + "  option max_matches=500000", "crtieria": c}).Info("Running query.")
-	err = sphinx.Get().Select(&m, qb.GetQuery() + "  option max_matches=500000")
+	err = sphinx.Get().Select(&m, qb.GetQuery()+"  option max_matches=500000")
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
 	}
