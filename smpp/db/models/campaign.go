@@ -1,18 +1,18 @@
 package models
 
 import (
-	"fmt"
-	"strconv"
-
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
+	"errors"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
+	"strconv"
 )
 
 // Campaign represents a message campaign
 type Campaign struct {
-	ID            string `gorethink:"id,omitempty"`
+	ID            string `gorethink:"id,omitempty" db:"campaignid"`
 	Description   string
 	Src           string
 	Msg           string
@@ -38,17 +38,9 @@ const (
 type CampaignCriteria struct {
 	ID              string
 	Username        string
-	FileName        string
-	Src             string
-	Msg             string
-	Enc             string
-	UserID          string
+	FileID          string
 	SubmittedAfter  int64
 	SubmittedBefore int64
-	ScheduledAfter  int64
-	ScheduledBefore int64
-	SendBefore      string
-	SendAfter       string
 	OrderByKey      string
 	OrderByDir      string
 	From            string
@@ -114,45 +106,45 @@ func GetReport(id string) (CampaignReport, error) {
 		return cr, fmt.Errorf("No campaign with id %s could be found.", id)
 	}
 	// get total in campaign
-	err = sphinx.Get().Get(&cr, "SELECT count(*) as Total from Message where campaignID='" + id + "'")
+	err = sphinx.Get().Get(&cr, "SELECT count(*) as Total from Message where campaignID='"+id+"'")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query" : "SELECT count(*) as Total from Message where campaignID='" + id + "'",
+			"Query": "SELECT count(*) as Total from Message where campaignID='" + id + "'",
 		}).Error("Error executing total msgs query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
 	//select message size in campaign
-	err = sphinx.Get().Get(&cr, "SELECT Total as MsgSize from Message where campaignID='" + id + "'")
+	err = sphinx.Get().Get(&cr, "SELECT Total as MsgSize from Message where campaignID='"+id+"'")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query" : "SELECT Total as MsgSize from Message where campaignID='" + id + "'",
+			"Query": "SELECT Total as MsgSize from Message where campaignID='" + id + "'",
 		}).Error("Error executing MsgSize query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
 	//select min sentat in campaign
-	err = sphinx.Get().Get(&cr, "SELECT Min(SentAt) as FirstQueued from Message where campaignID='" + id + "' AND SentAt > 0")
+	err = sphinx.Get().Get(&cr, "SELECT Min(SentAt) as FirstQueued from Message where campaignID='"+id+"' AND SentAt > 0")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query" : "SELECT Min(SentAt) as FirstQueued from Message where campaignID='" + id + "'",
+			"Query": "SELECT Min(SentAt) as FirstQueued from Message where campaignID='" + id + "'",
 		}).Error("Error executing Min(SentAt) query")
 	}
 	//select max sentat in campaign
-	err = sphinx.Get().Get(&cr, "SELECT Max(SentAt) as LastSent from Message where campaignID='" + id + "'")
+	err = sphinx.Get().Get(&cr, "SELECT Max(SentAt) as LastSent from Message where campaignID='"+id+"'")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query" : "SELECT Max(SentAt) as LastSent from Message where campaignID='" + id + "'",
+			"Query": "SELECT Max(SentAt) as LastSent from Message where campaignID='" + id + "'",
 		}).Error("Error executing Max(SentAt) query")
 	}
 	//Select connection wise
-	err = sphinx.Get().Select(&cr.Connections, "SELECT Connection as Name, count(*) as Count from Message where campaignID='" + id + "' group by Connection")
+	err = sphinx.Get().Select(&cr.Connections, "SELECT Connection as Name, count(*) as Count from Message where campaignID='"+id+"' group by Connection")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query" : "SELECT Connection as Name, count(*) as Count from Message where campaignID='" + id + "' group by Connection",
+			"Query": "SELECT Connection as Name, count(*) as Count from Message where campaignID='" + id + "' group by Connection",
 		}).Error("Error executing Connection wise query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
@@ -199,7 +191,7 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 			from = c.From
 		}
 	}
-	if from != nil || c.ScheduledAfter+c.ScheduledBefore+c.SubmittedAfter+c.SubmittedBefore != 0 {
+	if from != nil || c.SubmittedAfter+c.SubmittedBefore != 0 {
 		indexUsed = true
 	}
 	if c.OrderByKey == "" {
@@ -225,22 +217,11 @@ func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
 			"after":  c.SubmittedAfter,
 			"before": c.SubmittedBefore,
 		},
-		"ScheduledAt": {
-			"after":  c.ScheduledAfter,
-			"before": c.ScheduledBefore,
-		},
 	}
 	t, filterUsed = filterBetweenInt(betweenFields, t)
 	strFields := map[string]string{
 		"id":         c.ID,
 		"Username":   c.Username,
-		"UserID":     c.UserID,
-		"FileName":   c.FileName,
-		"Src":        c.Src,
-		"Msg":        c.Msg,
-		"Enc":        c.Enc,
-		"SendBefore": c.SendBefore,
-		"SendAfter":  c.SendAfter,
 	}
 	var filtered bool
 	t, filtered = filterEqStr(strFields, t)

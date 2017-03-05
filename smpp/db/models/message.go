@@ -157,7 +157,7 @@ func SaveInSphinx(m []Message) error {
 			isFlash = 1
 		}
 		params := []interface{}{
-			sphinx.Nextval(), v.Msg, v.Username, v.ConnectionGroup,
+			sphinx.Nextval("Message"), v.Msg, v.Username, v.ConnectionGroup,
 			v.Connection, v.ID, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
 			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, string(v.Status), v.Error,
 			v.Username, v.ScheduledAt, isFlash,

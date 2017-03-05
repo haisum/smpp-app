@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type permissions []user.Permission
 // User contains data for a single user
 type User struct {
 	ID              string `gorethink:"id,omitempty"`
@@ -22,9 +23,25 @@ type User struct {
 	Name            string
 	Email           string
 	ConnectionGroup string
-	Permissions     []user.Permission
+	Permissions     permissions
 	RegisteredAt    int64
 	Suspended       bool
+}
+
+func (p *permissions) Scan(perms interface{}) error {
+	ps := strings.Split(fmt.Sprintf("%s", perms), ",")
+	for _, v := range ps {
+		*p = append(*p, user.Permission(v))
+	}
+	return nil
+}
+
+func (p *permissions) String() string{
+	var perms []string
+	for _, v := range *p {
+		perms = append(perms, string(v))
+	}
+	return strings.Join(perms, ",")
 }
 
 // UserCriteria is used to filter users

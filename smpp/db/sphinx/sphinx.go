@@ -16,7 +16,7 @@ type autoIncrement struct {
 	ID int64
 }
 
-var autoIncr *autoIncrement
+var incs  = make(map[string]*autoIncrement, 5)
 
 func Connect(host, port string) (*sqlx.DB, error) {
 	config := mysql.Config{
@@ -29,16 +29,14 @@ func Connect(host, port string) (*sqlx.DB, error) {
 	if err != nil {
 		return db, err
 	}
-	autoIncr = &autoIncrement{}
-	err = setMaxID()
 	return db, err
 }
 
-func setMaxID() error {
-	err := db.Get(&autoIncr.ID, "SELECT MAX(id) FROM Message")
+func setMaxID(tbl string) error {
+	err := db.Get(&incs[tbl].ID, "SELECT MAX(id) FROM " + tbl)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			autoIncr.ID = 0
+			incs[tbl].ID = 0
 			return nil
 		}
 		return err
@@ -50,15 +48,24 @@ func Get() *sqlx.DB {
 	return db
 }
 
-func Currval() int64 {
-	autoIncr.Lock()
-	defer autoIncr.Unlock()
-	return autoIncr.ID
+func makeInc(tbl string){
+	if _, ok := incs[tbl]; !ok {
+		incs[tbl] = &autoIncrement{}
+		setMaxID(tbl)
+	}
 }
 
-func Nextval() int64 {
-	autoIncr.Lock()
-	defer autoIncr.Unlock()
-	autoIncr.ID = autoIncr.ID + 1
-	return autoIncr.ID
+func Currval(tbl string) int64 {
+	makeInc(tbl)
+	incs[tbl].Lock()
+	defer incs[tbl].Unlock()
+	return incs[tbl].ID
+}
+
+func Nextval(tbl string) int64 {
+	makeInc(tbl)
+	incs[tbl].Lock()
+	defer incs[tbl].Unlock()
+	incs[tbl].ID = incs[tbl].ID + 1
+	return incs[tbl].ID
 }

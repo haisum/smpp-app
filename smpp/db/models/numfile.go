@@ -34,6 +34,11 @@ type NumFile struct {
 //can be excel/csv etc.
 type NumFileType string
 
+func (n *NumFileType) Scan(nf interface{}) error {
+	*n = NumFileType(fmt.Sprintf("%s", nf))
+	return nil
+}
+
 const (
 	//NumFileCSV is text file with .csv extension. This file should have comma separated numbers
 	NumFileCSV NumFileType = ".csv"
