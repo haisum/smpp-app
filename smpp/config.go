@@ -2,6 +2,10 @@ package smpp
 
 import (
 	"fmt"
+	"encoding/json"
+	"database/sql/driver"
+	"bytes"
+	"compress/gzip"
 )
 
 // Config represents all settings defined in settings file
@@ -43,6 +47,17 @@ type PduFields struct {
 	ScheduleDeliveryTime string
 	ReplaceIfPresentFlag uint8
 	SMDefaultMsgID       uint8
+}
+
+// Scan implements scanner interface for PduFields
+func (pf *PduFields) Scan(src interface{}) error {
+	err := json.Unmarshal(src.([]byte), pf)
+	return err
+}
+
+// Value implements the driver.Valuer interface
+func (pf *PduFields) Value() (driver.Value, error) {
+	return json.Marshal(pf)
 }
 
 // GetKeys returns all prefixes defined by all the connections

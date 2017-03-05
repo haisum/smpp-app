@@ -42,17 +42,17 @@ func main() {
 		os.Exit(0)
 	}
 	log.Info("Connecting database.")
-	s, err := db.GetSession()
+	db, err := db.Connect("127.0.0.1", "3306",  "hsmppdb", "root", "")
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't setup database connection.")
 	}
-	defer s.(*r.Session).Close()
+	defer db.Close()
 	log.Info("Connecting sphinx.")
-	spconn, err := sphinx.Connect("127.0.0.1", "9306")
+	spDB, err := sphinx.Connect("127.0.0.1", "9306")
 	if err != nil {
 		log.WithError(err).Fatalf("Error in connecting to sphinx.")
 	}
-	defer spconn.Close()
+	defer spDB.Close()
 	log.Info("Connecting with rabbitmq.")
 	q, err := queue.GetQueue(*amqpURL, "smppworker-exchange", 1)
 	if err != nil {

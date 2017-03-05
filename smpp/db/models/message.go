@@ -6,28 +6,41 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/utils"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
+	"encoding/json"
+	"database/sql/driver"
+	goqu "gopkg.in/doug-martin/goqu.v3"
+	"sync"
+	"errors"
 )
+
+type deliverySM map[string]string
+
+// Scan implements scanner interface for deliverySM
+func (dsm *deliverySM) Scan(src interface{}) error {
+	err := json.Unmarshal(src.([]byte), dsm)
+	return err
+}
+// Value implements the driver.Valuer interface
+func (dsm *deliverySM) Value() (driver.Value, error) {
+	return json.Marshal(dsm)
+}
 
 // Message represents a smpp message
 type Message struct {
-	ID              string `gorethink:"id,omitempty" db:"msgid"`
-	SphinxID        int    `json:"-" gorethink:"-" db:"id"`
+	ID              int64 `db:"id" goqu:"skipinsert"`
 	RespID          string
-	DeliverySM      map[string]string `gorethink:"DeliverySM,omitempty"`
 	ConnectionGroup string
 	Connection      string
-	Fields          smpp.PduFields `gorethink:"Fields,omitempty"`
 	Total           int
-	Username        string `db:"user"`
-	Msg             string `gorethink:"Msg,omitempty"`
+	Username        string
+	Msg             string
 	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
-	RealMsg     string `json:"-" gorethink:"RealMsg,omitempty"`
+	RealMsg     string `json:"-"`
 	Enc         string
 	Dst         string
 	Src         string
@@ -47,7 +60,7 @@ type Message struct {
 
 // MessageCriteria represents filters we can give to GetMessages method.
 type MessageCriteria struct {
-	ID              string
+	ID              int64
 	RespID          string
 	ConnectionGroup string
 	Connection      string
@@ -81,7 +94,7 @@ type MessageCriteria struct {
 // a lifecycle from submitted to getting delivered
 type MessageStatus string
 
-// Scan implements scannner interface for MessageStatus
+// Scan implements scanner interface for MessageStatus
 func (st *MessageStatus) Scan(src interface{}) error {
 	*st = MessageStatus(fmt.Sprintf("%s", src))
 	return nil
@@ -118,38 +131,35 @@ type MessageStats struct {
 	Total        int64
 }
 
+var bulkInsertLock sync.Mutex
+
 // Save saves a message struct in Message table
 func (m *Message) Save() (string, error) {
 	var id string
-	s, err := db.GetSession()
+	con := db.Get()
+	result, err := con.From("Message").Insert(m).Exec()
 	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return id, err
+		log.WithError(err).Error("Couldn't insert message.")
 	}
-	resp, err := r.DB(db.DBName).Table("Message").Insert(m).RunWrite(s)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-			"Query": r.DB(db.DBName).Table("Message").Insert(m).String(),
-		}).Error("Error in inserting message.")
-		return id, err
-	}
-	id = resp.GeneratedKeys[0]
-	m.ID = id
-	err = SaveInSphinx([]Message{*m})
+	m.ID, err = result.LastInsertId()
+	err = SaveInSphinx([]Message{*m}, false)
 	return id, err
 }
 
-func SaveInSphinx(m []Message) error {
+func SaveInSphinx(m []Message, isUpdate bool) error {
 	sp := sphinx.Get()
 	if sp == nil {
-		return fmt.Errorf("Sphinx db connection is not initialized yet")
+		return errors.New("Sphinx db connection is not initialized yet")
 	}
 	if len(m) < 1 {
-		return fmt.Errorf("No messages provided to save.")
+		return errors.New("No messages provided to save.")
 	}
-	query := `INSERT INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst, 
-		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt, IsFlash) VALUES `
+	op := "INSERT"
+	if isUpdate{
+		op = "REPLACE"
+	}
+	query := op + ` INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst,
+		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES `
 	var valuePart []string
 	for _, v := range m {
 		isFlash := 0
@@ -157,9 +167,9 @@ func SaveInSphinx(m []Message) error {
 			isFlash = 1
 		}
 		params := []interface{}{
-			sphinx.Nextval("Message"), v.Msg, v.Username, v.ConnectionGroup,
-			v.Connection, v.ID, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
-			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, string(v.Status), v.Error,
+			v.ID, v.Msg, v.Username, v.ConnectionGroup,
+			v.Connection, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
+			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, v.Campaign, string(v.Status), v.Error,
 			v.Username, v.ScheduledAt, isFlash,
 		}
 		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s',
@@ -179,78 +189,44 @@ func SaveInSphinx(m []Message) error {
 	return nil
 }
 
-// SaveBulk saves a list of message structs in Message table
-func SaveBulk(m []Message) ([]string, error) {
-	s, err := db.GetSession()
+// SaveBulk saves a list of messages in Message table
+func SaveBulk(m []Message) ([]int64, error) {
+	bulkInsertLock.Lock()
+	defer bulkInsertLock.Unlock()
+	con := db.Get()
+	var ids []int64
+	result, err := con.From("Message").Insert(m...).Exec()
 	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return nil, err
+		log.WithError(err).Error("Couldn't insert message.")
+		return ids, err
 	}
-	resp, err := r.DB(db.DBName).Table("Message").Insert(m).RunWrite(s)
+	affected, err := result.RowsAffected()
+	if err != nil || affected != int64(len(m)) {
+		log.WithError(err).WithField("affected", affected).Error("Couldn't get affected rows or unexpected affected rows number")
+	}
+	err = con.From("Message").Select("id").Order(goqu.I("id").Desc()).Limit(uint(affected)).ScanVals(&ids)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-			"Query": r.DB(db.DBName).Table("Message").Insert(m).String(),
-		}).Error("Error in inserting message.")
-		return nil, err
+		log.WithError(err).WithField("affected", affected).Error("Couldn't load last inserted ids")
+		return ids, err
 	}
-	for k, v := range resp.GeneratedKeys {
-		m[k].ID = v
+	for k := affected - 1; k >=0; k-- {
+		m[k].ID = ids[k]
 	}
-	err = SaveInSphinx(m)
-	return resp.GeneratedKeys, err
+	err = SaveInSphinx(m, false)
+	return ids, err
 }
 
 // Update updates an existing message in Message table
 func (m *Message) Update() error {
-	s, err := db.GetSession()
+	_, err  := db.Get().From("Message").Where(goqu.I("id").Eq(m.ID)).Update(m).Exec()
 	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
 		return err
 	}
-	err = r.DB(db.DBName).Table("Message").Get(m.ID).Update(m).Exec(s)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-			"Query": r.DB(db.DBName).Table("Message").Get(m.ID).Update(m).String(),
-		}).Error("Error in updating message.")
-		return err
-	}
-	err = UpdateInSphinx(*m)
+	err = SaveInSphinx([]Message{*m}, true)
 	return err
 }
 
-func (m *Message) GetSphinxID() (int64, error) {
-	query := fmt.Sprintf(`SELECT id FROM Message WHERE MsgID = '%s'`, m.ID)
-	var id int64
-	sp := sphinx.Get()
-	err := sp.Get(&id, query)
-	return id, err
-}
-
-func SaveDeliveryInSphinx(respID string) error {
-	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE RespID = '%s'`, respID)
-	var id string
-	sp := sphinx.Get()
-	err := sp.Get(&id, query)
-	if err != nil {
-		return err
-	}
-	m, err := GetMessage(id)
-	if err != nil {
-		return err
-	}
-	return UpdateInSphinx(m)
-}
-
 func StopCampaignInSphinx(campaignID string) error {
-	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE campaignID = '%s'`, campaignID)
-	var ids []string
-	sp := sphinx.Get()
-	err := sp.Select(&ids, query)
-	if err != nil {
-		return err
-	}
 	ms, err := GetMessages(MessageCriteria{
 		CampaignID: campaignID,
 		Status:     MsgStopped,
@@ -258,67 +234,33 @@ func StopCampaignInSphinx(campaignID string) error {
 	if err != nil {
 		return err
 	}
-	for _, m := range ms {
-		err = UpdateInSphinx(m)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func UpdateInSphinx(m Message) error {
-	sp := sphinx.Get()
-	query := `REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst, 
-		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt) VALUES `
-	var valuePart []string
-	spID, err := m.GetSphinxID()
-	if err != nil {
-		return err
-	}
-	params := []interface{}{
-		spID, m.Msg, m.Username, m.ConnectionGroup,
-		m.Connection, m.ID, m.RespID, m.Total, m.Enc, m.Dst, m.Src, m.Priority,
-		m.QueuedAt, m.SentAt, m.DeliveredAt, m.CampaignID, string(m.Status), m.Error,
-		m.Username, m.ScheduledAt,
-	}
-	values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s',
-			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d)`, params...)
-	valuePart = append(valuePart, values)
-	query = query + strings.Join(valuePart, ",")
-	_, err = sp.Exec(query)
-	if err != nil {
-		return err
-	}
-	return nil
+	err = SaveInSphinx(ms, true)
+	return err
 }
 
 // SaveDelivery updates an existing message in Message table and adds delivery status
 func SaveDelivery(respID, status string) error {
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return err
-	}
-	resp, err := r.DB(db.DBName).Table("Message").GetAllByIndex("RespID", respID).Update(map[string]interface{}{
+	res, err := db.Get().From("Message").Where(goqu.I("RespID").Eq(respID)).Update(goqu.Record{
 		"Status":      status,
 		"DeliveredAt": time.Now().UTC().Unix(),
-	}).RunWrite(s)
+	}).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB(db.DBName).Table("Message").GetAllByIndex("respID", respID).Update(map[string]interface{}{
-				"Status":      status,
-				"DeliveredAt": time.Now().UTC().Unix(),
-			}),
 		}).Error("Error in updating message.")
 		return err
 	}
-	if resp.Replaced == 0 {
+	if affected, _ := res.RowsAffected(); affected == 0 {
 		log.WithField("RespID", respID).Error("Couldn't update delivery sm. No such response id found.")
-		return fmt.Errorf("Couldn't update delivery sm. No such response id found.")
+		return errors.New("Couldn't update delivery sm. No such response id found.")
 	}
-	err = SaveDeliveryInSphinx(respID)
+	ms, err := GetMessages(MessageCriteria{
+		RespID: respID,
+	})
+	if len(ms) < 1 || err != nil {
+		log.WithFields(log.Fields{"ms" : ms, "error" : err, "respID": respID}).Error("Couldn't get msgs with respID")
+	}
+	err = SaveInSphinx(ms, true)
 	if err != nil {
 		return err
 	}
@@ -326,42 +268,34 @@ func SaveDelivery(respID, status string) error {
 }
 
 //GetMessage finds a message by primary key
-func GetMessage(id string) (Message, error) {
+func GetMessage(id int64) (Message, error) {
 	var m Message
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return m, err
+	found, err := db.Get().From("Message").Where(goqu.I("id").Eq(id)).ScanStruct(&m)
+	if err != nil || !found {
+		log.WithFields(log.Fields{"error" : err, "id" : id}).Error("Couldn't get msg.")
 	}
-	cur, err := r.DB(db.DBName).Table("Message").Get(id).Run(s)
-	defer cur.Close()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get message.")
-		return m, err
-	}
-	cur.One(&m)
-	defer cur.Close()
 	return m, nil
 }
 
 // StopPendingMessages marks stopped as true in all messages which are queued or scheduled in a campaign
-func StopPendingMessages(campID string) (int, error) {
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return 0, err
-	}
-	resp, err := r.DB(db.DBName).Table("Message").GetAllByIndex("CampaignID", campID).Filter(r.Row.Field("Status").Eq(MsgQueued).Or(r.Row.Field("Status").Eq(MsgScheduled))).Update(map[string]MessageStatus{"Status": MsgStopped}).RunWrite(s)
+func StopPendingMessages(campID string) (int64, error) {
+	res, err := db.Get().From("Message").Where(goqu.I("CampaignID").Eq(campID),
+			goqu.Or(
+				goqu.I("Status").Eq(MsgQueued),
+				goqu.I("Status").Eq(MsgScheduled),
+			),
+	).Update(goqu.Record{"Status" : MsgStopped}).Exec()
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query")
 		return 0, err
 	}
+	affected, _ := res.RowsAffected()
 	err = StopCampaignInSphinx(campID)
 	if err != nil {
 		log.WithError(err).Error("Couldn't update records in sphinx")
 		return 0, err
 	}
-	return resp.Replaced, nil
+	return affected, nil
 }
 
 // GetErrorMessages returns all messages with status error in a campaign

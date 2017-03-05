@@ -1,87 +1,38 @@
 package fresh
 
 import (
-	"fmt"
-
 	log "github.com/Sirupsen/logrus"
-	r "github.com/dancannon/gorethink"
+	"io/ioutil"
+	"bytes"
+	goqu "gopkg.in/doug-martin/goqu.v3"
 )
 
+const (
+	dbValidationQuery  = "select MIN(id) from Message"
+	SQLFile = "./sqls/fresh-mysql.sql"
+)
 // Create creates a fresh database, tables, indexes and populates primary data
-func Create(s r.QueryExecutor, dbname string) error {
-	w, err := r.DBCreate(dbname).RunWrite(s)
+func Create(db *goqu.Database) error {
+	b, err := ioutil.ReadFile(SQLFile)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":  err,
-			"name": dbname,
-		}).Error("Error occured in creating database.")
+		log.WithError(err).WithField("SQLFile", SQLFile).Error("Couldn't read file")
 		return err
 	}
-	if w.DBsCreated != 1 {
-		log.WithFields(log.Fields{
-			"DBsCreated":    w.DBsCreated,
-			"name":          dbname,
-			"WriteResponse": jsonPrint(w),
-		}).Error("Error occured in creating database.")
-		return fmt.Errorf("Error occured in creating database.")
-	}
-
-	if err = tuser(s, dbname); err != nil {
-		return err
-	}
-	if err = ttoken(s, dbname); err != nil {
-		return err
-	}
-	if err = tconfig(s, dbname); err != nil {
-		return err
-	}
-	if err = tmessage(s, dbname); err != nil {
-		return err
-	}
-	if err = tnumfile(s, dbname); err != nil {
-		return err
-	}
-	if err = tcampaign(s, dbname); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Drop drops existing database
-func Drop(s r.QueryExecutor, name string) error {
-	w, err := r.DBDrop(name).RunWrite(s)
+	n := bytes.Index(b, []byte{0})
+	_, err = db.Exec(string(b[:n]))
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":  err,
-			"name": name,
-		}).Error("Error occured in droping database.")
+		log.WithError(err).WithField("error", err).Error("Couldn't read file")
 		return err
 	}
-	if w.DBsDropped != 1 {
-		log.WithFields(log.Fields{
-			"DBsDropped":    w.DBsDropped,
-			"name":          name,
-			"WriteResponse": jsonPrint(w),
-		}).Error("Error occured in dropping database.")
-		return fmt.Errorf("Error occured in dropping database.")
-	}
-	return nil
+	return err
 }
 
 // Exists checks if a database exists
-func Exists(s r.QueryExecutor, name string) bool {
-	cur, err := r.DBList().Run(s)
+func Exists(db *goqu.Database) bool {
+	_, err := db.Exec(dbValidationQuery);
 	if err != nil {
-		log.WithError(err).Fatal("Couldn't get database list.")
+		log.WithError(err).Error("Error in db validation, db probably isn't created.")
 		return false
 	}
-	var dbs []string
-	cur.All(&dbs)
-	defer cur.Close()
-	for _, db := range dbs {
-		if db == name {
-			return true
-		}
-	}
-	return false
+	return true
 }
