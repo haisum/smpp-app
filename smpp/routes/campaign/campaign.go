@@ -148,6 +148,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			c.Msg = strings.Replace(c.Msg, "[["+val+"]]", strings.Repeat("X", len(val)), -1)
 		}
 	}
+	c.Total = len(numbers)
 	campaignID, err := c.Save()
 	if err != nil {
 		log.WithError(err).Error("Couldn't save campaign.")
@@ -192,99 +193,8 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	total := smtext.Total(msg, enc)
-	var ms []models.Message
-	for i, nr := range numbers {
-		var (
-			queuedTime int64                = time.Now().UTC().Unix()
-			status     models.MessageStatus = models.MsgQueued
-		)
-		if uReq.ScheduledAt > 0 {
-			status = models.MsgScheduled
-		}
-		maskedMsg := c.Msg
-		realMsg := msg
-		for search, replace := range nr.Params {
-			realMsg = strings.Replace(realMsg, "{{"+search+"}}", replace, -1)
-			maskedMsg = strings.Replace(maskedMsg, "{{"+search+"}}", replace, -1)
-		}
-		realTotal := total
-		if msg != realMsg {
-			realTotal = smtext.Total(realMsg, enc)
-		}
-		m := models.Message{
-			ConnectionGroup: u.ConnectionGroup,
-			Username:        u.Username,
-			Msg:             maskedMsg,
-			RealMsg:         realMsg,
-			Enc:             enc,
-			Dst:             nr.Destination,
-			Src:             uReq.Src,
-			Priority:        uReq.Priority,
-			QueuedAt:        queuedTime,
-			Status:          status,
-			CampaignID:      campaignID,
-			SendBefore:      uReq.SendBefore,
-			SendAfter:       uReq.SendAfter,
-			ScheduledAt:     uReq.ScheduledAt,
-			Total:           realTotal,
-			Campaign:        uReq.Description,
-			IsFlash:         uReq.IsFlash,
-		}
-		ms = append(ms, m)
-		// if we have 200 msgs or last few messages
-		if (i+1)%MaxBulkInsert == 0 || (i+1) == len(numbers) {
-			ids, err := models.SaveBulk(ms)
-			if err != nil {
-				//error agaya bhai
-				log.WithFields(log.Fields{
-					"error": err,
-					"uReq":  uReq,
-				}).Error("Couldn't save messages.")
-				resp := routes.Response{
-					Errors: []routes.ResponseError{
-						{
-							Type:    routes.ErrorTypeQueue,
-							Message: "Couldn't save messages.",
-						},
-					},
-					Request: uReq,
-				}
-				resp.Send(w, *r, http.StatusInternalServerError)
-				return
-			}
-			for j, m := range ms {
-				if m.ScheduledAt == 0 {
-					key := matchKey(keys, m.Dst, noKey)
-					qItem := queue.Item{
-						MsgID: ids[j], //m.ID is empty.
-						Total: m.Total,
-					}
-					respJSON, _ := qItem.ToJSON()
-					err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
-					if err != nil {
-						//error here too
-						log.WithFields(log.Fields{
-							"error": err,
-							"uReq":  uReq,
-						}).Error("Couldn't publish message.")
-						resp := routes.Response{
-							Errors: []routes.ResponseError{
-								{
-									Type:    routes.ErrorTypeQueue,
-									Message: "Couldn't queue message.",
-								},
-							},
-							Request: uReq,
-						}
-						resp.Send(w, *r, http.StatusInternalServerError)
-						return
-					}
-				}
-			}
-			ms = []models.Message{}
-		}
-	}
-	log.Info("All campaign messages queued")
+
+	log.Info("Campaign messages are being queued.")
 	uResp.ID = campaignID
 	resp := routes.Response{
 		Obj:     uResp,
@@ -292,6 +202,86 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		Ok:      true,
 	}
 	resp.Send(w, *r, http.StatusOK)
+
+	go func (){
+		var ms []models.Message
+		c.Errors = make([]string,0)
+		for i, nr := range numbers {
+			var (
+				queuedTime int64                = time.Now().UTC().Unix()
+				status     models.MessageStatus = models.MsgQueued
+			)
+			if uReq.ScheduledAt > 0 {
+				status = models.MsgScheduled
+			}
+			maskedMsg := c.Msg
+			realMsg := msg
+			for search, replace := range nr.Params {
+				realMsg = strings.Replace(realMsg, "{{"+search+"}}", replace, -1)
+				maskedMsg = strings.Replace(maskedMsg, "{{"+search+"}}", replace, -1)
+			}
+			realTotal := total
+			if msg != realMsg {
+				realTotal = smtext.Total(realMsg, enc)
+			}
+			m := models.Message{
+				ConnectionGroup: u.ConnectionGroup,
+				Username:        u.Username,
+				Msg:             maskedMsg,
+				RealMsg:         realMsg,
+				Enc:             enc,
+				Dst:             nr.Destination,
+				Src:             uReq.Src,
+				Priority:        uReq.Priority,
+				QueuedAt:        queuedTime,
+				Status:          status,
+				CampaignID:      campaignID,
+				SendBefore:      uReq.SendBefore,
+				SendAfter:       uReq.SendAfter,
+				ScheduledAt:     uReq.ScheduledAt,
+				Total:           realTotal,
+				Campaign:        uReq.Description,
+				IsFlash:         uReq.IsFlash,
+			}
+			ms = append(ms, m)
+			// if we have 200 msgs or last few messages
+			if (i+1)%MaxBulkInsert == 0 || (i+1) == len(numbers) {
+				ids, err := models.SaveBulk(ms)
+				if err != nil {
+					//error agaya bhai
+					log.WithFields(log.Fields{
+						"error": err,
+						"uReq":  uReq,
+					}).Error("Couldn't save messages.")
+					c.Errors = append(c.Errors, err.Error())
+				}
+				for j, m := range ms {
+					if m.ScheduledAt == 0 {
+						key := matchKey(keys, m.Dst, noKey)
+						qItem := queue.Item{
+							MsgID: ids[j], //m.ID is empty.
+							Total: m.Total,
+						}
+						respJSON, _ := qItem.ToJSON()
+						err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
+						if err != nil {
+							//error here too
+							log.WithFields(log.Fields{
+								"error": err,
+								"uReq":  uReq,
+							}).Error("Couldn't publish message.")
+							c.Errors = append(c.Errors, err.Error())
+						}
+					}
+				}
+				ms = []models.Message{}
+			}
+		}
+		if len(c.Errors) > 0 {
+			c.Save()
+		}
+	}()
+
 
 })
 

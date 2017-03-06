@@ -15,6 +15,7 @@ func Connect(host, port string) (*goqu.Database, error) {
 	config := mysql.Config{
 		Addr: fmt.Sprintf("%s:%s", host, port),
 		Net:  "tcp",
+		InterpolateParams: true,
 	}
 	log.WithField("dsn", config.FormatDSN()).Info("Connecting")
 	con, err := sql.Open("mysql", config.FormatDSN())
