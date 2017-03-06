@@ -3,7 +3,6 @@ package models
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
-	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
@@ -27,6 +26,8 @@ type Campaign struct {
 	SendAfter     string
 	ScheduledAt   int64
 	SubmittedAt   int64
+	Total int
+	Errors []string
 }
 
 const (
@@ -61,6 +62,8 @@ type CampaignReport struct {
 	Connections   []GroupCount
 }
 
+type CampaignProgress map[string]int
+
 // Save saves a campaign in db
 func (c *Campaign) Save() (string, error) {
 	var id string
@@ -89,6 +92,51 @@ func (c *Campaign) Save() (string, error) {
 	}
 	id = resp.GeneratedKeys[0]
 	return id, nil
+}
+
+//GetProgress returns count for a campaign in progress
+func GetProgress(id string) (CampaignProgress, error) {
+	cp := CampaignProgress{
+		"Total" : 0,
+		"Queued"  : 0,
+		"Delivered" : 0,
+		"NotDelivered" : 0,
+		"Sent" : 0,
+		"Error" : 0,
+		"Scheduled" : 0,
+		"Stopped" : 0,
+		"Pending" : 0,
+	}
+	rows,err := sphinx.Get().Queryx("SELECT status, count(*) as total from Message where campaignid = ?  group by status", id)
+	if err != nil {
+		log.WithError(err).Error("Couldn't get campaign stats")
+		return cp, err
+	}
+	defer rows.Close()
+	for rows.Next(){
+		var vals struct {
+			Status string
+			Total int
+		}
+		err = rows.StructScan(&vals)
+		if err != nil {
+			return cp, err
+		}
+		cp[vals.Status] = vals.Total
+	}
+	camps, err := GetCampaigns(CampaignCriteria{ID : id})
+	if err != nil || len(camps) != 1 {
+		log.Error("Couldn't load campaign")
+		return cp, err
+	}
+
+	totalInDB := 0
+	for _, v := range cp {
+		totalInDB = totalInDB + v
+	}
+	cp["Total"] = camps[0].Total
+	cp["Pending"] = camps[0].Total - totalInDB
+	return cp, err
 }
 
 // GetReport returns CampaignReport struct filled with stats from campaign with given id

@@ -70,6 +70,7 @@ func main() {
 	r.Handle("/api/campaign", handlers.MethodHandler{"POST": campaign.CampaignHandler})
 	r.Handle("/api/campaign/filter", campaign.CampaignsHandler)
 	r.Handle("/api/campaign/report", campaign.ReportHandler)
+	r.Handle("/api/campaign/progress", campaign.ProgressHandler)
 	r.Handle("/api/campaign/stop", handlers.MethodHandler{"POST": campaign.StopHandler})
 	r.Handle("/api/campaign/retry", handlers.MethodHandler{"POST": campaign.RetryHandler})
 	r.Handle("/api/campaign/retryQd", handlers.MethodHandler{"POST": campaign.RetryQdHandler})

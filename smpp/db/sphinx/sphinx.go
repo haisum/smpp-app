@@ -22,6 +22,7 @@ func Connect(host, port string) (*sqlx.DB, error) {
 	config := mysql.Config{
 		Addr: fmt.Sprintf("%s:%s", host, port),
 		Net:  "tcp",
+		InterpolateParams: true,
 	}
 	log.WithField("dsn", config.FormatDSN()).Info("Connecting")
 	var err error
