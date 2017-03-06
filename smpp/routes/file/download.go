@@ -7,6 +7,7 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -44,8 +45,14 @@ var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	files, err := models.GetNumFiles(models.NumFileCriteria{
 		ID: uReq.ID,
 	})
+
+	if u.ID != files[0].UserID {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermListNumFiles); !ok {
+			return
+		}
+	}
 	resp := routes.Response{}
-	if err != nil || len(files) == 0 || files[0].UserID != u.ID {
+	if err != nil || len(files) == 0 {
 		log.WithFields(log.Fields{
 			"len(files)": len(files),
 			"Error":      err,

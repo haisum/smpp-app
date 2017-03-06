@@ -366,19 +366,11 @@ func StopPendingMessages(campID string) (int, error) {
 
 // GetErrorMessages returns all messages with status error in a campaign
 func GetErrorMessages(campID string) ([]Message, error) {
-	s, err := db.GetSession()
-	var m []Message
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return m, err
-	}
-	cur, err := r.DB(db.DBName).Table("Message").GetAllByIndex("CampaignID", campID).Filter(r.Row.Field("Status").Eq(MsgError)).Run(s)
-	if err != nil {
-		log.WithError(err).Error("Couldn't run query")
-		return m, err
-	}
-	defer cur.Close()
-	err = cur.All(&m)
+	m, err := GetMessages(MessageCriteria{
+		CampaignID: campID,
+		Status:     MsgError,
+		PerPage:    500000,
+	})
 	if err != nil {
 		log.WithError(err).Error("Couldn't load messages")
 	}
@@ -387,19 +379,11 @@ func GetErrorMessages(campID string) ([]Message, error) {
 
 // GetQueuedMessages returns all messages with status queued in a campaign
 func GetQueuedMessages(campID string) ([]Message, error) {
-	s, err := db.GetSession()
-	var m []Message
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return m, err
-	}
-	cur, err := r.DB(db.DBName).Table("Message").GetAllByIndex("CampaignID", campID).Filter(r.Row.Field("Status").Eq(MsgQueued)).Run(s)
-	if err != nil {
-		log.WithError(err).Error("Couldn't run query")
-		return m, err
-	}
-	defer cur.Close()
-	err = cur.All(&m)
+	m, err := GetMessages(MessageCriteria{
+		CampaignID: campID,
+		Status:     MsgQueued,
+		PerPage:    500000,
+	})
 	if err != nil {
 		log.WithError(err).Error("Couldn't load messages")
 	}
@@ -429,7 +413,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 	}
 	qb.Limit(strconv.Itoa(c.PerPage))
 	log.WithFields(log.Fields{"query": qb.GetQuery() + "  option max_matches=500000", "crtieria": c}).Info("Running query.")
-	err = sphinx.Get().Select(&m, qb.GetQuery() + "  option max_matches=500000")
+	err = sphinx.Get().Select(&m, qb.GetQuery()+"  option max_matches=500000")
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
 	}
@@ -514,7 +498,7 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 
 func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 	qb := utils.QueryBuilder{}
-	qb.Select("ConnectionGroup, Connection, MsgID, RespID, Enc, Dst, Src, CampaignID, Status, Error, User, Total, Priority, IsFlash, QueuedAt, SentAt, DeliveredAt, ScheduledAt").From("Message")
+	qb.Select("*").From("Message")
 
 	if c.OrderByKey == "" {
 		c.OrderByKey = QueuedAt
