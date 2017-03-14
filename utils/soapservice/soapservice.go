@@ -17,6 +17,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/soap"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 )
 
 const (
@@ -37,6 +38,11 @@ func main() {
 		log.WithError(err).Fatal("Couldn't connect to rabbitmq")
 	}
 	defer q.Close()
+	spconn, err := sphinx.Connect("127.0.0.1", "9306")
+	if err != nil {
+		log.WithError(err).Fatalf("Error in connecting to sphinx.")
+	}
+	defer spconn.Close()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 		decoder := xml.NewDecoder(r.Body)
