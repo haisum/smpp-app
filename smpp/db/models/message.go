@@ -12,12 +12,13 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/utils"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
+	"hash/fnv"
 )
 
 // Message represents a smpp message
 type Message struct {
 	ID              string `gorethink:"id,omitempty" db:"msgid"`
-	SphinxID        int    `json:"-" gorethink:"-" db:"id"`
+	SphinxID        uint32    `json:"-" gorethink:"-" db:"id"`
 	RespID          string
 	DeliverySM      map[string]string `gorethink:"DeliverySM,omitempty"`
 	ConnectionGroup string
@@ -157,7 +158,7 @@ func SaveInSphinx(m []Message) error {
 			isFlash = 1
 		}
 		params := []interface{}{
-			sphinx.Nextval("Message"), v.Msg, v.Username, v.ConnectionGroup,
+			hashID(v.ID), v.Msg, v.Username, v.ConnectionGroup,
 			v.Connection, v.ID, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
 			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, string(v.Status), v.Error,
 			v.Username, v.ScheduledAt, isFlash,
@@ -220,12 +221,8 @@ func (m *Message) Update() error {
 	return err
 }
 
-func (m *Message) GetSphinxID() (int64, error) {
-	query := fmt.Sprintf(`SELECT id FROM Message WHERE MsgID = '%s'`, m.ID)
-	var id int64
-	sp := sphinx.Get()
-	err := sp.Get(&id, query)
-	return id, err
+func (m *Message) GetSphinxID() uint32 {
+	return hashID(m.ID)
 }
 
 func SaveDeliveryInSphinx(respID string) error {
@@ -272,10 +269,7 @@ func UpdateInSphinx(m Message) error {
 	query := `REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst, 
 		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt) VALUES `
 	var valuePart []string
-	spID, err := m.GetSphinxID()
-	if err != nil {
-		return err
-	}
+	spID := m.GetSphinxID()
 	params := []interface{}{
 		spID, m.Msg, m.Username, m.ConnectionGroup,
 		m.Connection, m.ID, m.RespID, m.Total, m.Enc, m.Dst, m.Src, m.Priority,
@@ -286,7 +280,7 @@ func UpdateInSphinx(m Message) error {
 			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d)`, params...)
 	valuePart = append(valuePart, values)
 	query = query + strings.Join(valuePart, ",")
-	_, err = sp.Exec(query)
+	_, err := sp.Exec(query)
 	if err != nil {
 		return err
 	}
@@ -639,4 +633,10 @@ func (m *Message) Validate() []string {
 		}
 	}
 	return errors
+}
+
+func hashID(id string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(id))
+	return h.Sum32()
 }
