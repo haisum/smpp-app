@@ -22,6 +22,10 @@ func Connect(host, port string) (*sqlx.DB, error) {
 	if err != nil {
 		return db, err
 	}
+	_, err = db.Exec("SET NAMES utf8")
+	if err != nil {
+		log.WithError(err).Error("Couldn't run SET NAMES utf8")
+	}
 	return db, err
 }
 

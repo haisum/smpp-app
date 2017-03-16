@@ -149,7 +149,7 @@ func SaveInSphinx(m []Message) error {
 	if len(m) < 1 {
 		return fmt.Errorf("No messages provided to save.")
 	}
-	query := `INSERT INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst, 
+	query := `INSERT INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst,
 		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt, IsFlash) VALUES `
 	var valuePart []string
 	for _, v := range m {
@@ -163,6 +163,7 @@ func SaveInSphinx(m []Message) error {
 			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, string(v.Status), v.Error,
 			v.Username, v.ScheduledAt, isFlash,
 		}
+		params = escapeQuotes(params...)
 		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s',
 			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d)`, params...)
 		valuePart = append(valuePart, values)
@@ -226,6 +227,7 @@ func (m *Message) GetSphinxID() uint32 {
 }
 
 func SaveDeliveryInSphinx(respID string) error {
+	respID = escapeQuote(respID)
 	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE RespID = '%s'`, respID)
 	var id string
 	sp := sphinx.Get()
@@ -241,6 +243,7 @@ func SaveDeliveryInSphinx(respID string) error {
 }
 
 func StopCampaignInSphinx(campaignID string) error {
+	campaignID = escapeQuote(campaignID)
 	query := fmt.Sprintf(`SELECT msgID FROM Message WHERE campaignID = '%s'`, campaignID)
 	var ids []string
 	sp := sphinx.Get()
@@ -266,7 +269,7 @@ func StopCampaignInSphinx(campaignID string) error {
 
 func UpdateInSphinx(m Message) error {
 	sp := sphinx.Get()
-	query := `REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst, 
+	query := `REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst,
 		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt) VALUES `
 	var valuePart []string
 	spID := m.GetSphinxID()
@@ -276,6 +279,7 @@ func UpdateInSphinx(m Message) error {
 		m.QueuedAt, m.SentAt, m.DeliveredAt, m.CampaignID, string(m.Status), m.Error,
 		m.Username, m.ScheduledAt,
 	}
+	params = escapeQuotes(params...)
 	values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s',
 			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d)`, params...)
 	valuePart = append(valuePart, values)
@@ -499,13 +503,13 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 	}
 	if c.Username != "" {
 		if strings.HasPrefix(c.Username, "(re)") {
-			qb.WhereAnd("match('@Username " + c.Username + "')")
+			qb.WhereAnd("match('@Username " + escapeQuote(c.Username) + "')")
 		} else {
-			qb.WhereAnd("User = '" + c.Username + "'")
+			qb.WhereAnd("User = '" + escapeQuote(c.Username) + "'")
 		}
 	}
 	if c.Msg != "" {
-		qb.WhereAnd("match('@Msg " + c.Msg + "')")
+		qb.WhereAnd("match('@Msg " + escapeQuote(c.Msg) + "')")
 	}
 	if c.QueuedAfter != 0 {
 		qb.WhereAnd("QueuedAt > " + strconv.FormatInt(c.QueuedAfter, 10))
@@ -535,34 +539,34 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 		qb.WhereAnd("ScheduledAt < " + strconv.FormatInt(c.ScheduledBefore, 10))
 	}
 	if c.ID != "" {
-		qb.WhereAnd("MsgID = '" + c.ID + "'")
+		qb.WhereAnd("MsgID = '" + escapeQuote(c.ID) + "'")
 	}
 	if c.RespID != "" {
-		qb.WhereAnd("RespID = '" + c.RespID + "'")
+		qb.WhereAnd("RespID = '" + escapeQuote(c.RespID) + "'")
 	}
 	if c.Connection != "" {
-		qb.WhereAnd("Connection = '" + c.Connection + "'")
+		qb.WhereAnd("Connection = '" + escapeQuote(c.Connection) + "'")
 	}
 	if c.ConnectionGroup != "" {
-		qb.WhereAnd("ConnectionGroup = '" + c.ConnectionGroup + "'")
+		qb.WhereAnd("ConnectionGroup = '" + escapeQuote(c.ConnectionGroup) + "'")
 	}
 	if c.Src != "" {
-		qb.WhereAnd("Src = '" + c.Src + "'")
+		qb.WhereAnd("Src = '" + escapeQuote(c.Src) + "'")
 	}
 	if c.Dst != "" {
-		qb.WhereAnd("Dst = '" + c.Dst + "'")
+		qb.WhereAnd("Dst = '" + escapeQuote(c.Dst) + "'")
 	}
 	if c.Enc != "" {
-		qb.WhereAnd("Enc = '" + c.Enc + "'")
+		qb.WhereAnd("Enc = '" + escapeQuote(c.Enc) + "'")
 	}
 	if c.Status != "" {
-		qb.WhereAnd("Status = '" + string(c.Status) + "'")
+		qb.WhereAnd("Status = '" + escapeQuote(string(c.Status)) + "'")
 	}
 	if c.CampaignID != "" {
-		qb.WhereAnd("CampaignID = '" + c.CampaignID + "'")
+		qb.WhereAnd("CampaignID = '" + escapeQuote(c.CampaignID) + "'")
 	}
 	if c.Error != "" {
-		qb.WhereAnd("Error = '" + string(c.Error) + "'")
+		qb.WhereAnd("Error = '" + escapeQuote(string(c.Error)) + "'")
 	}
 	if c.Total > 0 {
 		qb.WhereAnd("Total = " + strconv.Itoa(c.Total))
@@ -577,12 +581,12 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 		}
 		if from != nil {
 			if orderDir == "ASC" {
-				qb.WhereAnd(c.OrderByKey + " > '" + fmt.Sprintf("%s", from) + "'")
+				qb.WhereAnd(escapeQuote(c.OrderByKey) + " > '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
 			} else {
-				qb.WhereAnd(c.OrderByKey + " < '" + fmt.Sprintf("%s", from) + "'")
+				qb.WhereAnd(escapeQuote(c.OrderByKey)+ " < '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
 			}
 		}
-		qb.OrderBy(c.OrderByKey + " " + orderDir)
+		qb.OrderBy(escapeQuote(c.OrderByKey) + " " + orderDir)
 	}
 	return qb
 }
@@ -639,4 +643,18 @@ func hashID(id string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(id))
 	return h.Sum32()
+}
+
+func escapeQuotes(args ...interface{}) []interface{} {
+	for k, v := range args{
+		switch v.(type) {
+		case string:
+			args[k] = strings.Replace(v.(string),"'", "\\'", -1)
+		}
+	}
+	return args
+}
+
+func escapeQuote(arg string) string {
+	return strings.Replace(arg,"'", "\\'", -1)
 }
