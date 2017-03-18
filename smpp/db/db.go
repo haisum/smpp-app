@@ -8,6 +8,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	goqu "gopkg.in/doug-martin/goqu.v3"
 	"database/sql"
+	"testing"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 var db *goqu.Database
@@ -48,4 +50,15 @@ func Connect(host, port, dbName, user, password string) (*goqu.Database, error) 
 
 func Get() *goqu.Database {
 	return db
+}
+
+// ConnectMock makes a mock db connection for testing purposes
+func ConnectMock(t *testing.T) (*goqu.Database, sqlmock.Sqlmock, error) {
+	con, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
+		t.Fail()
+	}
+	db = goqu.New("msyql", con)
+	return db, mock, err
 }

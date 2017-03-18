@@ -35,8 +35,8 @@ const (
 	SubmittedAt string = "SubmittedAt"
 )
 
-// CampaignCriteria represents filters we can give to GetCampaigns method.
-type CampaignCriteria struct {
+// Criteria represents filters we can give to Select method.
+type Criteria struct {
 	ID              string
 	Username        string
 	FileID          string
@@ -48,8 +48,8 @@ type CampaignCriteria struct {
 	PerPage         int
 }
 
-// CampaignReport is report of campaign performance
-type CampaignReport struct {
+// Report is report of campaign performance
+type Report struct {
 	ID            string
 	Total         int
 	MsgSize       int
@@ -62,7 +62,7 @@ type CampaignReport struct {
 	Connections   []GroupCount
 }
 
-type CampaignProgress map[string]int
+type Progress map[string]int
 
 // Save saves a campaign in db
 func (c *Campaign) Save() (string, error) {
@@ -95,8 +95,8 @@ func (c *Campaign) Save() (string, error) {
 }
 
 //GetProgress returns count for a campaign in progress
-func GetProgress(id string) (CampaignProgress, error) {
-	cp := CampaignProgress{
+func GetProgress(id string) (Progress, error) {
+	cp := Progress{
 		"Total" : 0,
 		"Queued"  : 0,
 		"Delivered" : 0,
@@ -124,7 +124,7 @@ func GetProgress(id string) (CampaignProgress, error) {
 		}
 		cp[vals.Status] = vals.Total
 	}
-	camps, err := GetCampaigns(CampaignCriteria{ID : id})
+	camps, err := Select(Criteria{ID : id})
 	if err != nil || len(camps) != 1 {
 		log.Error("Couldn't load campaign")
 		return cp, err
@@ -140,11 +140,11 @@ func GetProgress(id string) (CampaignProgress, error) {
 }
 
 // GetReport returns CampaignReport struct filled with stats from campaign with given id
-func GetReport(id string) (CampaignReport, error) {
-	cr := CampaignReport{
+func GetReport(id string) (Report, error) {
+	cr := Report{
 		ID: id,
 	}
-	c, err := GetCampaigns(CampaignCriteria{
+	c, err := GetCampaigns(Criteria{
 		ID: id,
 	})
 	if err != nil {
@@ -215,9 +215,8 @@ func GetReport(id string) (CampaignReport, error) {
 }
 
 // GetCampaigns fetches list of campaigns based on criteria
-func GetCampaigns(c CampaignCriteria) ([]Campaign, error) {
+func Select(camps *[]Campaign, c Criteria) (error) {
 	var (
-		camps      []Campaign
 		indexUsed  bool
 		filterUsed bool
 	)

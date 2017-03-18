@@ -1,4 +1,4 @@
-package models
+package stringutils
 
 import (
 	"crypto/rand"
@@ -18,7 +18,7 @@ func SecureRandomAlphaString(length int) string {
 	bufferSize := int(float64(length) * 1.3)
 	for i, j, randomBytes := 0, 0, []byte{}; i < length; j++ {
 		if j%bufferSize == 0 {
-			randomBytes = secureRandomBytes(bufferSize)
+			randomBytes = SecureRandomBytes(bufferSize)
 		}
 		if idx := int(randomBytes[j%length] & letterIdxMask); idx < len(letterBytes) {
 			result[i] = letterBytes[idx]

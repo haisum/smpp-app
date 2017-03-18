@@ -16,6 +16,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/utils"
 	log "github.com/Sirupsen/logrus"
 	goqu "gopkg.in/doug-martin/goqu.v3"
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 )
 
 type deliverySM map[string]string
@@ -49,9 +50,9 @@ type Message struct {
 	QueuedAt    int64
 	SentAt      int64
 	DeliveredAt int64
-	CampaignID  string
+	CampaignID  int64
 	Campaign    string
-	Status      MessageStatus
+	Status      Status
 	Error       string
 	SendBefore  string
 	SendAfter   string
@@ -59,8 +60,8 @@ type Message struct {
 	IsFlash     bool
 }
 
-// MessageCriteria represents filters we can give to GetMessages method.
-type MessageCriteria struct {
+// Criteria represents filters we can give to GetMessages method.
+type Criteria struct {
 	ID              int64
 	RespID          string
 	ConnectionGroup string
@@ -78,8 +79,8 @@ type MessageCriteria struct {
 	DeliveredAfter  int64
 	Total           int
 	Priority        int
-	CampaignID      string
-	Status          MessageStatus
+	CampaignID      int64
+	Status          Status
 	Error           string
 	ScheduledAfter  int64
 	ScheduledBefore int64
@@ -91,37 +92,37 @@ type MessageCriteria struct {
 	FetchMsg        bool
 }
 
-// MessageStatus represents current state of message in
+// Status represents current state of message in
 // a lifecycle from submitted to getting delivered
-type MessageStatus string
+type Status string
 
-// Scan implements scanner interface for MessageStatus
-func (st *MessageStatus) Scan(src interface{}) error {
-	*st = MessageStatus(fmt.Sprintf("%s", src))
+// Scan implements scanner interface for Status
+func (st *Status) Scan(src interface{}) error {
+	*st = Status(fmt.Sprintf("%s", src))
 	return nil
 }
 
 const (
-	//MsgQueued shows that have been put in rabbitmq
-	MsgQueued MessageStatus = "Queued"
-	//MsgError shows that message was sent to operator but returned error
-	MsgError MessageStatus = "Error"
-	//MsgSent shows that message was accepted by operator for delivery
-	MsgSent MessageStatus = "Sent"
-	//MsgDelivered shows that message was delivered
-	MsgDelivered MessageStatus = "Delivered"
-	//MsgNotDelivered shows message was not delivered by operator
-	MsgNotDelivered MessageStatus = "Not Delivered"
-	//MsgScheduled shows message is schedueled to be delivered in future
-	MsgScheduled MessageStatus = "Scheduled"
-	//MsgStopped shows message was stopped by user intervention
-	MsgStopped MessageStatus = "Stopped"
+	//Queued shows that have been put in rabbitmq
+	Queued Status = "Queued"
+	//Error shows that message was sent to operator but returned error
+	Error Status = "Error"
+	//Sent shows that message was accepted by operator for delivery
+	Sent Status = "Sent"
+	//Delivered shows that message was delivered
+	Delivered Status = "Delivered"
+	//NotDelivered shows message was not delivered by operator
+	NotDelivered Status = "Not Delivered"
+	//Scheduled shows message is schedueled to be delivered in future
+	Scheduled Status = "Scheduled"
+	//Stopped shows message was stopped by user intervention
+	Stopped Status = "Stopped"
 	// QueuedAt field is time at which message was put in rabbitmq queue
 	QueuedAt string = "QueuedAt"
 )
 
-// MessageStats records number of messages in different statuses.
-type MessageStats struct {
+// Stats records number of messages in different statuses.
+type Stats struct {
 	Queued       int64
 	Sent         int64
 	Error        int64
@@ -173,9 +174,9 @@ func SaveInSphinx(m []Message, isUpdate bool) error {
 			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, string(v.Status), v.Error,
 			v.Username, v.ScheduledAt, isFlash,
 		}
-		params = escapeQuotes(params...)
-		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s',
-			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d)`, params...)
+		params = stringutils.EscapeQuotes(params...)
+		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', %d, '%s', %d, '%s', '%s', '%s',
+			%d , %d, %d, %d, %d, '%s', '%s', '%s', %d, %d)`, params...)
 		valuePart = append(valuePart, values)
 	}
 	query = query + strings.Join(valuePart, ",")
@@ -197,7 +198,7 @@ func SaveBulk(m []Message) ([]int64, error) {
 	defer bulkInsertLock.Unlock()
 	con := db.Get()
 	var ids []int64
-	result, err := con.From("Message").Insert(m...).Exec()
+	result, err := con.From("Message").Insert(interface{}(m)).Exec()
 	if err != nil {
 		log.WithError(err).Error("Couldn't insert message.")
 		return ids, err
@@ -229,7 +230,7 @@ func (m *Message) Update() error {
 }
 
 func SaveDeliveryInSphinx(respID string) error {
-	respID = escapeQuote(respID)
+	respID = stringutils.EscapeQuote(respID)
 
 	sp := sphinx.Get()
 	//query := fmt.Sprintf(`SELECT ID FROM Message WHERE RespID = '%s'`, respID)
@@ -246,10 +247,10 @@ func SaveDeliveryInSphinx(respID string) error {
 	return SaveInSphinx([]Message{m}, true)
 }
 
-func StopCampaignInSphinx(campaignID string) error {
-	ms, err := GetMessages(MessageCriteria{
+func StopCampaignInSphinx(campaignID int64) error {
+	ms, err := GetMessages(Criteria{
 		CampaignID: campaignID,
-		Status:     MsgStopped,
+		Status:     Stopped,
 	})
 	if err != nil {
 		return err
@@ -274,7 +275,7 @@ func SaveDelivery(respID, status string) error {
 		log.WithField("RespID", respID).Error("Couldn't update delivery sm. No such response id found.")
 		return errors.New("Couldn't update delivery sm. No such response id found.")
 	}
-	ms, err := GetMessages(MessageCriteria{
+	ms, err := GetMessages(Criteria{
 		RespID: respID,
 	})
 	if len(ms) < 1 || err != nil {
@@ -298,13 +299,13 @@ func GetMessage(id int64) (Message, error) {
 }
 
 // StopPendingMessages marks stopped as true in all messages which are queued or scheduled in a campaign
-func StopPendingMessages(campID string) (int64, error) {
+func StopPendingMessages(campID int64) (int64, error) {
 	res, err := db.Get().From("Message").Where(goqu.I("CampaignID").Eq(campID),
 		goqu.Or(
-			goqu.I("Status").Eq(MsgQueued),
-			goqu.I("Status").Eq(MsgScheduled),
+			goqu.I("Status").Eq(Queued),
+			goqu.I("Status").Eq(Scheduled),
 		),
-	).Update(goqu.Record{"Status": MsgStopped}).Exec()
+	).Update(goqu.Record{"Status": Stopped}).Exec()
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query")
 		return 0, err
@@ -319,10 +320,10 @@ func StopPendingMessages(campID string) (int64, error) {
 }
 
 // GetErrorMessages returns all messages with status error in a campaign
-func GetErrorMessages(campID string) ([]Message, error) {
-	m, err := GetMessages(MessageCriteria{
+func GetErrorMessages(campID int64) ([]Message, error) {
+	m, err := GetMessages(Criteria{
 		CampaignID: campID,
-		Status:     MsgError,
+		Status:     Error,
 		PerPage:    500000,
 	})
 	if err != nil {
@@ -332,10 +333,10 @@ func GetErrorMessages(campID string) ([]Message, error) {
 }
 
 // GetQueuedMessages returns all messages with status queued in a campaign
-func GetQueuedMessages(campID string) ([]Message, error) {
-	m, err := GetMessages(MessageCriteria{
+func GetQueuedMessages(campID int64) ([]Message, error) {
+	m, err := GetMessages(Criteria{
 		CampaignID: campID,
-		Status:     MsgQueued,
+		Status:     Queued,
 		PerPage:    500000,
 	})
 	if err != nil {
@@ -345,7 +346,7 @@ func GetQueuedMessages(campID string) ([]Message, error) {
 }
 
 // GetMessages filters messages based on criteria
-func GetMessages(c MessageCriteria) ([]Message, error) {
+func GetMessages(c Criteria) ([]Message, error) {
 	var m []Message
 	var (
 		from interface{}
@@ -396,8 +397,8 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 }
 
 // GetMessageStats filters messages based on criteria and finds total number of messages in different statuses
-func GetMessageStats(c MessageCriteria) (MessageStats, error) {
-	var m MessageStats
+func GetMessageStats(c Criteria) (Stats, error) {
+	var m Stats
 	var from interface{}
 	if c.From != "" {
 		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" {
@@ -429,20 +430,20 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 		stats[status] = total
 	}
 	for k, v := range stats {
-		switch MessageStatus(k) {
-		case MsgDelivered:
+		switch Status(k) {
+		case Delivered:
 			m.Delivered = v
-		case MsgError:
+		case Error:
 			m.Error = v
-		case MsgSent:
+		case Sent:
 			m.Sent = v
-		case MsgQueued:
+		case Queued:
 			m.Queued = v
-		case MsgNotDelivered:
+		case NotDelivered:
 			m.NotDelivered = v
-		case MsgScheduled:
+		case Scheduled:
 			m.Scheduled = v
-		case MsgStopped:
+		case Stopped:
 			m.Stopped = v
 		}
 	}
@@ -450,7 +451,7 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 	return m, err
 }
 
-func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
+func prepareMsgTerm(c Criteria, from interface{}) utils.QueryBuilder {
 	qb := utils.QueryBuilder{}
 	qb.Select("*").From("Message")
 
@@ -459,13 +460,14 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 	}
 	if c.Username != "" {
 		if strings.HasPrefix(c.Username, "(re)") {
-			qb.WhereAnd("match('@Username " + escapeQuote(c.Username) + "')")
+			c.Username = strings.Trim(c.Username, "(re)")
+			qb.WhereAnd("match('@Username " + stringutils.EscapeQuote(c.Username) + "')")
 		} else {
-			qb.WhereAnd("User = '" + escapeQuote(c.Username) + "'")
+			qb.WhereAnd("User = '" + stringutils.EscapeQuote(c.Username) + "'")
 		}
 	}
 	if c.Msg != "" {
-		qb.WhereAnd("match('@Msg " + escapeQuote(c.Msg) + "')")
+		qb.WhereAnd("match('@Msg " + stringutils.EscapeQuote(c.Msg) + "')")
 	}
 	if c.QueuedAfter != 0 {
 		qb.WhereAnd("QueuedAt > " + strconv.FormatInt(c.QueuedAfter, 10))
@@ -495,31 +497,31 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 		qb.WhereAnd("ScheduledAt < " + strconv.FormatInt(c.ScheduledBefore, 10))
 	}
 	if c.RespID != "" {
-		qb.WhereAnd("RespID = '" + escapeQuote(c.RespID) + "'")
+		qb.WhereAnd("RespID = '" + stringutils.EscapeQuote(c.RespID) + "'")
 	}
 	if c.Connection != "" {
-		qb.WhereAnd("Connection = '" + escapeQuote(c.Connection) + "'")
+		qb.WhereAnd("Connection = '" + stringutils.EscapeQuote(c.Connection) + "'")
 	}
 	if c.ConnectionGroup != "" {
-		qb.WhereAnd("ConnectionGroup = '" + escapeQuote(c.ConnectionGroup) + "'")
+		qb.WhereAnd("ConnectionGroup = '" + stringutils.EscapeQuote(c.ConnectionGroup) + "'")
 	}
 	if c.Src != "" {
-		qb.WhereAnd("Src = '" + escapeQuote(c.Src) + "'")
+		qb.WhereAnd("Src = '" + stringutils.EscapeQuote(c.Src) + "'")
 	}
 	if c.Dst != "" {
-		qb.WhereAnd("Dst = '" + escapeQuote(c.Dst) + "'")
+		qb.WhereAnd("Dst = '" + stringutils.EscapeQuote(c.Dst) + "'")
 	}
 	if c.Enc != "" {
-		qb.WhereAnd("Enc = '" + escapeQuote(c.Enc) + "'")
+		qb.WhereAnd("Enc = '" + stringutils.EscapeQuote(c.Enc) + "'")
 	}
 	if c.Status != "" {
-		qb.WhereAnd("Status = '" + escapeQuote(string(c.Status)) + "'")
+		qb.WhereAnd("Status = '" + stringutils.EscapeQuote(string(c.Status)) + "'")
 	}
-	if c.CampaignID != "" {
-		qb.WhereAnd("CampaignID = '" + escapeQuote(c.CampaignID) + "'")
+	if c.CampaignID != 0 {
+		qb.WhereAnd("CampaignID = " + strconv.Itoa(int(c.CampaignID)))
 	}
 	if c.Error != "" {
-		qb.WhereAnd("Error = '" + escapeQuote(string(c.Error)) + "'")
+		qb.WhereAnd("Error = '" + stringutils.EscapeQuote(string(c.Error)) + "'")
 	}
 	if c.Total > 0 {
 		qb.WhereAnd("Total = " + strconv.Itoa(c.Total))
@@ -533,13 +535,20 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 			orderDir = "ASC"
 		}
 		if from != nil {
+			switch from.(type) {
+			case int:
+				from = strconv.Itoa(from.(int))
+			case int64:
+				from = strconv.FormatInt(from.(int64), 10)
+
+			}
 			if orderDir == "ASC" {
-				qb.WhereAnd(escapeQuote(c.OrderByKey) + " > '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
+				qb.WhereAnd(stringutils.EscapeQuote(c.OrderByKey) + " > '" + stringutils.EscapeQuote(fmt.Sprintf("%s", from)) + "'")
 			} else {
-				qb.WhereAnd(escapeQuote(c.OrderByKey) + " < '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
+				qb.WhereAnd(stringutils.EscapeQuote(c.OrderByKey) + " < '" + stringutils.EscapeQuote(fmt.Sprintf("%s", from)) + "'")
 			}
 		}
-		qb.OrderBy(escapeQuote(c.OrderByKey) + " " + orderDir)
+		qb.OrderBy(stringutils.EscapeQuote(c.OrderByKey) + " " + orderDir)
 	}
 	return qb
 }

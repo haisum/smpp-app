@@ -1,10 +1,7 @@
 package fresh
 
 import (
-	"encoding/json"
-
 	log "github.com/Sirupsen/logrus"
-	r "github.com/dancannon/gorethink"
 	"golang.org/x/crypto/bcrypt"
 )
 

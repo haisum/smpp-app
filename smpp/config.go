@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"encoding/json"
 	"database/sql/driver"
-	"bytes"
-	"compress/gzip"
 )
 
 // Config represents all settings defined in settings file
