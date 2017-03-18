@@ -10,7 +10,6 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/utils"
 	log "github.com/Sirupsen/logrus"
-	r "github.com/dancannon/gorethink"
 	"encoding/json"
 	"database/sql/driver"
 	goqu "gopkg.in/doug-martin/goqu.v3"
@@ -168,10 +167,11 @@ func SaveInSphinx(m []Message, isUpdate bool) error {
 		}
 		params := []interface{}{
 			v.ID, v.Msg, v.Username, v.ConnectionGroup,
-			v.Connection, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
-			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, v.Campaign, string(v.Status), v.Error,
+			v.Connection, v.ID, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
+			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, string(v.Status), v.Error,
 			v.Username, v.ScheduledAt, isFlash,
 		}
+		params = escapeQuotes(params...)
 		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s',
 			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d)`, params...)
 		valuePart = append(valuePart, values)
@@ -224,6 +224,24 @@ func (m *Message) Update() error {
 	}
 	err = SaveInSphinx([]Message{*m}, true)
 	return err
+}
+
+func SaveDeliveryInSphinx(respID string) error {
+	respID = escapeQuote(respID)
+
+	sp := sphinx.Get()
+	//query := fmt.Sprintf(`SELECT ID FROM Message WHERE RespID = '%s'`, respID)
+	query := sp.From("Message").Select("ID").Where(goqu.I("RespID").Eq(respID))
+	var id int64
+	found, err := query.ScanVal(&id)
+	if err != nil || !found {
+		return err
+	}
+	m, err := GetMessage(id)
+	if err != nil {
+		return err
+	}
+	return SaveInSphinx([]Message{m}, true)
 }
 
 func StopCampaignInSphinx(campaignID string) error {
@@ -347,7 +365,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 	}
 	qb.Limit(strconv.Itoa(c.PerPage))
 	log.WithFields(log.Fields{"query": qb.GetQuery() + "  option max_matches=500000", "crtieria": c}).Info("Running query.")
-	err = sphinx.Get().Select(&m, qb.GetQuery()+"  option max_matches=500000")
+	err = sphinx.Get().ScanStructs(&m, qb.GetQuery()+"  option max_matches=500000")
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
 	}
@@ -395,7 +413,7 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 
 	log.WithFields(log.Fields{"query": qb.GetQuery(), "crtieria": c}).Info("Running query.")
 	stats := make(map[string]int64, 8)
-	rows, err := sphinx.Get().Queryx(qb.GetQuery())
+	rows, err := sphinx.Get().Query(qb.GetQuery())
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
 		return m, err
@@ -439,13 +457,13 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 	}
 	if c.Username != "" {
 		if strings.HasPrefix(c.Username, "(re)") {
-			qb.WhereAnd("match('@Username " + c.Username + "')")
+			qb.WhereAnd("match('@Username " + escapeQuote(c.Username) + "')")
 		} else {
-			qb.WhereAnd("User = '" + c.Username + "'")
+			qb.WhereAnd("User = '" + escapeQuote(c.Username) + "'")
 		}
 	}
 	if c.Msg != "" {
-		qb.WhereAnd("match('@Msg " + c.Msg + "')")
+		qb.WhereAnd("match('@Msg " + escapeQuote(c.Msg) + "')")
 	}
 	if c.QueuedAfter != 0 {
 		qb.WhereAnd("QueuedAt > " + strconv.FormatInt(c.QueuedAfter, 10))
@@ -474,35 +492,32 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 	if c.ScheduledBefore != 0 {
 		qb.WhereAnd("ScheduledAt < " + strconv.FormatInt(c.ScheduledBefore, 10))
 	}
-	if c.ID != "" {
-		qb.WhereAnd("MsgID = '" + c.ID + "'")
-	}
 	if c.RespID != "" {
-		qb.WhereAnd("RespID = '" + c.RespID + "'")
+		qb.WhereAnd("RespID = '" + escapeQuote(c.RespID) + "'")
 	}
 	if c.Connection != "" {
-		qb.WhereAnd("Connection = '" + c.Connection + "'")
+		qb.WhereAnd("Connection = '" + escapeQuote(c.Connection) + "'")
 	}
 	if c.ConnectionGroup != "" {
-		qb.WhereAnd("ConnectionGroup = '" + c.ConnectionGroup + "'")
+		qb.WhereAnd("ConnectionGroup = '" + escapeQuote(c.ConnectionGroup) + "'")
 	}
 	if c.Src != "" {
-		qb.WhereAnd("Src = '" + c.Src + "'")
+		qb.WhereAnd("Src = '" + escapeQuote(c.Src) + "'")
 	}
 	if c.Dst != "" {
-		qb.WhereAnd("Dst = '" + c.Dst + "'")
+		qb.WhereAnd("Dst = '" + escapeQuote(c.Dst) + "'")
 	}
 	if c.Enc != "" {
-		qb.WhereAnd("Enc = '" + c.Enc + "'")
+		qb.WhereAnd("Enc = '" + escapeQuote(c.Enc) + "'")
 	}
 	if c.Status != "" {
-		qb.WhereAnd("Status = '" + string(c.Status) + "'")
+		qb.WhereAnd("Status = '" + escapeQuote(string(c.Status)) + "'")
 	}
 	if c.CampaignID != "" {
-		qb.WhereAnd("CampaignID = '" + c.CampaignID + "'")
+		qb.WhereAnd("CampaignID = '" + escapeQuote(c.CampaignID) + "'")
 	}
 	if c.Error != "" {
-		qb.WhereAnd("Error = '" + string(c.Error) + "'")
+		qb.WhereAnd("Error = '" + escapeQuote(string(c.Error)) + "'")
 	}
 	if c.Total > 0 {
 		qb.WhereAnd("Total = " + strconv.Itoa(c.Total))
@@ -517,12 +532,12 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 		}
 		if from != nil {
 			if orderDir == "ASC" {
-				qb.WhereAnd(c.OrderByKey + " > '" + fmt.Sprintf("%s", from) + "'")
+				qb.WhereAnd(escapeQuote(c.OrderByKey) + " > '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
 			} else {
-				qb.WhereAnd(c.OrderByKey + " < '" + fmt.Sprintf("%s", from) + "'")
+				qb.WhereAnd(escapeQuote(c.OrderByKey)+ " < '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
 			}
 		}
-		qb.OrderBy(c.OrderByKey + " " + orderDir)
+		qb.OrderBy(escapeQuote(c.OrderByKey) + " " + orderDir)
 	}
 	return qb
 }
@@ -573,4 +588,18 @@ func (m *Message) Validate() []string {
 		}
 	}
 	return errors
+}
+
+func escapeQuotes(args ...interface{}) []interface{} {
+	for k, v := range args{
+		switch v.(type) {
+		case string:
+			args[k] = strings.Replace(v.(string),"'", "\\'", -1)
+		}
+	}
+	return args
+}
+
+func escapeQuote(arg string) string {
+	return strings.Replace(arg,"'", "\\'", -1)
 }

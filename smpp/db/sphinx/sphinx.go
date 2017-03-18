@@ -1,11 +1,10 @@
 package sphinx
 
 import (
+	"database/sql"
 	"fmt"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-sql-driver/mysql"
-	"database/sql"
 	goqu "gopkg.in/doug-martin/goqu.v3"
 )
 
@@ -30,6 +29,11 @@ func Connect(host, port string) (*goqu.Database, error) {
 	if err != nil {
 		return db, err
 	}
+	_, err = db.Exec("SET NAMES utf8")
+	if err != nil {
+		log.WithError(err).Error("Couldn't run SET NAMES utf8")
+	}
+
 	return db, err
 }
 func Get() *goqu.Database {
