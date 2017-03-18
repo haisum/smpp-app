@@ -6,7 +6,7 @@ import (
 	r "github.com/dancannon/gorethink"
 )
 
-func filterBetweenInt(fields map[string]map[string]int64, t r.Term) (r.Term, bool) {
+func FilterBetweenInt(fields map[string]map[string]int64, t r.Term) (r.Term, bool) {
 	var filtered bool
 	for field, vals := range fields {
 		if vals["after"] > 0 && vals["before"] > 0 {
@@ -35,7 +35,7 @@ func filterBetweenInt(fields map[string]map[string]int64, t r.Term) (r.Term, boo
 	return t, filtered
 }
 
-func filterEqStr(fields map[string]string, t r.Term) (r.Term, bool) {
+func FilterEqStr(fields map[string]string, t r.Term) (r.Term, bool) {
 	var filtered bool
 	for field, val := range fields {
 		if val != "" {
@@ -46,7 +46,7 @@ func filterEqStr(fields map[string]string, t r.Term) (r.Term, bool) {
 	return t, filtered
 }
 
-func orderBy(key, dir string, from interface{}, t r.Term, indexUsed, filterUsed bool) r.Term {
+func OrderBy(key, dir string, from interface{}, t r.Term, indexUsed, filterUsed bool) r.Term {
 	var order func(args ...interface{}) r.Term
 	if strings.ToUpper(dir) == "ASC" {
 		order = r.Asc

@@ -6,15 +6,16 @@ import (
 	"strings"
 	"time"
 
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
+	"sync"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/utils"
 	log "github.com/Sirupsen/logrus"
-	"encoding/json"
-	"database/sql/driver"
 	goqu "gopkg.in/doug-martin/goqu.v3"
-	"sync"
-	"errors"
 )
 
 type deliverySM map[string]string
@@ -24,6 +25,7 @@ func (dsm *deliverySM) Scan(src interface{}) error {
 	err := json.Unmarshal(src.([]byte), dsm)
 	return err
 }
+
 // Value implements the driver.Valuer interface
 func (dsm *deliverySM) Value() (driver.Value, error) {
 	return json.Marshal(dsm)
@@ -154,7 +156,7 @@ func SaveInSphinx(m []Message, isUpdate bool) error {
 		return errors.New("No messages provided to save.")
 	}
 	op := "INSERT"
-	if isUpdate{
+	if isUpdate {
 		op = "REPLACE"
 	}
 	query := op + ` INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst,
@@ -209,7 +211,7 @@ func SaveBulk(m []Message) ([]int64, error) {
 		log.WithError(err).WithField("affected", affected).Error("Couldn't load last inserted ids")
 		return ids, err
 	}
-	for k := affected - 1; k >=0; k-- {
+	for k := affected - 1; k >= 0; k-- {
 		m[k].ID = ids[k]
 	}
 	err = SaveInSphinx(m, false)
@@ -218,7 +220,7 @@ func SaveBulk(m []Message) ([]int64, error) {
 
 // Update updates an existing message in Message table
 func (m *Message) Update() error {
-	_, err  := db.Get().From("Message").Where(goqu.I("id").Eq(m.ID)).Update(m).Exec()
+	_, err := db.Get().From("Message").Where(goqu.I("id").Eq(m.ID)).Update(m).Exec()
 	if err != nil {
 		return err
 	}
@@ -276,7 +278,7 @@ func SaveDelivery(respID, status string) error {
 		RespID: respID,
 	})
 	if len(ms) < 1 || err != nil {
-		log.WithFields(log.Fields{"ms" : ms, "error" : err, "respID": respID}).Error("Couldn't get msgs with respID")
+		log.WithFields(log.Fields{"ms": ms, "error": err, "respID": respID}).Error("Couldn't get msgs with respID")
 	}
 	err = SaveInSphinx(ms, true)
 	if err != nil {
@@ -290,7 +292,7 @@ func GetMessage(id int64) (Message, error) {
 	var m Message
 	found, err := db.Get().From("Message").Where(goqu.I("id").Eq(id)).ScanStruct(&m)
 	if err != nil || !found {
-		log.WithFields(log.Fields{"error" : err, "id" : id}).Error("Couldn't get msg.")
+		log.WithFields(log.Fields{"error": err, "id": id}).Error("Couldn't get msg.")
 	}
 	return m, nil
 }
@@ -298,11 +300,11 @@ func GetMessage(id int64) (Message, error) {
 // StopPendingMessages marks stopped as true in all messages which are queued or scheduled in a campaign
 func StopPendingMessages(campID string) (int64, error) {
 	res, err := db.Get().From("Message").Where(goqu.I("CampaignID").Eq(campID),
-			goqu.Or(
-				goqu.I("Status").Eq(MsgQueued),
-				goqu.I("Status").Eq(MsgScheduled),
-			),
-	).Update(goqu.Record{"Status" : MsgStopped}).Exec()
+		goqu.Or(
+			goqu.I("Status").Eq(MsgQueued),
+			goqu.I("Status").Eq(MsgScheduled),
+		),
+	).Update(goqu.Record{"Status": MsgStopped}).Exec()
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query")
 		return 0, err
@@ -534,7 +536,7 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 			if orderDir == "ASC" {
 				qb.WhereAnd(escapeQuote(c.OrderByKey) + " > '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
 			} else {
-				qb.WhereAnd(escapeQuote(c.OrderByKey)+ " < '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
+				qb.WhereAnd(escapeQuote(c.OrderByKey) + " < '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
 			}
 		}
 		qb.OrderBy(escapeQuote(c.OrderByKey) + " " + orderDir)
@@ -588,18 +590,4 @@ func (m *Message) Validate() []string {
 		}
 	}
 	return errors
-}
-
-func escapeQuotes(args ...interface{}) []interface{} {
-	for k, v := range args{
-		switch v.(type) {
-		case string:
-			args[k] = strings.Replace(v.(string),"'", "\\'", -1)
-		}
-	}
-	return args
-}
-
-func escapeQuote(arg string) string {
-	return strings.Replace(arg,"'", "\\'", -1)
 }
