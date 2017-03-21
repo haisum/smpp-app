@@ -18,7 +18,7 @@ import (
 // Message represents a smpp message
 type Message struct {
 	ID              string `gorethink:"id,omitempty" db:"msgid"`
-	SphinxID        uint32    `json:"-" gorethink:"-" db:"id"`
+	SphinxID        uint64    `json:"-" gorethink:"-" db:"id"`
 	RespID          string
 	DeliverySM      map[string]string `gorethink:"DeliverySM,omitempty"`
 	ConnectionGroup string
@@ -222,7 +222,7 @@ func (m *Message) Update() error {
 	return err
 }
 
-func (m *Message) GetSphinxID() uint32 {
+func (m *Message) GetSphinxID() uint64 {
 	return hashID(m.ID)
 }
 
@@ -639,10 +639,10 @@ func (m *Message) Validate() []string {
 	return errors
 }
 
-func hashID(id string) uint32 {
-	h := fnv.New32a()
+func hashID(id string) uint64 {
+	h := fnv.New64a()
 	h.Write([]byte(id))
-	return h.Sum32()
+	return h.Sum64()
 }
 
 func escapeQuotes(args ...interface{}) []interface{} {
