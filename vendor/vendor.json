@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "hecYcWxjS2SO6KV8MGoRI1IvEIE=",
+			"path": "github.com/CodeMonkeyKevin/smpp34",
+			"revision": "64ebae2761d30adfd9ef81e352afc85d7c9a426f",
+			"revisionTime": "2016-09-07T17:14:27Z"
+		},
+		{
 			"checksumSHA1": "AjF8ojr4eZ+BWzYuohXs7QX/oDc=",
 			"path": "github.com/Sirupsen/logrus",
 			"revision": "1445b7a38228c041834afc69231b7966b9943397",
@@ -43,6 +49,12 @@
 			"path": "github.com/fiorix/go-smpp/smpp/pdu/pdutext",
 			"revision": "133c072da8a8ac158cb7029d5b0d0aa8488a6103",
 			"revisionTime": "2016-11-05T17:52:31Z"
+		},
+		{
+			"checksumSHA1": "QD6LqgLz2JMxXqns8TaxtK9AuHs=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "2e00b5cd70399450106cec6431c2e2ce3cae5034",
+			"revisionTime": "2016-12-24T12:10:19Z"
 		},
 		{
 			"checksumSHA1": "V+dsLhBAmvoCO7yIk8VXEh/8r+M=",
@@ -177,6 +189,12 @@
 			"revisionTime": "2016-10-26T11:09:11Z"
 		},
 		{
+			"checksumSHA1": "uR1qI7p56R7u43DJGoYtyRleQpA=",
+			"path": "gopkg.in/DATA-DOG/go-sqlmock.v1",
+			"revision": "b983233bc0bbea4dc6e8ec8c8c923d935765ffec",
+			"revisionTime": "2017-02-21T15:59:18Z"
+		},
+		{
 			"checksumSHA1": "LssmYQA937OrxfqkGkWBG5Ihu1U=",
 			"path": "gopkg.in/dancannon/gorethink.v2/encoding",
 			"revision": "016a1d3b4d15951ab2e39bd3596718ba94d298ba",
@@ -193,6 +211,18 @@
 			"path": "gopkg.in/dancannon/gorethink.v2/types",
 			"revision": "016a1d3b4d15951ab2e39bd3596718ba94d298ba",
 			"revisionTime": "2016-09-25T19:24:06Z"
+		},
+		{
+			"checksumSHA1": "uH77DzM89nT4WBNrcUHzj04esM4=",
+			"path": "gopkg.in/doug-martin/goqu.v3",
+			"revision": "3fb96709c55732c801fed9abf32dad24c1090887",
+			"revisionTime": "2016-11-17T04:30:02Z"
+		},
+		{
+			"checksumSHA1": "gD8VeTCmtUUw+WY0sc4q5STVjxU=",
+			"path": "gopkg.in/doug-martin/goqu.v3/adapters/mysql",
+			"revision": "3fb96709c55732c801fed9abf32dad24c1090887",
+			"revisionTime": "2016-11-17T04:30:02Z"
 		},
 		{
 			"checksumSHA1": "Va1eAZ2qb/K3Qu5yV7ZStjkmovs=",
