@@ -229,24 +229,6 @@ func (m *Message) Update() error {
 	return err
 }
 
-func SaveDeliveryInSphinx(respID string) error {
-	respID = stringutils.EscapeQuote(respID)
-
-	sp := sphinx.Get()
-	//query := fmt.Sprintf(`SELECT ID FROM Message WHERE RespID = '%s'`, respID)
-	query := sp.From("Message").Select("ID").Where(goqu.I("RespID").Eq(respID))
-	var id int64
-	found, err := query.ScanVal(&id)
-	if err != nil || !found {
-		return err
-	}
-	m, err := GetMessage(id)
-	if err != nil {
-		return err
-	}
-	return SaveInSphinx([]Message{m}, true)
-}
-
 func StopCampaignInSphinx(campaignID int64) error {
 	ms, err := GetMessages(Criteria{
 		CampaignID: campaignID,
@@ -294,6 +276,7 @@ func GetMessage(id int64) (Message, error) {
 	found, err := db.Get().From("Message").Where(goqu.I("id").Eq(id)).ScanStruct(&m)
 	if err != nil || !found {
 		log.WithFields(log.Fields{"error": err, "id": id}).Error("Couldn't get msg.")
+		return m, errors.New("Couldn't get message.")
 	}
 	return m, nil
 }
