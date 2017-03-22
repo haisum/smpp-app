@@ -1,22 +1,20 @@
 package models
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
-	"time"
-
-	"database/sql/driver"
-	"encoding/json"
-	"errors"
-	"sync"
-
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/utils"
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	goqu "gopkg.in/doug-martin/goqu.v3"
-	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
 type deliverySM map[string]string
