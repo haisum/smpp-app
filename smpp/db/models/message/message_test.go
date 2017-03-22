@@ -210,27 +210,102 @@ func TestGetMessage(t *testing.T) {
 }
 
 func TestGetMessageStats(t *testing.T) {
-
+	sp, mock, _ := sphinx.ConnectMock(t)
+	defer sp.Db.Close()
+	db, dbmock, _ := db.ConnectMock(t)
+	defer db.Db.Close()
+	GetMessageStats(Criteria{})
+	if err := mock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+	if err := dbmock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
 }
 
 func TestGetQueuedMessages(t *testing.T) {
-
+	sp, mock, _ := sphinx.ConnectMock(t)
+	defer sp.Db.Close()
+	db, dbmock, _ := db.ConnectMock(t)
+	defer db.Db.Close()
+	GetQueuedMessages(1)
+	if err := mock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+	if err := dbmock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
 }
 
 func TestGetMessages(t *testing.T) {
-
+	sp, mock, _ := sphinx.ConnectMock(t)
+	defer sp.Db.Close()
+	db, dbmock, _ := db.ConnectMock(t)
+	defer db.Db.Close()
+	GetMessages(Criteria{})
+	if err := mock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+	if err := dbmock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
 }
 
 func TestMessage_Save(t *testing.T) {
-
+	sp, mock, _ := sphinx.ConnectMock(t)
+	defer sp.Db.Close()
+	db, dbmock, _ := db.ConnectMock(t)
+	defer db.Db.Close()
+	//m := Message{}
+	//m.Save()
+	t.Fail()
+	if err := mock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+	if err := dbmock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
 }
 
 func TestMessage_Update(t *testing.T) {
-
+	sp, mock, _ := sphinx.ConnectMock(t)
+	defer sp.Db.Close()
+	db, dbmock, _ := db.ConnectMock(t)
+	defer db.Db.Close()
+	m := Message{}
+	m.Update()
+	if err := mock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+	if err := dbmock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
 }
 
 func TestSaveBulk(t *testing.T) {
-
+	sp, mock, _ := sphinx.ConnectMock(t)
+	defer sp.Db.Close()
+	db, dbmock, _ := db.ConnectMock(t)
+	defer db.Db.Close()
+	SaveBulk([]Message{})
+	if err := mock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+	if err := dbmock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
 }
 
 func TestSaveDelivery(t *testing.T) {
@@ -240,6 +315,7 @@ func TestSaveDelivery(t *testing.T) {
 	defer db.Db.Close()
 	query  := `"RespID" = '1234abcd'`
 	mock.ExpectQuery(query).WillReturnRows(sqlmock.NewRows([]string{"ID"}).AddRow("1"))
+	dbmock.ExpectExec(`UPDATE "Message" SET "DeliveredAt"=1490208704,"Status"='Delivered' WHERE \("RespID" = '1234abcd'\)`).WillReturnResult(sqlmock.NewResult(0, 1))
 	dbmock.ExpectQuery(`SELECT "campaign"`).WillReturnRows(sqlmock.NewRows([]string{"id", "respid", "isflash"}).AddRow(1, "1234abcd", 1))
 	mock.ExpectExec("REPLACE INTO Message.*1234abcd").WillReturnResult(sqlmock.NewResult(0, 1))
 	// now we execute our method
@@ -247,6 +323,38 @@ func TestSaveDelivery(t *testing.T) {
 		t.Errorf("error was not expected while saving delivery: %s", err)
 		t.Fail()
 	}
+	if err := mock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+	if err := dbmock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+}
+
+func TestStopPendingMessages(t *testing.T) {
+	sp, mock, _ := sphinx.ConnectMock(t)
+	defer sp.Db.Close()
+	db, dbmock, _ := db.ConnectMock(t)
+	defer db.Db.Close()
+	StopPendingMessages(1)
+	if err := mock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+	if err := dbmock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+}
+
+func TestSaveInSphinx(t *testing.T) {
+	sp, mock, _ := sphinx.ConnectMock(t)
+	defer sp.Db.Close()
+	db, dbmock, _ := db.ConnectMock(t)
+	defer db.Db.Close()
+	SaveInSphinx([]Message{}, false)
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
 		t.Fail()
