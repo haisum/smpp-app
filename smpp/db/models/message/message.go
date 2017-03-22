@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/fatih/structs"
 )
 
 type deliverySM map[string]string
@@ -137,7 +138,7 @@ var bulkInsertLock sync.Mutex
 func (m *Message) Save() (string, error) {
 	var id string
 	con := db.Get()
-	result, err := con.From("Message").Insert(m).Exec()
+	result, err := con.From("Message").Insert(structs.Map(m)).Exec()
 	if err != nil {
 		log.WithError(err).Error("Couldn't insert message.")
 	}
@@ -219,7 +220,7 @@ func SaveBulk(m []Message) ([]int64, error) {
 
 // Update updates an existing message in Message table
 func (m *Message) Update() error {
-	_, err := db.Get().From("Message").Where(goqu.I("id").Eq(m.ID)).Update(m).Exec()
+	_, err := db.Get().From("Message").Where(goqu.I("id").Eq(m.ID)).Update(structs.Map(m)).Exec()
 	if err != nil {
 		return err
 	}

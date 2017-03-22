@@ -6,6 +6,7 @@ import (
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"regexp"
 )
 
 func TestMessage_Validate(t *testing.T) {
@@ -246,7 +247,22 @@ func TestGetMessages(t *testing.T) {
 	defer sp.Db.Close()
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
-	GetMessages(Criteria{})
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM Message WHERE QueuedAt < '344' ORDER BY QueuedAt DESC`)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1).AddRow(2))
+	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT \"campaign\", \"campaignid\", \"connection\", \"connectiongroup\", \"deliveredat\", \"dst\", \"enc\", \"error\", \"id\", \"isflash\", \"msg\", \"priority\", \"queuedat\", \"realmsg\", \"respid\", \"scheduledat\", \"sendafter\", \"sendbefore\", \"sentat\", \"src\", \"status\", \"total\", \"username\" FROM \"Message\" WHERE (\"id\" = 1) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(1, "hello"))
+	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT \"campaign\", \"campaignid\", \"connection\", \"connectiongroup\", \"deliveredat\", \"dst\", \"enc\", \"error\", \"id\", \"isflash\", \"msg\", \"priority\", \"queuedat\", \"realmsg\", \"respid\", \"scheduledat\", \"sendafter\", \"sendbefore\", \"sentat\", \"src\", \"status\", \"total\", \"username\" FROM \"Message\" WHERE (\"id\" = 1) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(1, "hello"))
+	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT \"campaign\", \"campaignid\", \"connection\", \"connectiongroup\", \"deliveredat\", \"dst\", \"enc\", \"error\", \"id\", \"isflash\", \"msg\", \"priority\", \"queuedat\", \"realmsg\", \"respid\", \"scheduledat\", \"sendafter\", \"sendbefore\", \"sentat\", \"src\", \"status\", \"total\", \"username\" FROM \"Message\" WHERE (\"id\" = 2) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(2, "world"))
+	ms, err := GetMessages(Criteria{
+		From : "344",
+		FetchMsg: true,
+	})
+	if err != nil {
+		t.Errorf("Error %s", err)
+		t.Fail()
+	}
+	if len (ms) != 2{
+		t.Errorf("Unexpected msg count %d", len(ms))
+		t.Fail()
+	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
 		t.Fail()
@@ -280,24 +296,17 @@ func TestMessage_Update(t *testing.T) {
 	defer sp.Db.Close()
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
-	m := Message{}
-	m.Update()
-	if err := mock.ExpectationsWereMet(); err != nil{
-		t.Errorf("there were unfulfilled expections: %s", err)
+	dbmock.ExpectExec("UPDATE Messages").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("REPLACE INTO messages").WillReturnResult(sqlmock.NewResult(0, 1))
+	m := Message{
+		ID: 34,
+		Msg : "asdf",
+	}
+	err := m.Update()
+	if err != nil {
+		t.Errorf("%s", err)
 		t.Fail()
 	}
-	if err := dbmock.ExpectationsWereMet(); err != nil{
-		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
-	}
-}
-
-func TestSaveBulk(t *testing.T) {
-	sp, mock, _ := sphinx.ConnectMock(t)
-	defer sp.Db.Close()
-	db, dbmock, _ := db.ConnectMock(t)
-	defer db.Db.Close()
-	SaveBulk([]Message{})
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
 		t.Fail()
@@ -313,10 +322,8 @@ func TestSaveDelivery(t *testing.T) {
 	defer sp.Db.Close()
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
-	query  := `"RespID" = '1234abcd'`
-	mock.ExpectQuery(query).WillReturnRows(sqlmock.NewRows([]string{"ID"}).AddRow("1"))
-	dbmock.ExpectExec(`UPDATE "Message" SET "DeliveredAt"=1490208704,"Status"='Delivered' WHERE \("RespID" = '1234abcd'\)`).WillReturnResult(sqlmock.NewResult(0, 1))
-	dbmock.ExpectQuery(`SELECT "campaign"`).WillReturnRows(sqlmock.NewRows([]string{"id", "respid", "isflash"}).AddRow(1, "1234abcd", 1))
+	mock.ExpectQuery(`SELECT \* FROM Message WHERE RespID = '1234abcd'`).WillReturnRows(sqlmock.NewRows([]string{"id", "respid"}).AddRow(1, "1234abcd"))
+	dbmock.ExpectExec(`UPDATE "Message" SET "DeliveredAt"=\d+,"Status"='Delivered' WHERE \("RespID" = '1234abcd'\)`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("REPLACE INTO Message.*1234abcd").WillReturnResult(sqlmock.NewResult(0, 1))
 	// now we execute our method
 	if err := SaveDelivery("1234abcd", string(Delivered)); err != nil {
@@ -338,23 +345,18 @@ func TestStopPendingMessages(t *testing.T) {
 	defer sp.Db.Close()
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
-	StopPendingMessages(1)
-	if err := mock.ExpectationsWereMet(); err != nil{
-		t.Errorf("there were unfulfilled expections: %s", err)
+	dbmock.ExpectExec(regexp.QuoteMeta(`UPDATE "Message" SET "Status"='Stopped' WHERE (("CampaignID" = 1) AND (("Status" = 'Queued') OR ("Status" = 'Scheduled')))`)).WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectQuery(`SELECT \* FROM Message WHERE Status = 'Stopped' AND CampaignID = 1`).WillReturnRows(sqlmock.NewRows([]string{"id", "status", "campaignid"}).AddRow(1, "Stopped", 1).AddRow(2, "Stopped", 1))
+	mock.ExpectExec(regexp.QuoteMeta(`REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES (1, '', '', '', '', 1, '', 0, '', '', '', 0 , 0, 0, 0, 1, 'Stopped', '', '', 0, 0),(2, '', '', '', '', 2, '', 0, '', '', '', 0 , 0, 0, 0, 1, 'Stopped', '', '', 0, 0)`)).WillReturnResult(sqlmock.NewResult(0, 2))
+	n, err := StopPendingMessages(1)
+	if err != nil {
+		t.Errorf("Error %s was not expected", err)
 		t.Fail()
 	}
-	if err := dbmock.ExpectationsWereMet(); err != nil{
-		t.Errorf("there were unfulfilled expections: %s", err)
+	if n != 2 {
+		t.Errorf("2 expected, got %d", n)
 		t.Fail()
 	}
-}
-
-func TestSaveInSphinx(t *testing.T) {
-	sp, mock, _ := sphinx.ConnectMock(t)
-	defer sp.Db.Close()
-	db, dbmock, _ := db.ConnectMock(t)
-	defer db.Db.Close()
-	SaveInSphinx([]Message{}, false)
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
 		t.Fail()
