@@ -8,40 +8,14 @@ import (
 	"github.com/streadway/amqp"
 )
 
-var (
-	q MQ
-)
 
-// MQ is interface implemented by messaging queue backend's client library
-type MQ interface {
-	Init(url string, ex string, pCount int) error
-	Publish(key string, msg []byte, priority Priority) error
-	Bind(group string, keys []string, handler Handler) error
-	Close() error
+type rabbitDelivery struct {
+	amqp.Delivery
 }
 
-// SetQueue sets queue equal to object that implements MQ interface. This function shouldn't be used unless you're testing.
-// GetQueue takes care of setting a rabbitmq object if q is not set yet.
-func setQueue(mq MQ) {
-	q = mq
+func (r *rabbitDelivery) Body() []byte{
+	return r.Delivery.Body
 }
-
-// GetQueue returns a rabbit object. It makes one connection per process life and reuses same rabbitmq connection.
-func GetQueue(url string, ex string, pCount int) (MQ, error) {
-	if q == nil {
-		setQueue(&rabbit{})
-		err := q.Init(url, ex, pCount)
-		return q, err
-	}
-	return q, nil
-}
-
-// Priority represents priority of a message. O is default priority
-// Higher number means higher priority. 10 is max priority after that, every number is considered to be 10
-type Priority uint8
-
-// Handler is a function which accepts deliveries channel and a error channel to indicate when processing is done
-type Handler func(<-chan amqp.Delivery, chan error)
 
 // rabbit implements MQ interface and holds host and port to connect to for rabbit mq and other properties for internal use
 type rabbit struct {
@@ -56,7 +30,7 @@ type rabbit struct {
 
 // Init takes url, exchange name and burst count as argument and
 // creates a new exchange, on rabbitmq url
-func (r *rabbit) Init(url string, ex string, pCount int) error {
+func (r *rabbit) init(url string, ex string, pCount int) error {
 	r.url = url
 	r.ex = ex
 	r.pCount = pCount
@@ -143,7 +117,7 @@ func (r *rabbit) Publish(key string, msg []byte, priority Priority) error {
 			"msg": string(msg),
 			"err": err,
 		}).Error("Error in publishing message. Retrying.")
-		r.Init(r.url, r.ex, r.pCount)
+		r.init(r.url, r.ex, r.pCount)
 		err = r.Ch.Publish(
 			r.ex,  // exchange
 			key,   // routing key
@@ -164,9 +138,8 @@ func (r *rabbit) Publish(key string, msg []byte, priority Priority) error {
 
 // Bind binds to queue defined by routing keys on exchange supplied to Init method.
 // This method must be called after Init, otherwise it would fail.
-func (r *rabbit) Bind(group string, keys []string, handler Handler) error {
+func (r *rabbit) Bind(keys []string, handler Handler) error {
 	for _, k := range keys {
-		k = fmt.Sprintf("%s-%s", group, k)
 		q, err := r.Ch.QueueDeclare(
 			k,     // name
 			false, // durable
@@ -213,7 +186,17 @@ func (r *rabbit) Bind(group string, keys []string, handler Handler) error {
 			log.WithField("err", err).Error("Failed to register a consumer.")
 			return err
 		}
-		go handler(r.msgs, r.done)
+		go func() {
+			for m := range r.msgs{
+				rd := rabbitDelivery{
+					Delivery: m,
+				}
+				handler(rd)
+			}
+			log.Printf("deliveries channel closed")
+			r.done <- nil
+			log.Fatal("Exiting abnormally because rabbitmq has disconnected.")
+		}()
 	}
 	return nil
 }

@@ -43,32 +43,24 @@ const (
 // deliveries channel gets data when a new job is to be consumed by worker
 // This function should wait for done channel before terminating so that all
 // pending jobs should be finished and rabbitmq should be notified about disconnect
-func handler(deliveries <-chan amqp.Delivery, done chan error) {
-	for d := range deliveries {
-		var i queue.Item
-		err := i.FromJSON(d.Body)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"err":  err,
-				"body": d.Body,
-			}).Error("Failed in parsing json.")
-			d.Nack(false, true)
-			return
-		}
-		<-dlvTick.C
-		for c := 1; c < i.Total; c++ {
-			<-dlvTick.C
-		}
-		go send(i)
-		d.Ack(false)
+func handler(d queue.QueueDelivery) {
+	var i queue.Item
+	err := i.FromJSON(d.Body())
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":  err,
+			"body": d.Body,
+		}).Error("Failed in parsing json.")
+		d.Nack(false, true)
+		return
 	}
-	log.Printf("handle: deliveries channel closed")
-	log.Fatal("Exiting worker abnormally because rabbitmq has disconnected.")
-	done <- nil
+	<-dlvTick.C
+	for c := 1; c < i.Total; c++ {
+		<-dlvTick.C
+	}
+	go send(i)
+	d.Ack(false)
 }
-
-// This is called per job and as a separate go routing
-// This function is responsible for acknowledging the job completion to rabbitmq
 // This function also increments count by ceil of number of characters divided by number of characters per message.
 // When count reaches a certain number defined per connection, worker waits for time t defined in configuration before resuming operations.
 func send(i queue.Item) {
