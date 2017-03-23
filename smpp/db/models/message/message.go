@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"github.com/fatih/structs"
 )
 
 type deliverySM map[string]string
@@ -32,31 +31,32 @@ func (dsm *deliverySM) Value() (driver.Value, error) {
 }
 
 // Message represents a smpp message
+// @todo check if it inserts properly using goqu
 type Message struct {
 	ID              int64 `db:"id" goqu:"skipinsert"`
-	RespID          string
-	ConnectionGroup string
-	Connection      string
-	Total           int
-	Username        string
-	Msg             string
+	RespID          string `db:"respid"`
+	ConnectionGroup string `db:"connectiongroup"`
+	Connection      string `db:"connection"`
+	Total           int `db:"total"`
+	Username        string `db:"username"`
+	Msg             string `db:"msg"`
 	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
-	RealMsg     string `json:"-"`
-	Enc         string
-	Dst         string
-	Src         string
-	Priority    int
-	QueuedAt    int64
-	SentAt      int64
-	DeliveredAt int64
-	CampaignID  int64
-	Campaign    string
-	Status      Status
-	Error       string
-	SendBefore  string
-	SendAfter   string
-	ScheduledAt int64
-	IsFlash     bool
+	RealMsg     string `json:"-" db:"realmsg"`
+	Enc         string `db:"enc"`
+	Dst         string `db:"dst"`
+	Src         string `db:"src"`
+	Priority    int `db:"priority"`
+	QueuedAt    int64 `db:"queuedat"`
+	SentAt      int64 `db:"sentat"`
+	DeliveredAt int64 `db:"deliveredat"`
+	CampaignID  int64 `db:"campaignid"`
+	Campaign    string `db:"campaign"`
+	Status      Status `db:"status"`
+	Error       string `db:"error"`
+	SendBefore  string `db:"sendbefore"`
+	SendAfter   string `db:"sendafter"`
+	ScheduledAt int64 `db:"scheduledat"`
+	IsFlash     bool `db:"isflash"`
 }
 
 // Criteria represents filters we can give to GetMessages method.
@@ -135,16 +135,16 @@ type Stats struct {
 var bulkInsertLock sync.Mutex
 
 // Save saves a message struct in Message table
-func (m *Message) Save() (string, error) {
-	var id string
+func (m *Message) Save() (int64, error) {
 	con := db.Get()
-	result, err := con.From("Message").Insert(structs.Map(m)).Exec()
+	result, err := con.From("Message").Insert(m).Exec()
 	if err != nil {
 		log.WithError(err).Error("Couldn't insert message.")
+		return 0, err
 	}
 	m.ID, err = result.LastInsertId()
 	err = SaveInSphinx([]Message{*m}, false)
-	return id, err
+	return m.ID, err
 }
 
 func SaveInSphinx(m []Message, isUpdate bool) error {
@@ -169,13 +169,13 @@ func SaveInSphinx(m []Message, isUpdate bool) error {
 		}
 		params := []interface{}{
 			v.ID, v.Msg, v.Username, v.ConnectionGroup,
-			v.Connection, v.ID, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
-			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, string(v.Status), v.Error,
+			v.Connection, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
+			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, v.Campaign, string(v.Status), v.Error,
 			v.Username, v.ScheduledAt, isFlash,
 		}
 		params = stringutils.EscapeQuotes(params...)
-		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', %d, '%s', %d, '%s', '%s', '%s',
-			%d , %d, %d, %d, %d, '%s', '%s', '%s', %d, %d)`, params...)
+		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s', %d,
+			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d)`, params...)
 		valuePart = append(valuePart, values)
 	}
 	query = query + strings.Join(valuePart, ",")
@@ -220,7 +220,7 @@ func SaveBulk(m []Message) ([]int64, error) {
 
 // Update updates an existing message in Message table
 func (m *Message) Update() error {
-	_, err := db.Get().From("Message").Where(goqu.I("id").Eq(m.ID)).Update(structs.Map(m)).Exec()
+	_, err := db.Get().From("Message").Where(goqu.I("id").Eq(m.ID)).Update(m).Exec()
 	if err != nil {
 		return err
 	}

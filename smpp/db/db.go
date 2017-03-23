@@ -59,6 +59,6 @@ func ConnectMock(t *testing.T) (*goqu.Database, sqlmock.Sqlmock, error) {
 		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
 		t.Fail()
 	}
-	db = goqu.New("msyql", con)
+	db = goqu.New("mysql", con)
 	return db, mock, err
 }

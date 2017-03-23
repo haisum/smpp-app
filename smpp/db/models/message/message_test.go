@@ -181,7 +181,7 @@ func TestGetErrorMessages(t *testing.T) {
 func TestGetMessage(t *testing.T) {
 	con, mock, _ := db.ConnectMock(t)
 	defer con.Db.Close()
-	mock.ExpectQuery(`"id" = 21`).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(21))
+	mock.ExpectQuery("`id` = 21").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(21))
 	msg, err := GetMessage(21)
 	if err != nil {
 		t.Errorf("error in getting msg. %s", err)
@@ -197,7 +197,7 @@ func TestGetMessage(t *testing.T) {
 	}
 	con, mock, _ = db.ConnectMock(t)
 	defer con.Db.Close()
-	mock.ExpectQuery(`"id" = 21`).WillReturnRows(sqlmock.NewRows([]string{"ID"}))
+	mock.ExpectQuery("`id` = 21").WillReturnRows(sqlmock.NewRows([]string{"ID"}))
 	msg, err = GetMessage(21)
 	if err == nil {
 		t.Error("error expected.")
@@ -213,14 +213,32 @@ func TestGetMessage(t *testing.T) {
 func TestGetMessageStats(t *testing.T) {
 	sp, mock, _ := sphinx.ConnectMock(t)
 	defer sp.Db.Close()
-	db, dbmock, _ := db.ConnectMock(t)
-	defer db.Db.Close()
-	GetMessageStats(Criteria{})
-	if err := mock.ExpectationsWereMet(); err != nil{
-		t.Errorf("there were unfulfilled expections: %s", err)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT status, count(*) as total FROM Message WHERE QueuedAt < '3245' GROUP BY Status ORDER BY QueuedAt DESC")).WillReturnRows(
+		sqlmock.NewRows([]string{"status", "total"}).AddRow(
+			string(Queued), 1).AddRow(
+			string(Error) , 4).AddRow(
+			string(Sent) , 2).AddRow(
+			string(Delivered) , 65).AddRow(
+			string(NotDelivered) , 12).AddRow(
+			string(Scheduled) , 45).AddRow(
+			string(Stopped) , 23))
+	stats, err := GetMessageStats(Criteria{
+		From : "3245",
+	})
+	if err != nil {
+		t.Errorf("Error: %s", err)
 		t.Fail()
 	}
-	if err := dbmock.ExpectationsWereMet(); err != nil{
+	if stats.Stopped != 23 || stats.Scheduled != 45 || stats.Sent != 2 || stats.Delivered != 65  || stats.NotDelivered != 12 || stats.Error != 4 || stats.Queued != 1{
+		t.Errorf("Error unexpected stats: %+v", stats)
+		t.Fail()
+	}
+	if stats.Total != 152 {
+		t.Errorf("Error unexpected stats: %+v", stats)
+		t.Fail()
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
 		t.Fail()
 	}
@@ -229,14 +247,29 @@ func TestGetMessageStats(t *testing.T) {
 func TestGetQueuedMessages(t *testing.T) {
 	sp, mock, _ := sphinx.ConnectMock(t)
 	defer sp.Db.Close()
-	db, dbmock, _ := db.ConnectMock(t)
-	defer db.Db.Close()
-	GetQueuedMessages(1)
-	if err := mock.ExpectationsWereMet(); err != nil{
-		t.Errorf("there were unfulfilled expections: %s", err)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Message WHERE Status = 'Queued' AND CampaignID = 33 ORDER BY QueuedAt DESC LIMIT 500000 option max_matches=500000")).WillReturnRows(
+		sqlmock.NewRows([]string{"id"}).AddRow(
+			1).AddRow(
+			4).AddRow(
+			2).AddRow(
+			65).AddRow(
+			12).AddRow(
+			45).AddRow(
+			23))
+	ms , err := GetQueuedMessages(33)
+	if err != nil {
+		t.Errorf("Error %s", err)
 		t.Fail()
 	}
-	if err := dbmock.ExpectationsWereMet(); err != nil{
+	if len(ms) != 7 {
+		t.Error("Unpexcted msg count")
+		t.FailNow()
+	}
+	if ms[5].ID != 45 {
+		t.Errorf("Unexpected msg value")
+		t.Fail()
+	}
+	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
 		t.Fail()
 	}
@@ -248,9 +281,9 @@ func TestGetMessages(t *testing.T) {
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM Message WHERE QueuedAt < '344' ORDER BY QueuedAt DESC`)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1).AddRow(2))
-	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT \"campaign\", \"campaignid\", \"connection\", \"connectiongroup\", \"deliveredat\", \"dst\", \"enc\", \"error\", \"id\", \"isflash\", \"msg\", \"priority\", \"queuedat\", \"realmsg\", \"respid\", \"scheduledat\", \"sendafter\", \"sendbefore\", \"sentat\", \"src\", \"status\", \"total\", \"username\" FROM \"Message\" WHERE (\"id\" = 1) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(1, "hello"))
-	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT \"campaign\", \"campaignid\", \"connection\", \"connectiongroup\", \"deliveredat\", \"dst\", \"enc\", \"error\", \"id\", \"isflash\", \"msg\", \"priority\", \"queuedat\", \"realmsg\", \"respid\", \"scheduledat\", \"sendafter\", \"sendbefore\", \"sentat\", \"src\", \"status\", \"total\", \"username\" FROM \"Message\" WHERE (\"id\" = 1) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(1, "hello"))
-	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT \"campaign\", \"campaignid\", \"connection\", \"connectiongroup\", \"deliveredat\", \"dst\", \"enc\", \"error\", \"id\", \"isflash\", \"msg\", \"priority\", \"queuedat\", \"realmsg\", \"respid\", \"scheduledat\", \"sendafter\", \"sendbefore\", \"sentat\", \"src\", \"status\", \"total\", \"username\" FROM \"Message\" WHERE (\"id\" = 2) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(2, "world"))
+	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT `campaign`, `campaignid`, `connection`, `connectiongroup`, `deliveredat`, `dst`, `enc`, `error`, `id`, `isflash`, `msg`, `priority`, `queuedat`, `realmsg`, `respid`, `scheduledat`, `sendafter`, `sendbefore`, `sentat`, `src`, `status`, `total`, `username` FROM `Message` WHERE (`id` = 1) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(1, "hello"))
+	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT `campaign`, `campaignid`, `connection`, `connectiongroup`, `deliveredat`, `dst`, `enc`, `error`, `id`, `isflash`, `msg`, `priority`, `queuedat`, `realmsg`, `respid`, `scheduledat`, `sendafter`, `sendbefore`, `sentat`, `src`, `status`, `total`, `username` FROM `Message` WHERE (`id` = 1) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(1, "hello"))
+	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT `campaign`, `campaignid`, `connection`, `connectiongroup`, `deliveredat`, `dst`, `enc`, `error`, `id`, `isflash`, `msg`, `priority`, `queuedat`, `realmsg`, `respid`, `scheduledat`, `sendafter`, `sendbefore`, `sentat`, `src`, `status`, `total`, `username` FROM `Message` WHERE (`id` = 2) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(2, "world"))
 	ms, err := GetMessages(Criteria{
 		From : "344",
 		FetchMsg: true,
@@ -278,9 +311,23 @@ func TestMessage_Save(t *testing.T) {
 	defer sp.Db.Close()
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
-	//m := Message{}
-	//m.Save()
-	t.Fail()
+	dbmock.ExpectExec(regexp.QuoteMeta("INSERT INTO `Message` (`respid`, `connectiongroup`, `connection`, `total`, `username`, `msg`, `realmsg`, `enc`, `dst`, `src`, `priority`, `queuedat`, `sentat`, `deliveredat`, `campaignid`, `campaign`, `status`, `error`, `sendbefore`, `sendafter`, `scheduledat`, `isflash`) VALUES ('23434asf', '', 'Default', 0, '', '', '', '', '', '', 0, 0, 0, 0, 0, '', 'Not Delivered', 'NotDelivered', '', '', 0, 0)")).WillReturnResult(sqlmock.NewResult(21, 1))
+	mock.ExpectExec(regexp.QuoteMeta(`INSERT INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES (21, '', '', '', 'Default', '23434asf', 0, '', '', '', 0, 0 , 0, 0, 0, '', 'Not Delivered', 'NotDelivered', '', 0, 0)`)).WillReturnResult(sqlmock.NewResult(0,1))
+	m := Message{
+		RespID: "23434asf",
+		Connection: "Default",
+		Error: "NotDelivered",
+		Status: NotDelivered,
+	}
+	id, err := m.Save()
+	if err != nil {
+		t.Errorf("Error: %s", err)
+		t.Fail()
+	}
+	if id != 21 {
+		t.Errorf("id was unexpected: %d", id)
+		t.Fail()
+	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
 		t.Fail()
@@ -296,8 +343,8 @@ func TestMessage_Update(t *testing.T) {
 	defer sp.Db.Close()
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
-	dbmock.ExpectExec("UPDATE Messages").WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec("REPLACE INTO messages").WillReturnResult(sqlmock.NewResult(0, 1))
+	dbmock.ExpectExec(regexp.QuoteMeta("UPDATE `Message` SET `id`=34,`respid`='',`connectiongroup`='',`connection`='',`total`=0,`username`='',`msg`='asdf',`realmsg`='',`enc`='',`dst`='',`src`='',`priority`=0,`queuedat`=0,`sentat`=0,`deliveredat`=0,`campaignid`=0,`campaign`='',`status`='',`error`='',`sendbefore`='',`sendafter`='',`scheduledat`=0,`isflash`=0 WHERE (`id` = 34)")).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta(`REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES (34, 'asdf', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 0, '', '', '', '', 0, 0)`)).WillReturnResult(sqlmock.NewResult(0, 1))
 	m := Message{
 		ID: 34,
 		Msg : "asdf",
@@ -323,7 +370,7 @@ func TestSaveDelivery(t *testing.T) {
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
 	mock.ExpectQuery(`SELECT \* FROM Message WHERE RespID = '1234abcd'`).WillReturnRows(sqlmock.NewRows([]string{"id", "respid"}).AddRow(1, "1234abcd"))
-	dbmock.ExpectExec(`UPDATE "Message" SET "DeliveredAt"=\d+,"Status"='Delivered' WHERE \("RespID" = '1234abcd'\)`).WillReturnResult(sqlmock.NewResult(0, 1))
+	dbmock.ExpectExec("UPDATE `Message` SET `DeliveredAt`=\\d+,`Status`='Delivered' WHERE \\(`RespID` = '1234abcd'\\)").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("REPLACE INTO Message.*1234abcd").WillReturnResult(sqlmock.NewResult(0, 1))
 	// now we execute our method
 	if err := SaveDelivery("1234abcd", string(Delivered)); err != nil {
@@ -345,9 +392,9 @@ func TestStopPendingMessages(t *testing.T) {
 	defer sp.Db.Close()
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
-	dbmock.ExpectExec(regexp.QuoteMeta(`UPDATE "Message" SET "Status"='Stopped' WHERE (("CampaignID" = 1) AND (("Status" = 'Queued') OR ("Status" = 'Scheduled')))`)).WillReturnResult(sqlmock.NewResult(0, 2))
+	dbmock.ExpectExec(regexp.QuoteMeta("UPDATE `Message` SET `Status`='Stopped' WHERE ((`CampaignID` = 1) AND ((`Status` = 'Queued') OR (`Status` = 'Scheduled')))")).WillReturnResult(sqlmock.NewResult(0, 2))
 	mock.ExpectQuery(`SELECT \* FROM Message WHERE Status = 'Stopped' AND CampaignID = 1`).WillReturnRows(sqlmock.NewRows([]string{"id", "status", "campaignid"}).AddRow(1, "Stopped", 1).AddRow(2, "Stopped", 1))
-	mock.ExpectExec(regexp.QuoteMeta(`REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES (1, '', '', '', '', 1, '', 0, '', '', '', 0 , 0, 0, 0, 1, 'Stopped', '', '', 0, 0),(2, '', '', '', '', 2, '', 0, '', '', '', 0 , 0, 0, 0, 1, 'Stopped', '', '', 0, 0)`)).WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec(regexp.QuoteMeta(`REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES (1, '', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 1, '', 'Stopped', '', '', 0, 0),(2, '', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 1, '', 'Stopped', '', '', 0, 0)`)).WillReturnResult(sqlmock.NewResult(0, 2))
 	n, err := StopPendingMessages(1)
 	if err != nil {
 		t.Errorf("Error %s was not expected", err)
