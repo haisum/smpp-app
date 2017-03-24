@@ -27,12 +27,6 @@
 			"revisionTime": "2016-09-27T15:33:43Z"
 		},
 		{
-			"checksumSHA1": "r1PrPAfdXzpLjmIobYRaRMsKZlc=",
-			"path": "github.com/fatih/structs",
-			"revision": "a720dfa8df582c51dee1b36feabb906bde1588bd",
-			"revisionTime": "2017-01-03T08:10:50Z"
-		},
-		{
 			"checksumSHA1": "bplQ1w6CnSbCM126h6QfRiPFyrI=",
 			"path": "github.com/fiorix/go-smpp/smpp",
 			"revision": "133c072da8a8ac158cb7029d5b0d0aa8488a6103",

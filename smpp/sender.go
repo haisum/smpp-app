@@ -20,56 +20,19 @@ var (
 	snd Sender
 )
 
-// SetQueue sets queue equal to object that implements MQ interface. This function shouldn't be used unless you're testing.
-// GetQueue takes care of setting a rabbitmq object if q is not set yet.
-func setSender(sender Sender) {
-	snd = sender
-}
-
-// GetSender builds a new sender object that implements Sender interface if s is not already assigned and returns it
+// GetSender returns snd object
 func GetSender() Sender {
-	if snd == nil {
-		setSender(&sender{})
-	}
 	return snd
-}
-
-// Sender is implemented by smpp sender client code or mock test object
-type Sender interface {
-	Connect(tx SenderTX) error
-	Send(src, dst, enc, msg string, isFlash bool) (string, error)
-	SplitLong(src, dst, enc, msg string, isFlash bool) (*smpp.ShortMessage, []pdu.Body)
-	SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error)
-	Close() error
-	SetFields(p PduFields)
-	GetFields() PduFields
-	ConnectOrDie()
-}
-
-// SenderTX is implemented by tx object of smpp sender to handle transaction with smpp provider
-type SenderTX interface {
-	Bind() <-chan smpp.ConnStatus
-	Submit(sm *smpp.ShortMessage) (*smpp.ShortMessage, error)
-	SplitLong(sm *smpp.ShortMessage) []pdu.Body
-	SubmitPart(sm *smpp.ShortMessage, p pdu.Body) (*smpp.ShortMessage, error)
-	Close() error
-}
-
-// sender holds smpp transmitter and a channel indicating when smpp connection
-// becomes connected.
-type sender struct {
-	tx     SenderTX
-	fields PduFields
-	conn   <-chan smpp.ConnStatus
 }
 
 // Connect connects to smpp server given by addr, user and passwd
 // This function triggers a go routine that checks for smpp connection status
 // If connection is lost at some point, this retries after 10 seconds.
-// Channel sender.Connected is filled if smpp gets connected. Other routines
+// Channel fiorix.Connected is filled if smpp gets connected. Other routines
 // that depend on smpp connection should wait for Connected channel before
 // proceeding.
-func (s *sender) Connect(tx SenderTX) error {
+func ConnectFiorix(tx smpp.Transceiver) error {
+	s := &fiorix{}
 	s.tx = tx
 	s.conn = s.tx.Bind() // make persistent connection.
 	select {
@@ -83,11 +46,32 @@ func (s *sender) Connect(tx SenderTX) error {
 	case <-time.After(time.Second * 5):
 		return fmt.Errorf("Timed out waiting for smpp connection.")
 	}
+	snd = s
+	return nil
+}
+
+// Sender is implemented by smpp fiorix client code or mock test object
+type Sender interface {
+	Send(src, dst, enc, msg string, isFlash bool) (string, error)
+	SplitLong(src, dst, enc, msg string, isFlash bool) (*smpp.ShortMessage, []pdu.Body)
+	SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error)
+	Close() error
+	SetFields(p PduFields)
+	GetFields() PduFields
+	ConnectOrDie()
+}
+
+// fiorix holds smpp transmitter and a channel indicating when smpp connection
+// becomes connected.
+type fiorix struct {
+	tx     smpp.Transceiver
+	fields PduFields
+	conn   <-chan smpp.ConnStatus
 }
 
 // ConnectOrDie checks for smpp connection status, if it becomes not connected, it aborts current application
 // This is a blocking function and must be called after a "go" statement in a separate routine
-func (s *sender) ConnectOrDie() {
+func (s *fiorix) ConnectOrDie() {
 	log.Info("Listening for connection status change.")
 	for c := range s.conn {
 		st := c.Status()
@@ -100,23 +84,23 @@ func (s *sender) ConnectOrDie() {
 }
 
 // Close closes connection with smpp provider
-func (s *sender) Close() error {
+func (s *fiorix) Close() error {
 	return s.tx.Close()
 }
 
 // SetFields sets pdu fields to given value
-func (s *sender) SetFields(fields PduFields) {
+func (s *fiorix) SetFields(fields PduFields) {
 	s.fields = fields
 }
 
 // GetFields gets current pdu fields
-func (s *sender) GetFields() PduFields {
+func (s *fiorix) GetFields() PduFields {
 	return s.fields
 }
 
 // Send sends sms to given source and destination with latin as encoding
 // or ucs if asked.
-func (s *sender) Send(src, dst, enc, msg string, isFlash bool) (string, error) {
+func (s *fiorix) Send(src, dst, enc, msg string, isFlash bool) (string, error) {
 	var text pdutext.Codec
 	if enc == smtext.EncUCS {
 		text = pdutext.UCS2(msg)
@@ -156,7 +140,7 @@ func (s *sender) Send(src, dst, enc, msg string, isFlash bool) (string, error) {
 }
 
 //SplitLong splits a long message in parts and returns pdu.Body which can be sent individually using SendPart method
-func (s *sender) SplitLong(src, dst, enc, msg string, isFlash bool) (*smpp.ShortMessage, []pdu.Body) {
+func (s *fiorix) SplitLong(src, dst, enc, msg string, isFlash bool) (*smpp.ShortMessage, []pdu.Body) {
 	var text pdutext.Codec
 	if enc == smtext.EncUCS {
 		text = pdutext.UCS2(msg)
@@ -184,7 +168,7 @@ func (s *sender) SplitLong(src, dst, enc, msg string, isFlash bool) (*smpp.Short
 }
 
 // SendPart sends a part of long sms obtained from calling SplitLong message
-func (s *sender) SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error) {
+func (s *fiorix) SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error) {
 	var err error
 	sm, err = s.tx.SubmitPart(sm, p)
 	if err != nil {
