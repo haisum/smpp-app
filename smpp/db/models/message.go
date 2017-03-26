@@ -17,7 +17,7 @@ import (
 // Message represents a smpp message
 type Message struct {
 	ID              string `gorethink:"id,omitempty" db:"msgid"`
-	SphinxID        uint64    `json:"-" gorethink:"-" db:"id"`
+	SphinxID        uint64 `json:"-" gorethink:"-" db:"id"`
 	RespID          string
 	DeliverySM      map[string]string `gorethink:"DeliverySM,omitempty"`
 	ConnectionGroup string
@@ -420,7 +420,7 @@ func GetMessages(c MessageCriteria) ([]Message, error) {
 			log.WithError(err).Error("Something ain't right. We couldn't get sphinx msg from rethinkdb")
 			return m, err
 		}
-		if msg.RealMsg == msg.Msg && c.CampaignID == msg.CampaignID {
+		if msg.RealMsg == msg.Msg && c.CampaignID != "" && c.CampaignID == msg.CampaignID {
 			for k, _ := range m {
 				m[k].Msg = msg.Msg
 			}
@@ -582,7 +582,7 @@ func prepareMsgTerm(c MessageCriteria, from interface{}) utils.QueryBuilder {
 			if orderDir == "ASC" {
 				qb.WhereAnd(escapeQuote(c.OrderByKey) + " > '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
 			} else {
-				qb.WhereAnd(escapeQuote(c.OrderByKey)+ " < '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
+				qb.WhereAnd(escapeQuote(c.OrderByKey) + " < '" + escapeQuote(fmt.Sprintf("%s", from)) + "'")
 			}
 		}
 		qb.OrderBy(escapeQuote(c.OrderByKey) + " " + orderDir)
@@ -645,15 +645,15 @@ func hashID(id string) uint64 {
 }
 
 func escapeQuotes(args ...interface{}) []interface{} {
-	for k, v := range args{
+	for k, v := range args {
 		switch v.(type) {
 		case string:
-			args[k] = strings.Replace(v.(string),"'", "\\'", -1)
+			args[k] = strings.Replace(v.(string), "'", "\\'", -1)
 		}
 	}
 	return args
 }
 
 func escapeQuote(arg string) string {
-	return strings.Replace(arg,"'", "\\'", -1)
+	return strings.Replace(arg, "'", "\\'", -1)
 }
