@@ -1,18 +1,17 @@
 package models
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
-	"time"
-
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/utils"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 	"hash/fnv"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // Message represents a smpp message
@@ -150,7 +149,7 @@ func SaveInSphinx(m []Message) error {
 		return fmt.Errorf("No messages provided to save.")
 	}
 	query := `INSERT INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst,
-		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt, IsFlash) VALUES `
+		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES `
 	var valuePart []string
 	for _, v := range m {
 		isFlash := 0
@@ -160,12 +159,12 @@ func SaveInSphinx(m []Message) error {
 		params := []interface{}{
 			hashID(v.ID), v.Msg, v.Username, v.ConnectionGroup,
 			v.Connection, v.ID, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
-			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, string(v.Status), v.Error,
+			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, v.Campaign, string(v.Status), v.Error,
 			v.Username, v.ScheduledAt, isFlash,
 		}
 		params = escapeQuotes(params...)
 		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s',
-			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d)`, params...)
+			%d , %d, %d, %d, '%s', '%s', '%s', '%s', '%s', %d, %d)`, params...)
 		valuePart = append(valuePart, values)
 	}
 	query = query + strings.Join(valuePart, ",")
@@ -270,18 +269,18 @@ func StopCampaignInSphinx(campaignID string) error {
 func UpdateInSphinx(m Message) error {
 	sp := sphinx.Get()
 	query := `REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, MsgID, RespID, Total, Enc, Dst,
-		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Status, Error, User, ScheduledAt) VALUES `
+		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt) VALUES `
 	var valuePart []string
 	spID := m.GetSphinxID()
 	params := []interface{}{
 		spID, m.Msg, m.Username, m.ConnectionGroup,
 		m.Connection, m.ID, m.RespID, m.Total, m.Enc, m.Dst, m.Src, m.Priority,
-		m.QueuedAt, m.SentAt, m.DeliveredAt, m.CampaignID, string(m.Status), m.Error,
+		m.QueuedAt, m.SentAt, m.DeliveredAt, m.CampaignID, m.Campaign, string(m.Status), m.Error,
 		m.Username, m.ScheduledAt,
 	}
 	params = escapeQuotes(params...)
 	values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s',
-			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d)`, params...)
+			%d , %d, %d, %d, '%s', '%s', '%s', '%s', '%s', %d)`, params...)
 	valuePart = append(valuePart, values)
 	query = query + strings.Join(valuePart, ",")
 	_, err := sp.Exec(query)
