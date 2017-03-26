@@ -7,6 +7,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"regexp"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestMessage_Validate(t *testing.T) {
@@ -77,15 +78,16 @@ func TestMessage_Validate(t *testing.T) {
 
 func TestPrepareMsgTerm(t *testing.T){
 	qb := prepareMsgTerm(Criteria{}, nil)
+	assert := assert.New(t)
 	expected := "SELECT * FROM Message ORDER BY QueuedAt DESC"
-	assertEqual(t, expected, qb.GetQuery())
+	assert.Equal(expected, qb.GetQuery())
 	qb = prepareMsgTerm(Criteria{OrderByDir: "ASC", OrderByKey:"Username"}, nil)
 	expected = "SELECT * FROM Message ORDER BY Username ASC"
-	assertEqual(t, expected, qb.GetQuery())
+	assert.Equal(expected, qb.GetQuery())
 	qb = prepareMsgTerm(Criteria{Username: "(re)hello world"}, nil)
 	expected = "SELECT * FROM Message WHERE match('@Username hello world') ORDER BY QueuedAt DESC"
-	assertEqual(t, qb.GetQuery(), expected)
-	expected = "SELECT * FROM Message WHERE User = 'haisum' AND match('@Msg hello world') AND QueuedAt > 23 AND QueuedAt < 435 AND DeliveredAt > 234 AND DeliveredAt < 3232 AND SentAt > 23 AND SentAt < 34 AND ScheduledAt > 32 AND ScheduledAt < 3245 AND RespID = 'ASdfsdf' AND Connection = 'asdf' AND ConnectionGroup = 'Asdfsdf' AND Src = 'sadfsdf' AND Dst = 'asdf' AND Enc = 'latin' AND Status = 'ASdfsfd' AND CampaignID = 12 AND Error = 'error' AND Total = 32 AND Priority = 3 AND SentAt < '234' ORDER BY SentAt DESC"
+	assert.Equal(qb.GetQuery(), expected)
+	expected = "SELECT * FROM Message WHERE User = 'haisum' AND match('@Msg hello world') AND QueuedAt >= 23 AND QueuedAt <= 435 AND DeliveredAt >= 234 AND DeliveredAt <= 3232 AND SentAt >= 23 AND SentAt <= 34 AND ScheduledAt >= 32 AND ScheduledAt <= 3245 AND RespID = 'ASdfsdf' AND Connection = 'asdf' AND ConnectionGroup = 'Asdfsdf' AND Src = 'sadfsdf' AND Dst = 'asdf' AND Enc = 'latin' AND Status = 'ASdfsfd' AND CampaignID = 12 AND Error = 'error' AND Total = 32 AND Priority = 3 AND SentAt < '234' ORDER BY SentAt DESC"
 	cr := Criteria{
 		ID : 23,
 		Username: "haisum",
@@ -114,11 +116,11 @@ func TestPrepareMsgTerm(t *testing.T){
 
 	}
 	qb = prepareMsgTerm(cr, 234)
-	assertEqual(t, expected, qb.GetQuery())
-	expected = "SELECT * FROM Message WHERE User = 'haisum' AND match('@Msg hello world') AND QueuedAt > 23 AND QueuedAt < 435 AND DeliveredAt > 234 AND DeliveredAt < 3232 AND SentAt > 23 AND SentAt < 34 AND ScheduledAt > 32 AND ScheduledAt < 3245 AND RespID = 'ASdfsdf' AND Connection = 'asdf' AND ConnectionGroup = 'Asdfsdf' AND Src = 'sadfsdf' AND Dst = 'asdf' AND Enc = 'latin' AND Status = 'ASdfsfd' AND CampaignID = 12 AND Error = 'error' AND Total = 32 AND Priority = 3 AND SentAt > '234' ORDER BY SentAt ASC"
+	assert.Equal(expected, qb.GetQuery())
+	expected = "SELECT * FROM Message WHERE User = 'haisum' AND match('@Msg hello world') AND QueuedAt >= 23 AND QueuedAt <= 435 AND DeliveredAt >= 234 AND DeliveredAt <= 3232 AND SentAt >= 23 AND SentAt <= 34 AND ScheduledAt >= 32 AND ScheduledAt <= 3245 AND RespID = 'ASdfsdf' AND Connection = 'asdf' AND ConnectionGroup = 'Asdfsdf' AND Src = 'sadfsdf' AND Dst = 'asdf' AND Enc = 'latin' AND Status = 'ASdfsfd' AND CampaignID = 12 AND Error = 'error' AND Total = 32 AND Priority = 3 AND SentAt > '234' ORDER BY SentAt ASC"
 	cr.OrderByDir = "ASC"
 	qb = prepareMsgTerm(cr, int64(234))
-	assertEqual(t, expected, qb.GetQuery())
+	assert.Equal(expected, qb.GetQuery())
 }
 
 func TestDeliverySM_Scan(t *testing.T) {

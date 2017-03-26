@@ -453,6 +453,7 @@ var utils = {
             From            : $("#From").val(),
             PerPage         : $("#PerPage").val(),
             ReportCols      : $("#ReportCols").val(),
+            FetchMsg: true,
         };
         return data;
 
