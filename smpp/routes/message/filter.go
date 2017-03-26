@@ -136,7 +136,7 @@ func toXLS(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 		"ScheduledAt",
 		"SendBefore",
 		"SendAfter",
-		"isFlash",
+		"IsFlash",
 	}
 	if len(cols) == 0 || (len(cols) == 1 && cols[0] == "") {
 		cols = availableCols
