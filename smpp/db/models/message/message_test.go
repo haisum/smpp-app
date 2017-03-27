@@ -7,6 +7,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"regexp"
+	"fmt"
 )
 
 func TestMessage_Validate(t *testing.T) {
@@ -375,6 +376,45 @@ func TestSaveDelivery(t *testing.T) {
 	// now we execute our method
 	if err := SaveDelivery("1234abcd", string(Delivered)); err != nil {
 		t.Errorf("error was not expected while saving delivery: %s", err)
+		t.Fail()
+	}
+	if err := mock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+	if err := dbmock.ExpectationsWereMet(); err != nil{
+		t.Errorf("there were unfulfilled expections: %s", err)
+		t.Fail()
+	}
+}
+
+func TestSaveBulk(t *testing.T) {
+	sp, mock, _ := sphinx.ConnectMock(t)
+	defer sp.Db.Close()
+	db, dbmock, _ := db.ConnectMock(t)
+	defer db.Db.Close()
+	messages := []Message{
+		{
+			ID : 34,
+			Msg : "hello world",
+			Enc : "latin",
+		},
+		{
+			ID : 35,
+			Msg : "pa pa",
+			Enc : "ucs",
+		},
+	}
+	dbmock.ExpectExec(regexp.QuoteMeta("INSERT INTO `Message` (`respid`, `connectiongroup`, `connection`, `total`, `username`, `msg`, `realmsg`, `enc`, `dst`, `src`, `priority`, `queuedat`, `sentat`, `deliveredat`, `campaignid`, `campaign`, `status`, `error`, `sendbefore`, `sendafter`, `scheduledat`, `isflash`) VALUES ('', '', '', 0, '', 'hello world', '', 'latin', '', '', 0, 0, 0, 0, 0, '', '', '', '', '', 0, 0), ('', '', '', 0, '', 'pa pa', '', 'ucs', '', '', 0, 0, 0, 0, 0, '', '', '', '', '', 0, 0)")).WillReturnResult(sqlmock.NewResult(35, 2))
+	dbmock.ExpectQuery("SELECT `id` FROM `Message` ORDER BY `id` DESC LIMIT " + fmt.Sprintf("%d", len(messages))).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(34).AddRow(35))
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash, SendAfter, SendBefore) VALUES (34, 'hello world', '', '', '', '', 0, 'latin', '', '', 0, 0 , 0, 0, 0, '', '', '', '', 0, 0, '', ''),(35, 'pa pa', '', '', '', '', 0, 'ucs', '', '', 0, 0 , 0, 0, 0, '', '', '', '', 0, 0, '', '')")).WillReturnResult(sqlmock.NewResult(35, 2))
+	ids, err := SaveBulk(messages)
+	if err != nil {
+		t.Errorf("error :%s", err)
+		t.FailNow()
+	}
+	if ids[0] != 34 || ids[1] != 35 {
+		t.Errorf("unexpected ids:%v", ids)
 		t.Fail()
 	}
 	if err := mock.ExpectationsWereMet(); err != nil{
