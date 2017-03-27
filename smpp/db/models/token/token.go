@@ -8,6 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/doug-martin/goqu.v3"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
+	"errors"
 )
 
 const (
@@ -20,17 +21,17 @@ const (
 // Token represents a token given produced against valid authentication request
 type Token struct {
 	ID           int64 `db:"id" goqu:"skipinsert"`
-	LastAccessed int64 `db: "lastaccessed"`
-	Token        string `db: "token"`
-	Username     string `db: "username"`
-	Validity     int `db: "validity"`
+	LastAccessed int64 `db:"lastaccessed"`
+	Token        string `db:"token"`
+	Username     string `db:"username"`
+	Validity     int `db:"validity"`
 }
 
 // GetToken looks for token in Token table and returns it or error if
 // it's not found.
 func GetToken(token string) (Token, error) {
 	var t Token
-	found, err := db.Get().From("Token").Select("Token").Where(goqu.I("Token").Eq(stringutils.ToSHA1(token))).ScanVal(&t)
+	found, err := db.Get().From("Token").Select("*").Where(goqu.I("Token").Eq(stringutils.ToSHA1(token))).Prepared(true).ScanStruct(&t)
 	if err != nil || !found {
 		log.WithFields(log.Fields{
 			"err":   err,
@@ -50,18 +51,22 @@ func GetToken(token string) (Token, error) {
 	}
 	//renew token last accessed
 	t.LastAccessed = now.Unix()
-	result, err := db.Get().From("Token").Update(t).Exec()
+	result, err := db.Get().From("Token").Prepared(true).Update(t).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":   err,
 		}).Error("Error occured while updating last accessed of token.")
 		return t, err
 	}
-	if affected, err := result.RowsAffected(); affected != 1 || err != nil {
+	var affected int64
+	if affected, err = result.RowsAffected(); affected != 1 || err != nil {
 		log.WithFields(log.Fields{
 			"affected" : affected,
 			"err" : err,
 		}).Error("Error occured getting last affected")
+		if err == nil {
+			err = errors.New("Last affected isn't equal to 1")
+		}
 	}
 	return t, err
 }
