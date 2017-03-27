@@ -1,4 +1,4 @@
-package models
+package campaigns
 
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
@@ -214,8 +214,8 @@ func GetReport(id string) (Report, error) {
 	return cr, nil
 }
 
-// GetCampaigns fetches list of campaigns based on criteria
-func Select(camps *[]Campaign, c Criteria) (error) {
+// Filter fetches list of campaigns based on criteria
+func Filter(camps *[]Campaign, c Criteria) (error) {
 	var (
 		indexUsed  bool
 		filterUsed bool

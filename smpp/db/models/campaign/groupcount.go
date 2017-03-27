@@ -1,4 +1,4 @@
-package models
+package campaigns
 
 //GroupCount is data structure to save results of .group(field).count() queries.
 type GroupCount struct {

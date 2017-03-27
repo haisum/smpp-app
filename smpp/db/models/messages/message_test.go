@@ -1,4 +1,4 @@
-package models
+package messages
 
 import (
 	"testing"
@@ -77,15 +77,15 @@ func TestMessage_Validate(t *testing.T) {
 	}
 }
 
-func TestPrepareMsgTerm(t *testing.T){
-	qb := prepareMsgTerm(Criteria{}, nil)
+func TestPrepareQuery(t *testing.T){
+	qb := prepareQuery(Criteria{}, nil)
 	assert := assert.New(t)
 	expected := "SELECT * FROM Message ORDER BY QueuedAt DESC"
 	assert.Equal(expected, qb.GetQuery())
-	qb = prepareMsgTerm(Criteria{OrderByDir: "ASC", OrderByKey:"Username"}, nil)
+	qb = prepareQuery(Criteria{OrderByDir: "ASC", OrderByKey: "Username"}, nil)
 	expected = "SELECT * FROM Message ORDER BY Username ASC"
 	assert.Equal(expected, qb.GetQuery())
-	qb = prepareMsgTerm(Criteria{Username: "(re)hello world"}, nil)
+	qb = prepareQuery(Criteria{Username: "(re)hello world"}, nil)
 	expected = "SELECT * FROM Message WHERE match('@Username hello world') ORDER BY QueuedAt DESC"
 	assert.Equal(qb.GetQuery(), expected)
 	expected = "SELECT * FROM Message WHERE User = 'haisum' AND match('@Msg hello world') AND QueuedAt >= 23 AND QueuedAt <= 435 AND DeliveredAt >= 234 AND DeliveredAt <= 3232 AND SentAt >= 23 AND SentAt <= 34 AND ScheduledAt >= 32 AND ScheduledAt <= 3245 AND RespID = 'ASdfsdf' AND Connection = 'asdf' AND ConnectionGroup = 'Asdfsdf' AND Src = 'sadfsdf' AND Dst = 'asdf' AND Enc = 'latin' AND Status = 'ASdfsfd' AND CampaignID = 12 AND Error = 'error' AND Total = 32 AND Priority = 3 AND SentAt < '234' ORDER BY SentAt DESC"
@@ -116,11 +116,11 @@ func TestPrepareMsgTerm(t *testing.T){
 		OrderByKey: "SentAt",
 
 	}
-	qb = prepareMsgTerm(cr, 234)
+	qb = prepareQuery(cr, 234)
 	assert.Equal(expected, qb.GetQuery())
 	expected = "SELECT * FROM Message WHERE User = 'haisum' AND match('@Msg hello world') AND QueuedAt >= 23 AND QueuedAt <= 435 AND DeliveredAt >= 234 AND DeliveredAt <= 3232 AND SentAt >= 23 AND SentAt <= 34 AND ScheduledAt >= 32 AND ScheduledAt <= 3245 AND RespID = 'ASdfsdf' AND Connection = 'asdf' AND ConnectionGroup = 'Asdfsdf' AND Src = 'sadfsdf' AND Dst = 'asdf' AND Enc = 'latin' AND Status = 'ASdfsfd' AND CampaignID = 12 AND Error = 'error' AND Total = 32 AND Priority = 3 AND SentAt > '234' ORDER BY SentAt ASC"
 	cr.OrderByDir = "ASC"
-	qb = prepareMsgTerm(cr, int64(234))
+	qb = prepareQuery(cr, int64(234))
 	assert.Equal(expected, qb.GetQuery())
 }
 
@@ -155,14 +155,14 @@ func TestStatus_Scan(t *testing.T) {
 	}
 }
 
-func TestGetErrorMessages(t *testing.T) {
+func TestGetWithError(t *testing.T) {
 	spdb, mock, _ := sphinx.ConnectMock(t)
 	defer spdb.Db.Close()
 	mock.ExpectQuery("Status = 'Error' AND CampaignID = 1").WillReturnRows(
 		sqlmock.NewRows([]string{"id", "status", "campaignid"}).AddRow(
 			1,string(Error),1).AddRow(
 			2,string(Error),1))
-	msgs, err := GetErrorMessages(1)
+	msgs, err := GetWithError(1)
 	if err != nil {
 		t.Errorf("Error in getting msgs %s", err)
 		t.Fail()
@@ -181,11 +181,11 @@ func TestGetErrorMessages(t *testing.T) {
 }
 
 
-func TestGetMessage(t *testing.T) {
+func TestGet(t *testing.T) {
 	con, mock, _ := db.ConnectMock(t)
 	defer con.Db.Close()
 	mock.ExpectQuery("`id` = 21").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(21))
-	msg, err := GetMessage(21)
+	msg, err := Get(21)
 	if err != nil {
 		t.Errorf("error in getting msg. %s", err)
 		t.FailNow()
@@ -201,7 +201,7 @@ func TestGetMessage(t *testing.T) {
 	con, mock, _ = db.ConnectMock(t)
 	defer con.Db.Close()
 	mock.ExpectQuery("`id` = 21").WillReturnRows(sqlmock.NewRows([]string{"ID"}))
-	msg, err = GetMessage(21)
+	msg, err = Get(21)
 	if err == nil {
 		t.Error("error expected.")
 		t.FailNow()
@@ -213,7 +213,7 @@ func TestGetMessage(t *testing.T) {
 
 }
 
-func TestGetMessageStats(t *testing.T) {
+func TestGetStats(t *testing.T) {
 	sp, mock, _ := sphinx.ConnectMock(t)
 	defer sp.Db.Close()
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT status, count(*) as total FROM Message WHERE QueuedAt < '3245' GROUP BY Status ORDER BY QueuedAt DESC")).WillReturnRows(
@@ -225,7 +225,7 @@ func TestGetMessageStats(t *testing.T) {
 			string(NotDelivered) , 12).AddRow(
 			string(Scheduled) , 45).AddRow(
 			string(Stopped) , 23))
-	stats, err := GetMessageStats(Criteria{
+	stats, err := GetStats(Criteria{
 		From : "3245",
 	})
 	if err != nil {
@@ -247,7 +247,7 @@ func TestGetMessageStats(t *testing.T) {
 	}
 }
 
-func TestGetQueuedMessages(t *testing.T) {
+func TestGetQueued(t *testing.T) {
 	sp, mock, _ := sphinx.ConnectMock(t)
 	defer sp.Db.Close()
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Message WHERE Status = 'Queued' AND CampaignID = 33 ORDER BY QueuedAt DESC LIMIT 500000 option max_matches=500000")).WillReturnRows(
@@ -259,7 +259,7 @@ func TestGetQueuedMessages(t *testing.T) {
 			12).AddRow(
 			45).AddRow(
 			23))
-	ms , err := GetQueuedMessages(33)
+	ms , err := GetQueued(33)
 	if err != nil {
 		t.Errorf("Error %s", err)
 		t.Fail()
@@ -278,7 +278,7 @@ func TestGetQueuedMessages(t *testing.T) {
 	}
 }
 
-func TestGetMessages(t *testing.T) {
+func TestFilter(t *testing.T) {
 	sp, mock, _ := sphinx.ConnectMock(t)
 	defer sp.Db.Close()
 	db, dbmock, _ := db.ConnectMock(t)
@@ -287,7 +287,7 @@ func TestGetMessages(t *testing.T) {
 	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT `campaign`, `campaignid`, `connection`, `connectiongroup`, `deliveredat`, `dst`, `enc`, `error`, `id`, `isflash`, `msg`, `priority`, `queuedat`, `realmsg`, `respid`, `scheduledat`, `sendafter`, `sendbefore`, `sentat`, `src`, `status`, `total`, `username` FROM `Message` WHERE (`id` = 1) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(1, "hello"))
 	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT `campaign`, `campaignid`, `connection`, `connectiongroup`, `deliveredat`, `dst`, `enc`, `error`, `id`, `isflash`, `msg`, `priority`, `queuedat`, `realmsg`, `respid`, `scheduledat`, `sendafter`, `sendbefore`, `sentat`, `src`, `status`, `total`, `username` FROM `Message` WHERE (`id` = 1) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(1, "hello"))
 	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT `campaign`, `campaignid`, `connection`, `connectiongroup`, `deliveredat`, `dst`, `enc`, `error`, `id`, `isflash`, `msg`, `priority`, `queuedat`, `realmsg`, `respid`, `scheduledat`, `sendafter`, `sendbefore`, `sentat`, `src`, `status`, `total`, `username` FROM `Message` WHERE (`id` = 2) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(2, "world"))
-	ms, err := GetMessages(Criteria{
+	ms, err := Filter(Criteria{
 		From : "344",
 		FetchMsg: true,
 	})
@@ -429,7 +429,7 @@ func TestSaveBulk(t *testing.T) {
 	}
 }
 
-func TestStopPendingMessages(t *testing.T) {
+func TestStopPending(t *testing.T) {
 	sp, mock, _ := sphinx.ConnectMock(t)
 	defer sp.Db.Close()
 	db, dbmock, _ := db.ConnectMock(t)
@@ -437,7 +437,7 @@ func TestStopPendingMessages(t *testing.T) {
 	dbmock.ExpectExec(regexp.QuoteMeta("UPDATE `Message` SET `Status`='Stopped' WHERE ((`CampaignID` = 1) AND ((`Status` = 'Queued') OR (`Status` = 'Scheduled')))")).WillReturnResult(sqlmock.NewResult(0, 2))
 	mock.ExpectQuery(`SELECT \* FROM Message WHERE Status = 'Stopped' AND CampaignID = 1`).WillReturnRows(sqlmock.NewRows([]string{"id", "status", "campaignid"}).AddRow(1, "Stopped", 1).AddRow(2, "Stopped", 1))
 	mock.ExpectExec(regexp.QuoteMeta(`REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES (1, '', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 1, '', 'Stopped', '', '', 0, 0),(2, '', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 1, '', 'Stopped', '', '', 0, 0)`)).WillReturnResult(sqlmock.NewResult(0, 2))
-	n, err := StopPendingMessages(1)
+	n, err := StopPending(1)
 	if err != nil {
 		t.Errorf("Error %s was not expected", err)
 		t.Fail()

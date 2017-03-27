@@ -1,4 +1,4 @@
-package models
+package messages
 
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
@@ -59,7 +59,7 @@ type Message struct {
 	IsFlash     bool `db:"isflash"`
 }
 
-// Criteria represents filters we can give to GetMessages method.
+// Criteria represents filters we can give to Filter method.
 type Criteria struct {
 	ID              int64
 	RespID          string
@@ -229,7 +229,7 @@ func (m *Message) Update() error {
 }
 
 func StopCampaignInSphinx(campaignID int64) error {
-	ms, err := GetMessages(Criteria{
+	ms, err := Filter(Criteria{
 		CampaignID: campaignID,
 		Status:     Stopped,
 	})
@@ -256,7 +256,7 @@ func SaveDelivery(respID, status string) error {
 		log.WithField("RespID", respID).Error("Couldn't update delivery sm. No such response id found.")
 		return errors.New("Couldn't update delivery sm. No such response id found.")
 	}
-	ms, err := GetMessages(Criteria{
+	ms, err := Filter(Criteria{
 		RespID: respID,
 	})
 	if len(ms) < 1 || err != nil {
@@ -269,8 +269,8 @@ func SaveDelivery(respID, status string) error {
 	return nil
 }
 
-//GetMessage finds a message by primary key
-func GetMessage(id int64) (Message, error) {
+//Get finds a message by primary key
+func Get(id int64) (Message, error) {
 	var m Message
 	found, err := db.Get().From("Message").Where(goqu.I("id").Eq(id)).ScanStruct(&m)
 	if err != nil || !found {
@@ -280,8 +280,8 @@ func GetMessage(id int64) (Message, error) {
 	return m, nil
 }
 
-// StopPendingMessages marks stopped as true in all messages which are queued or scheduled in a campaign
-func StopPendingMessages(campID int64) (int64, error) {
+// StopPending marks stopped as true in all messages which are queued or scheduled in a campaign
+func StopPending(campID int64) (int64, error) {
 	res, err := db.Get().From("Message").Where(goqu.I("CampaignID").Eq(campID),
 		goqu.Or(
 			goqu.I("Status").Eq(Queued),
@@ -301,9 +301,9 @@ func StopPendingMessages(campID int64) (int64, error) {
 	return affected, nil
 }
 
-// GetErrorMessages returns all messages with status error in a campaign
-func GetErrorMessages(campID int64) ([]Message, error) {
-	m, err := GetMessages(Criteria{
+// GetWithError returns all messages with status error in a campaign
+func GetWithError(campID int64) ([]Message, error) {
+	m, err := Filter(Criteria{
 		CampaignID: campID,
 		Status:     Error,
 		PerPage:    500000,
@@ -314,9 +314,9 @@ func GetErrorMessages(campID int64) ([]Message, error) {
 	return m, err
 }
 
-// GetQueuedMessages returns all messages with status queued in a campaign
-func GetQueuedMessages(campID int64) ([]Message, error) {
-	m, err := GetMessages(Criteria{
+// GetQueued returns all messages with status queued in a campaign
+func GetQueued(campID int64) ([]Message, error) {
+	m, err := Filter(Criteria{
 		CampaignID: campID,
 		Status:     Queued,
 		PerPage:    500000,
@@ -327,8 +327,8 @@ func GetQueuedMessages(campID int64) ([]Message, error) {
 	return m, err
 }
 
-// GetMessages filters messages based on criteria
-func GetMessages(c Criteria) ([]Message, error) {
+// Filter filters messages based on criteria
+func Filter(c Criteria) ([]Message, error) {
 	var m []Message
 	var (
 		from interface{}
@@ -344,7 +344,7 @@ func GetMessages(c Criteria) ([]Message, error) {
 			from = c.From
 		}
 	}
-	qb := prepareMsgTerm(c, from)
+	qb := prepareQuery(c, from)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}
@@ -355,7 +355,7 @@ func GetMessages(c Criteria) ([]Message, error) {
 		log.WithError(err).Error("Couldn't run query.")
 	}
 	if c.FetchMsg && len(m) > 0 {
-		msg, err := GetMessage(m[0].ID)
+		msg, err := Get(m[0].ID)
 		if err != nil {
 			log.WithError(err).Error("Something ain't right. We couldn't get sphinx msg from rethinkdb")
 			return m, err
@@ -366,7 +366,7 @@ func GetMessages(c Criteria) ([]Message, error) {
 			}
 		} else {
 			for k, _ := range m {
-				msg, err = GetMessage(m[k].ID)
+				msg, err = Get(m[k].ID)
 				if err != nil {
 					log.WithError(err).WithField("msg", m[k]).Error("Something ain't right. We couldn't get sphinx msg from rethinkdb")
 					return m, err
@@ -378,8 +378,8 @@ func GetMessages(c Criteria) ([]Message, error) {
 	return m, err
 }
 
-// GetMessageStats filters messages based on criteria and finds total number of messages in different statuses
-func GetMessageStats(c Criteria) (Stats, error) {
+// GetStats filters messages based on criteria and finds total number of messages in different statuses
+func GetStats(c Criteria) (Stats, error) {
 	var m Stats
 	var from interface{}
 	if c.From != "" {
@@ -392,7 +392,7 @@ func GetMessageStats(c Criteria) (Stats, error) {
 			from = c.From
 		}
 	}
-	qb := prepareMsgTerm(c, from)
+	qb := prepareQuery(c, from)
 	qb.Select("status, count(*) as total").From("Message")
 	qb.GroupBy("Status")
 
@@ -433,7 +433,7 @@ func GetMessageStats(c Criteria) (Stats, error) {
 	return m, err
 }
 
-func prepareMsgTerm(c Criteria, from interface{}) utils.QueryBuilder {
+func prepareQuery(c Criteria, from interface{}) utils.QueryBuilder {
 	qb := utils.QueryBuilder{}
 	qb.Select("*").From("Message")
 

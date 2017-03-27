@@ -1,4 +1,4 @@
-package models
+package config
 
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp"
@@ -8,7 +8,7 @@ import (
 )
 
 // GetConfig loads configuration from database table Config
-func GetConfig() (smpp.Config, error) {
+func Get() (smpp.Config, error) {
 	var c smpp.Config
 	s, err := db.GetSession()
 	if err != nil {
@@ -32,7 +32,7 @@ func GetConfig() (smpp.Config, error) {
 }
 
 // SetConfig updates configuration and sets it to provided struct
-func SetConfig(c smpp.Config) error {
+func Set(c smpp.Config) error {
 	s, err := db.GetSession()
 	if err != nil {
 		log.WithError(err).Error("Couldn't get session.")

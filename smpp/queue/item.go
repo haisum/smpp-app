@@ -7,7 +7,7 @@ import (
 // Item holds a message that's parsed to/from rabbitmq queue
 // Transmission is in json format
 type Item struct {
-	MsgID string
+	MsgID int64
 	Total int
 }
 
