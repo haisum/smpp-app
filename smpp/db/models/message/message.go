@@ -160,7 +160,7 @@ func SaveInSphinx(m []Message, isUpdate bool) error {
 		op = "REPLACE"
 	}
 	query := op + ` INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst,
-		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES `
+		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash, SendAfter, SendBefore) VALUES `
 	var valuePart []string
 	for _, v := range m {
 		isFlash := 0
@@ -171,11 +171,11 @@ func SaveInSphinx(m []Message, isUpdate bool) error {
 			v.ID, v.Msg, v.Username, v.ConnectionGroup,
 			v.Connection, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
 			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, v.Campaign, string(v.Status), v.Error,
-			v.Username, v.ScheduledAt, isFlash,
+			v.Username, v.ScheduledAt, isFlash, v.SendAfter, v.SendBefore,
 		}
 		params = stringutils.EscapeQuotes(params...)
 		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s', %d,
-			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d)`, params...)
+			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d, '%s', '%s')`, params...)
 		valuePart = append(valuePart, values)
 	}
 	query = query + strings.Join(valuePart, ",")

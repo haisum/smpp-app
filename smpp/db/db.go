@@ -7,6 +7,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-sql-driver/mysql"
 	goqu "gopkg.in/doug-martin/goqu.v3"
+	_ "gopkg.in/doug-martin/goqu.v3/adapters/mysql"
 	"database/sql"
 	"testing"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
