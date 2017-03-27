@@ -160,7 +160,7 @@ func SaveInSphinx(m []Message, isUpdate bool) error {
 		op = "REPLACE"
 	}
 	query := op + ` INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst,
-		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES `
+		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash, SendAfter, SendBefore) VALUES `
 	var valuePart []string
 	for _, v := range m {
 		isFlash := 0
@@ -171,11 +171,11 @@ func SaveInSphinx(m []Message, isUpdate bool) error {
 			v.ID, v.Msg, v.Username, v.ConnectionGroup,
 			v.Connection, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
 			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, v.Campaign, string(v.Status), v.Error,
-			v.Username, v.ScheduledAt, isFlash,
+			v.Username, v.ScheduledAt, isFlash, v.SendAfter, v.SendBefore,
 		}
 		params = stringutils.EscapeQuotes(params...)
 		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s', %d,
-			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d)`, params...)
+			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d, '%s', '%s')`, params...)
 		valuePart = append(valuePart, values)
 	}
 	query = query + strings.Join(valuePart, ",")
@@ -360,7 +360,7 @@ func GetMessages(c Criteria) ([]Message, error) {
 			log.WithError(err).Error("Something ain't right. We couldn't get sphinx msg from rethinkdb")
 			return m, err
 		}
-		if msg.RealMsg == msg.Msg && c.CampaignID == msg.CampaignID {
+		if msg.RealMsg == msg.Msg && c.CampaignID != 0 && c.CampaignID == msg.CampaignID {
 			for k, _ := range m {
 				m[k].Msg = msg.Msg
 			}
@@ -452,31 +452,31 @@ func prepareMsgTerm(c Criteria, from interface{}) utils.QueryBuilder {
 		qb.WhereAnd("match('@Msg " + stringutils.EscapeQuote(c.Msg) + "')")
 	}
 	if c.QueuedAfter != 0 {
-		qb.WhereAnd("QueuedAt > " + strconv.FormatInt(c.QueuedAfter, 10))
+		qb.WhereAnd("QueuedAt >= " + strconv.FormatInt(c.QueuedAfter, 10))
 	}
 	if c.QueuedBefore != 0 {
-		qb.WhereAnd("QueuedAt < " + strconv.FormatInt(c.QueuedBefore, 10))
+		qb.WhereAnd("QueuedAt <= " + strconv.FormatInt(c.QueuedBefore, 10))
 	}
 
 	if c.DeliveredAfter != 0 {
-		qb.WhereAnd("DeliveredAt > " + strconv.FormatInt(c.DeliveredAfter, 10))
+		qb.WhereAnd("DeliveredAt >= " + strconv.FormatInt(c.DeliveredAfter, 10))
 	}
 	if c.DeliveredBefore != 0 {
-		qb.WhereAnd("DeliveredAt < " + strconv.FormatInt(c.DeliveredBefore, 10))
+		qb.WhereAnd("DeliveredAt <= " + strconv.FormatInt(c.DeliveredBefore, 10))
 	}
 
 	if c.SentAfter != 0 {
-		qb.WhereAnd("SentAt > " + strconv.FormatInt(c.SentAfter, 10))
+		qb.WhereAnd("SentAt >= " + strconv.FormatInt(c.SentAfter, 10))
 	}
 	if c.SentBefore != 0 {
-		qb.WhereAnd("SentAt < " + strconv.FormatInt(c.SentBefore, 10))
+		qb.WhereAnd("SentAt <= " + strconv.FormatInt(c.SentBefore, 10))
 	}
 
 	if c.ScheduledAfter != 0 {
-		qb.WhereAnd("ScheduledAt > " + strconv.FormatInt(c.ScheduledAfter, 10))
+		qb.WhereAnd("ScheduledAt >= " + strconv.FormatInt(c.ScheduledAfter, 10))
 	}
 	if c.ScheduledBefore != 0 {
-		qb.WhereAnd("ScheduledAt < " + strconv.FormatInt(c.ScheduledBefore, 10))
+		qb.WhereAnd("ScheduledAt <= " + strconv.FormatInt(c.ScheduledBefore, 10))
 	}
 	if c.RespID != "" {
 		qb.WhereAnd("RespID = '" + stringutils.EscapeQuote(c.RespID) + "'")
