@@ -7,6 +7,8 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfiles"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
 )
 
 type uploadReq struct {
@@ -21,7 +23,7 @@ type uploadResponse struct {
 
 // UploadHandler handles uploading of files
 var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	maxPostSize := models.MaxFileSize + (1024 * 512)
+	maxPostSize := numfile.MaxFileSize + (1024 * 512)
 	if r.ContentLength > maxPostSize {
 		log.Error("Upload request too large.")
 		resp := routes.Response{
@@ -69,17 +71,16 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  users.User
 		ok bool
 	)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
 		return
 	}
 
-	nf := models.NumFile{
+	nf := numfile.NumFile{
 		Description: uReq.Description,
 		Username:    u.Username,
-		UserID:      u.ID,
 		SubmittedAt: time.Now().UTC().Unix(),
 	}
 	f, h, err := r.FormFile("File")

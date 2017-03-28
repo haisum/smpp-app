@@ -1,4 +1,4 @@
-package messages
+package message
 
 import (
 	"testing"
@@ -145,14 +145,14 @@ func TestStatus_Scan(t *testing.T) {
 	}
 }
 
-func TestGetWithError(t *testing.T) {
+func TestListWithError(t *testing.T) {
 	spdb, mock, _ := sphinx.ConnectMock(t)
 	defer spdb.Db.Close()
 	mock.ExpectQuery("Status = 'Error' AND CampaignID = 1").WillReturnRows(
 		sqlmock.NewRows([]string{"id", "status", "campaignid"}).AddRow(
 			1,string(Error),1).AddRow(
 			2,string(Error),1))
-	msgs, err := GetWithError(1)
+	msgs, err := ListWithError(1)
 	if err != nil {
 		t.Errorf("Error in getting msgs %s", err)
 	}
@@ -227,7 +227,7 @@ func TestGetStats(t *testing.T) {
 	}
 }
 
-func TestGetQueued(t *testing.T) {
+func TestListQueued(t *testing.T) {
 	sp, mock, _ := sphinx.ConnectMock(t)
 	defer sp.Db.Close()
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Message WHERE Status = 'Queued' AND CampaignID = 33 ORDER BY QueuedAt DESC LIMIT 500000 option max_matches=500000")).WillReturnRows(
@@ -239,7 +239,7 @@ func TestGetQueued(t *testing.T) {
 			12).AddRow(
 			45).AddRow(
 			23))
-	ms , err := GetQueued(33)
+	ms , err := ListQueued(33)
 	if err != nil {
 		t.Errorf("Error %s", err)
 	}
@@ -255,7 +255,7 @@ func TestGetQueued(t *testing.T) {
 	}
 }
 
-func TestFilter(t *testing.T) {
+func TestList(t *testing.T) {
 	sp, mock, _ := sphinx.ConnectMock(t)
 	defer sp.Db.Close()
 	db, dbmock, _ := db.ConnectMock(t)
@@ -264,7 +264,7 @@ func TestFilter(t *testing.T) {
 	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT `campaign`, `campaignid`, `connection`, `connectiongroup`, `deliveredat`, `dst`, `enc`, `error`, `id`, `isflash`, `msg`, `priority`, `queuedat`, `realmsg`, `respid`, `scheduledat`, `sendafter`, `sendbefore`, `sentat`, `src`, `status`, `total`, `username` FROM `Message` WHERE (`id` = 1) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(1, "hello"))
 	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT `campaign`, `campaignid`, `connection`, `connectiongroup`, `deliveredat`, `dst`, `enc`, `error`, `id`, `isflash`, `msg`, `priority`, `queuedat`, `realmsg`, `respid`, `scheduledat`, `sendafter`, `sendbefore`, `sentat`, `src`, `status`, `total`, `username` FROM `Message` WHERE (`id` = 1) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(1, "hello"))
 	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT `campaign`, `campaignid`, `connection`, `connectiongroup`, `deliveredat`, `dst`, `enc`, `error`, `id`, `isflash`, `msg`, `priority`, `queuedat`, `realmsg`, `respid`, `scheduledat`, `sendafter`, `sendbefore`, `sentat`, `src`, `status`, `total`, `username` FROM `Message` WHERE (`id` = 2) LIMIT 1")).WillReturnRows(sqlmock.NewRows([]string{"id", "msg"}).AddRow(2, "world"))
-	ms, err := Filter(Criteria{
+	ms, err := List(Criteria{
 		From : "344",
 		FetchMsg: true,
 	})

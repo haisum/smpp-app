@@ -1,4 +1,4 @@
-package messages
+package message
 
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
@@ -59,7 +59,7 @@ type Message struct {
 	IsFlash     bool `db:"isflash"`
 }
 
-// Criteria represents filters we can give to Filter method.
+// Criteria represents filters we can give to List method.
 type Criteria struct {
 	ID              int64
 	RespID          string
@@ -143,11 +143,11 @@ func (m *Message) Save() (int64, error) {
 		return 0, err
 	}
 	m.ID, err = result.LastInsertId()
-	err = SaveInSphinx([]Message{*m}, false)
+	err = saveInSphinx([]Message{*m}, false)
 	return m.ID, err
 }
 
-func SaveInSphinx(m []Message, isUpdate bool) error {
+func saveInSphinx(m []Message, isUpdate bool) error {
 	sp := sphinx.Get()
 	if sp == nil {
 		return errors.New("Sphinx db connection is not initialized yet")
@@ -214,7 +214,7 @@ func SaveBulk(m []Message) ([]int64, error) {
 	for k := affected - 1; k >= 0; k-- {
 		m[k].ID = ids[k]
 	}
-	err = SaveInSphinx(m, false)
+	err = saveInSphinx(m, false)
 	return ids, err
 }
 
@@ -224,19 +224,19 @@ func (m *Message) Update() error {
 	if err != nil {
 		return err
 	}
-	err = SaveInSphinx([]Message{*m}, true)
+	err = saveInSphinx([]Message{*m}, true)
 	return err
 }
 
-func StopCampaignInSphinx(campaignID int64) error {
-	ms, err := Filter(Criteria{
+func stopCampaignInSphinx(campaignID int64) error {
+	ms, err := List(Criteria{
 		CampaignID: campaignID,
 		Status:     Stopped,
 	})
 	if err != nil {
 		return err
 	}
-	err = SaveInSphinx(ms, true)
+	err = saveInSphinx(ms, true)
 	return err
 }
 
@@ -256,13 +256,13 @@ func SaveDelivery(respID, status string) error {
 		log.WithField("RespID", respID).Error("Couldn't update delivery sm. No such response id found.")
 		return errors.New("Couldn't update delivery sm. No such response id found.")
 	}
-	ms, err := Filter(Criteria{
+	ms, err := List(Criteria{
 		RespID: respID,
 	})
 	if len(ms) < 1 || err != nil {
 		log.WithFields(log.Fields{"ms": ms, "error": err, "respID": respID}).Error("Couldn't get msgs with respID")
 	}
-	err = SaveInSphinx(ms, true)
+	err = saveInSphinx(ms, true)
 	if err != nil {
 		return err
 	}
@@ -293,7 +293,7 @@ func StopPending(campID int64) (int64, error) {
 		return 0, err
 	}
 	affected, _ := res.RowsAffected()
-	err = StopCampaignInSphinx(campID)
+	err = stopCampaignInSphinx(campID)
 	if err != nil {
 		log.WithError(err).Error("Couldn't update records in sphinx")
 		return 0, err
@@ -301,9 +301,9 @@ func StopPending(campID int64) (int64, error) {
 	return affected, nil
 }
 
-// GetWithError returns all messages with status error in a campaign
-func GetWithError(campID int64) ([]Message, error) {
-	m, err := Filter(Criteria{
+// ListWithError returns all messages with status error in a campaign
+func ListWithError(campID int64) ([]Message, error) {
+	m, err := List(Criteria{
 		CampaignID: campID,
 		Status:     Error,
 		PerPage:    500000,
@@ -314,9 +314,9 @@ func GetWithError(campID int64) ([]Message, error) {
 	return m, err
 }
 
-// GetQueued returns all messages with status queued in a campaign
-func GetQueued(campID int64) ([]Message, error) {
-	m, err := Filter(Criteria{
+// ListQueued returns all messages with status queued in a campaign
+func ListQueued(campID int64) ([]Message, error) {
+	m, err := List(Criteria{
 		CampaignID: campID,
 		Status:     Queued,
 		PerPage:    500000,
@@ -327,8 +327,8 @@ func GetQueued(campID int64) ([]Message, error) {
 	return m, err
 }
 
-// Filter filters messages based on criteria
-func Filter(c Criteria) ([]Message, error) {
+// List filters messages based on criteria
+func List(c Criteria) ([]Message, error) {
 	var m []Message
 	var (
 		from interface{}

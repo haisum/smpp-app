@@ -1,4 +1,4 @@
-package models
+package numfile
 
 import (
 	"fmt"
@@ -24,27 +24,26 @@ type NumFile struct {
 	Description string
 	LocalName   string
 	Username    string
-	UserID      string
 	SubmittedAt int64
 	Deleted     bool
-	Type        NumFileType
+	Type        Type
 }
 
-//NumFileType represents type of file we're uploading
+//Type represents type of file we're uploading
 //can be excel/csv etc.
-type NumFileType string
+type Type string
 
-func (n *NumFileType) Scan(nf interface{}) error {
-	*n = NumFileType(fmt.Sprintf("%s", nf))
+func (n *Type) Scan(nf interface{}) error {
+	*n = Type(fmt.Sprintf("%s", nf))
 	return nil
 }
 
 const (
-	//NumFileCSV is text file with .csv extension. This file should have comma separated numbers
-	NumFileCSV NumFileType = ".csv"
-	//NumFileTxt is text file with .txt extension. This file should have comma separated numbers
-	NumFileTxt = ".txt"
-	//NumFileXLSX is excel file with .xlsx extension. These files should follow following structure:
+	//CSV is text file with .csv extension. This file should have comma separated numbers
+	CSV Type = ".csv"
+	//TXT is text file with .txt extension. This file should have comma separated numbers
+	TXT = ".txt"
+	//XLSX is excel file with .xlsx extension. These files should follow following structure:
 	// -----------------------------------------
 	// Destination | Param1 | Param2 | ..ParamN |
 	// ------------------------------------------
@@ -52,30 +51,30 @@ const (
 	//-------------------------------------------
 	// First header must be Destination and firs cell value will be used as destination number
 	// Rest of cells will be replacement values in message. A message with text "{{Param1}} {{Param2}} how are you" will become "hello World how are you"
-	NumFileXLSX = ".xlsx"
+	XLSX = ".xlsx"
 	// MaxFileSize is maximum file size in bytes
 	MaxFileSize int64 = 5 * 1024 * 1024
 )
 
-//NumFileRow represents one single row in excel or csv file
-type NumFileRow struct {
+//Row represents one single Row in excel or csv file
+type Row struct {
 	Destination string
 	Params      map[string]string
 }
 
 var (
-	//NumFilePath is folder relative to path where httpserver binary is, we'll save all files here
-	NumFilePath = "./files"
+	//Path is folder relative to path where httpserver binary is, we'll save all files here
+	Path = "./files"
 )
 
-// NumFileCriteria represents filters we can give to GetFiles method.
-type NumFileCriteria struct {
+// Criteria represents filters we can give to GetFiles method.
+type Criteria struct {
 	ID              string
 	Username        string
 	UserID          string
 	SubmittedAfter  int64
 	SubmittedBefore int64
-	Type            NumFileType
+	Type            Type
 	Name            string
 	Deleted         bool
 	OrderByKey      string
@@ -103,8 +102,8 @@ func (nf *NumFile) Delete() error {
 	return nil
 }
 
-// GetNumFiles filters files based on criteria
-func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
+// List filters files based on criteria
+func List(c Criteria) ([]NumFile, error) {
 	var (
 		f          []NumFile
 		indexUsed  bool
@@ -208,9 +207,9 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 		log.WithError(err).Error("Couldn't get session.")
 		return id, err
 	}
-	fileType := NumFileType(filepath.Ext(strings.ToLower(name)))
-	if fileType != NumFileCSV && fileType != NumFileTxt && fileType != NumFileXLSX {
-		return id, fmt.Errorf("Only csv, txt and xlsx extensions are allowed Given file %s has extension %s.", name, fileType)
+	fileType := Type(filepath.Ext(strings.ToLower(name)))
+	if fileType != CSV && fileType != TXT && fileType != XLSX {
+		return id, fmt.Errorf("Only csv, TXT and xlsx extensions are allowed Given file %s has extension %s.", name, fileType)
 	}
 	nf.Type = fileType
 	nf.Name = name
@@ -221,7 +220,7 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 	if http.DetectContentType(b) != "text/plain; charset=utf-8" && http.DetectContentType(b) != "application/zip" {
 		return id, fmt.Errorf("File doesn't seem to be a text or excel file.")
 	}
-	numfilePath := fmt.Sprintf("%s/%s", NumFilePath, nf.UserID)
+	numfilePath := fmt.Sprintf("%s/%s", Path, nf.UserID)
 	err = os.MkdirAll(numfilePath, 0711)
 	if err != nil {
 		return id, fmt.Errorf("Couldn't create directory %s", numfilePath)
@@ -248,39 +247,39 @@ func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
 	return id, nil
 }
 
-// NumbersFromString makes a NumFileRow list from comma separated numbers
-func NumbersFromString(numbers string) []NumFileRow {
-	var nums []NumFileRow
+// NumbersFromString makes a Row list from comma separated numbers
+func NumbersFromString(numbers string) []Row {
+	var nums []Row
 	if numbers == "" {
 		return nums
 	}
 	parts := strings.Split(numbers, ",")
 	for _, num := range parts {
-		nums = append(nums, NumFileRow{
+		nums = append(nums, Row{
 			Destination: num,
 		})
 	}
 	return nums
 }
 
-// ToNumbers reads a csv or xlsx file and returns array of NumFileRow with Destination and Params map
-func (nf *NumFile) ToNumbers() ([]NumFileRow, error) {
-	var nums []NumFileRow
-	nummap := make(map[string]NumFileRow) // used for unique numbers
-	numfilePath := fmt.Sprintf("%s/%s/%s", NumFilePath, nf.UserID, nf.LocalName)
+// ToNumbers reads a csv or xlsx file and returns array of Row with Destination and Params map
+func (nf *NumFile) ToNumbers() ([]Row, error) {
+	var nums []Row
+	nummap := make(map[string]Row) // used for unique numbers
+	numfilePath := fmt.Sprintf("%s/%s/%s", Path, nf.UserID, nf.LocalName)
 	b, err := ioutil.ReadFile(numfilePath)
 	if err != nil {
 		return nums, err
 	}
-	if nf.Type == NumFileCSV || nf.Type == NumFileTxt {
+	if nf.Type == CSV || nf.Type == TXT {
 		for i, num := range strings.Split(string(b[:]), ",") {
 			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
 			if len(num) > 15 || len(num) < 5 {
 				return nums, fmt.Errorf("Entry number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
 			}
-			nummap[num] = NumFileRow{Destination: num}
+			nummap[num] = Row{Destination: num}
 		}
-	} else if nf.Type == NumFileXLSX {
+	} else if nf.Type == XLSX {
 		xlFile, err := xlsx.OpenBinary(b)
 		if err != nil {
 			return nums, err
@@ -307,7 +306,7 @@ func (nf *NumFile) ToNumbers() ([]NumFileRow, error) {
 			if len(num) > 15 || len(num) < 5 {
 				return nums, fmt.Errorf("Row number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
 			}
-			nr := NumFileRow{
+			nr := Row{
 				Destination: num,
 				Params:      map[string]string{},
 			}

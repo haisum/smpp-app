@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS `message` (
 /*!40000 ALTER TABLE `message` DISABLE KEYS */;
 /*!40000 ALTER TABLE `message` ENABLE KEYS */;
 
--- Dumping structure for table hsmppdb.numfile
+-- Dumping structure for table hsmppdb.files
  CREATE TABLE IF NOT EXISTS `numfile` (
   `ID` int(11) NOT NULL AUTO_INCREMENT,
   `Name` varchar(200) NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS `message` (
   CONSTRAINT `numfile_username` FOREIGN KEY (`Username`) REFERENCES `user` (`Username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
--- Dumping data for table hsmppdb.numfile: ~0 rows (approximately)
+-- Dumping data for table hsmppdb.files: ~0 rows (approximately)
 /*!40000 ALTER TABLE `numfile` DISABLE KEYS */;
 /*!40000 ALTER TABLE `numfile` ENABLE KEYS */;
 
