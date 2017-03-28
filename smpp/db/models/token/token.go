@@ -1,4 +1,4 @@
-package models
+package token
 
 import (
 	"fmt"
@@ -27,9 +27,9 @@ type Token struct {
 	Validity     int `db:"validity"`
 }
 
-// GetToken looks for token in Token table and returns it or error if
+// Get looks for token in Token table and returns it or error if
 // it's not found.
-func GetToken(token string) (Token, error) {
+func Get(token string) (Token, error) {
 	var t Token
 	found, err := db.Get().From("Token").Select("*").Where(goqu.I("Token").Eq(stringutils.ToSHA1(token))).Prepared(true).ScanStruct(&t)
 	if err != nil || !found {
@@ -71,8 +71,8 @@ func GetToken(token string) (Token, error) {
 	return t, err
 }
 
-// CreateToken should be called to create a new token for a user
-func CreateToken(username string, validity int) (string, error) {
+// Create should be called to create a new token for a user
+func Create(username string, validity int) (string, error) {
 	token := stringutils.SecureRandomAlphaString(TokenSize)
 	if validity == 0 {
 		validity = DefaultTokenValidity

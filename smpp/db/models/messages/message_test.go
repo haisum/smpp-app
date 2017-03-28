@@ -16,7 +16,6 @@ func TestMessage_Validate(t *testing.T) {
 	errors := msg.Validate()
 	if len(errors) == 0{
 		t.Error("No errors returned when errors were expected.")
-		t.Fail()
 	}
 	expectedErrors := []string{
 		"Destination can't be empty.",
@@ -26,7 +25,6 @@ func TestMessage_Validate(t *testing.T) {
 	}
 	if !reflect.DeepEqual(expectedErrors, errors){
 		t.Errorf("Couldn't find expected error msgs. Expected: %+v, Got: %+v", expectedErrors, errors)
-		t.Fail()
 	}
 	msg = Message{
 		SendAfter: "jsadf",
@@ -42,7 +40,6 @@ func TestMessage_Validate(t *testing.T) {
 	}
 	if !reflect.DeepEqual(expectedErrors, msg.Validate()){
 		t.Errorf("Couldn't find expected error msgs. Expected: %+v, Got: %+v", expectedErrors, errors)
-		t.Fail()
 	}
 	msg = Message{
 		SendBefore: "jsadf",
@@ -57,13 +54,11 @@ func TestMessage_Validate(t *testing.T) {
 	}
 	if !reflect.DeepEqual(expectedErrors, msg.Validate()){
 		t.Errorf("Couldn't find expected error msgs. Expected: %+v, Got: %+v", expectedErrors, errors)
-		t.Fail()
 	}
 	msg.SendAfter = "09:00"
 	msg.SendBefore = "07:00"
 	if len(msg.Validate()) > 0{
 		t.Errorf("No errors were expected")
-		t.Fail()
 	}
 	msg.SendBefore = "23:782"
 	msg.SendAfter = "241:09"
@@ -73,7 +68,6 @@ func TestMessage_Validate(t *testing.T) {
 	}
 	if !reflect.DeepEqual(expectedErrors, msg.Validate()){
 		t.Errorf("Couldn't find expected error msgs. Expected: %+v, Got: %+v", expectedErrors, errors)
-		t.Fail()
 	}
 }
 
@@ -129,7 +123,6 @@ func TestDeliverySM_Scan(t *testing.T) {
 	dm.Scan([]byte(`{"hello" : "world"}`))
 	if v, ok := dm["hello"]; !ok || v != "world"{
 		t.Error("Couldn't scan deliverySM")
-		t.Fail()
 	}
 }
 
@@ -138,11 +131,9 @@ func TestDeliverySM_Value(t *testing.T) {
 	v, err := dm.Value()
 	if err != nil {
 		t.Errorf("error occurred: %s", err)
-		t.Fail()
 	}
 	if string(v.([]byte)[:]) != `{"hello":"world"}` {
 		t.Errorf("Unexpected value %s", string(v.([]byte)[:]) )
-		t.Fail()
 	}
 }
 
@@ -151,7 +142,6 @@ func TestStatus_Scan(t *testing.T) {
 	st.Scan([]uint8(Queued))
 	if st != Queued{
 		t.Error("Couldn't scan status")
-		t.Fail()
 	}
 }
 
@@ -165,15 +155,12 @@ func TestGetWithError(t *testing.T) {
 	msgs, err := GetWithError(1)
 	if err != nil {
 		t.Errorf("Error in getting msgs %s", err)
-		t.Fail()
 	}
 	if len(msgs) != 2 {
 		t.Errorf("Expected 2 messages, got %d", len(msgs))
-		t.Fail()
 	}
 	if msgs[0].ID != 1 || msgs[0].Status != Error || msgs[1].CampaignID != 1{
 		t.Errorf("Unexpected msg objects. %+v", msgs)
-		t.Fail()
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 
@@ -192,11 +179,9 @@ func TestGet(t *testing.T) {
 	}
 	if msg.ID != 21 {
 		t.Errorf("Unexpected msg %+v", msg)
-		t.Fail()
 	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 	con, mock, _ = db.ConnectMock(t)
 	defer con.Db.Close()
@@ -208,7 +193,6 @@ func TestGet(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 
 }
@@ -230,20 +214,16 @@ func TestGetStats(t *testing.T) {
 	})
 	if err != nil {
 		t.Errorf("Error: %s", err)
-		t.Fail()
 	}
 	if stats.Stopped != 23 || stats.Scheduled != 45 || stats.Sent != 2 || stats.Delivered != 65  || stats.NotDelivered != 12 || stats.Error != 4 || stats.Queued != 1{
 		t.Errorf("Error unexpected stats: %+v", stats)
-		t.Fail()
 	}
 	if stats.Total != 152 {
 		t.Errorf("Error unexpected stats: %+v", stats)
-		t.Fail()
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 }
 
@@ -262,7 +242,6 @@ func TestGetQueued(t *testing.T) {
 	ms , err := GetQueued(33)
 	if err != nil {
 		t.Errorf("Error %s", err)
-		t.Fail()
 	}
 	if len(ms) != 7 {
 		t.Error("Unpexcted msg count")
@@ -270,11 +249,9 @@ func TestGetQueued(t *testing.T) {
 	}
 	if ms[5].ID != 45 {
 		t.Errorf("Unexpected msg value")
-		t.Fail()
 	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 }
 
@@ -293,19 +270,15 @@ func TestFilter(t *testing.T) {
 	})
 	if err != nil {
 		t.Errorf("Error %s", err)
-		t.Fail()
 	}
 	if len (ms) != 2{
 		t.Errorf("Unexpected msg count %d", len(ms))
-		t.Fail()
 	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 	if err := dbmock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 }
 
@@ -315,7 +288,7 @@ func TestMessage_Save(t *testing.T) {
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
 	dbmock.ExpectExec(regexp.QuoteMeta("INSERT INTO `Message` (`respid`, `connectiongroup`, `connection`, `total`, `username`, `msg`, `realmsg`, `enc`, `dst`, `src`, `priority`, `queuedat`, `sentat`, `deliveredat`, `campaignid`, `campaign`, `status`, `error`, `sendbefore`, `sendafter`, `scheduledat`, `isflash`) VALUES ('23434asf', '', 'Default', 0, '', '', '', '', '', '', 0, 0, 0, 0, 0, '', 'Not Delivered', 'NotDelivered', '', '', 0, 0)")).WillReturnResult(sqlmock.NewResult(21, 1))
-	mock.ExpectExec(regexp.QuoteMeta(`INSERT INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES (21, '', '', '', 'Default', '23434asf', 0, '', '', '', 0, 0 , 0, 0, 0, '', 'Not Delivered', 'NotDelivered', '', 0, 0)`)).WillReturnResult(sqlmock.NewResult(0,1))
+	mock.ExpectExec(regexp.QuoteMeta(`INSERT INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash, SendAfter, SendBefore) VALUES (21, '', '', '', 'Default', '23434asf', 0, '', '', '', 0, 0 , 0, 0, 0, '', 'Not Delivered', 'NotDelivered', '', 0, 0, '', '')`)).WillReturnResult(sqlmock.NewResult(0,1))
 	m := Message{
 		RespID: "23434asf",
 		Connection: "Default",
@@ -325,19 +298,15 @@ func TestMessage_Save(t *testing.T) {
 	id, err := m.Save()
 	if err != nil {
 		t.Errorf("Error: %s", err)
-		t.Fail()
 	}
 	if id != 21 {
 		t.Errorf("id was unexpected: %d", id)
-		t.Fail()
 	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 	if err := dbmock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 }
 
@@ -347,7 +316,7 @@ func TestMessage_Update(t *testing.T) {
 	db, dbmock, _ := db.ConnectMock(t)
 	defer db.Db.Close()
 	dbmock.ExpectExec(regexp.QuoteMeta("UPDATE `Message` SET `id`=34,`respid`='',`connectiongroup`='',`connection`='',`total`=0,`username`='',`msg`='asdf',`realmsg`='',`enc`='',`dst`='',`src`='',`priority`=0,`queuedat`=0,`sentat`=0,`deliveredat`=0,`campaignid`=0,`campaign`='',`status`='',`error`='',`sendbefore`='',`sendafter`='',`scheduledat`=0,`isflash`=0 WHERE (`id` = 34)")).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(regexp.QuoteMeta(`REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES (34, 'asdf', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 0, '', '', '', '', 0, 0)`)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta(`REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash, SendAfter, SendBefore) VALUES (34, 'asdf', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 0, '', '', '', '', 0, 0, '', '')`)).WillReturnResult(sqlmock.NewResult(0, 1))
 	m := Message{
 		ID: 34,
 		Msg : "asdf",
@@ -355,15 +324,12 @@ func TestMessage_Update(t *testing.T) {
 	err := m.Update()
 	if err != nil {
 		t.Errorf("%s", err)
-		t.Fail()
 	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 	if err := dbmock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 }
 
@@ -378,15 +344,12 @@ func TestSaveDelivery(t *testing.T) {
 	// now we execute our method
 	if err := SaveDelivery("1234abcd", string(Delivered)); err != nil {
 		t.Errorf("error was not expected while saving delivery: %s", err)
-		t.Fail()
 	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 	if err := dbmock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 }
 
@@ -417,15 +380,12 @@ func TestSaveBulk(t *testing.T) {
 	}
 	if ids[0] != 34 || ids[1] != 35 {
 		t.Errorf("unexpected ids:%v", ids)
-		t.Fail()
 	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 	if err := dbmock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 }
 
@@ -436,22 +396,18 @@ func TestStopPending(t *testing.T) {
 	defer db.Db.Close()
 	dbmock.ExpectExec(regexp.QuoteMeta("UPDATE `Message` SET `Status`='Stopped' WHERE ((`CampaignID` = 1) AND ((`Status` = 'Queued') OR (`Status` = 'Scheduled')))")).WillReturnResult(sqlmock.NewResult(0, 2))
 	mock.ExpectQuery(`SELECT \* FROM Message WHERE Status = 'Stopped' AND CampaignID = 1`).WillReturnRows(sqlmock.NewRows([]string{"id", "status", "campaignid"}).AddRow(1, "Stopped", 1).AddRow(2, "Stopped", 1))
-	mock.ExpectExec(regexp.QuoteMeta(`REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash) VALUES (1, '', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 1, '', 'Stopped', '', '', 0, 0),(2, '', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 1, '', 'Stopped', '', '', 0, 0)`)).WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec(regexp.QuoteMeta(`REPLACE INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst, Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash, SendAfter, SendBefore) VALUES (1, '', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 1, '', 'Stopped', '', '', 0, 0, '', ''),(2, '', '', '', '', '', 0, '', '', '', 0, 0 , 0, 0, 1, '', 'Stopped', '', '', 0, 0, '', '')`)).WillReturnResult(sqlmock.NewResult(0, 2))
 	n, err := StopPending(1)
 	if err != nil {
 		t.Errorf("Error %s was not expected", err)
-		t.Fail()
 	}
 	if n != 2 {
 		t.Errorf("2 expected, got %d", n)
-		t.Fail()
 	}
 	if err := mock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 	if err := dbmock.ExpectationsWereMet(); err != nil{
 		t.Errorf("there were unfulfilled expections: %s", err)
-		t.Fail()
 	}
 }

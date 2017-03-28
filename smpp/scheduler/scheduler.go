@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/messages"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/config"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/settings"
 )
 
 // Given a list of strings and a string,
@@ -35,7 +35,7 @@ func GetMessagesBetween(after, before time.Time) ([]messages.Message, error) {
 }
 
 func GetKey(m messages.Message) (string, error) {
-	config, err := config.Get()
+	config, err := settings.Get()
 	if err != nil {
 		log.Error("Couldn't get config")
 	}
