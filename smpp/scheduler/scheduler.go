@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/messages"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/config"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/settings"
 )
 
 // Given a list of strings and a string,
@@ -23,9 +23,9 @@ func MatchKey(keys []string, str string, noKey string) string {
 }
 
 
-func GetMessagesBetween(after, before time.Time) ([]messages.Message, error) {
+func GetMessagesBetween(after, before time.Time) ([]message.Message, error) {
 	//fetch 10k at  a time
-	ms, err := messages.Filter(messages.Criteria{
+	ms, err := message.List(message.Criteria{
 		ScheduledAfter:  after.Unix(),
 		ScheduledBefore: before.Unix(),
 		Status:          "Scheduled",
@@ -34,8 +34,8 @@ func GetMessagesBetween(after, before time.Time) ([]messages.Message, error) {
 	return ms, err
 }
 
-func GetKey(m messages.Message) (string, error) {
-	config, err := config.Get()
+func GetKey(m message.Message) (string, error) {
+	config, err := settings.Get()
 	if err != nil {
 		log.Error("Couldn't get config")
 	}
@@ -59,7 +59,7 @@ func ProcessMessages(q queue.MQ) error {
 		"ScheduledAfer":   after.String(),
 		"ScheduledBefore": before.String(),
 	}).Info("Looking for messages")
-	ms := []messages.Message{messages.Message{}}
+	ms := []message.Message{message.Message{}}
 	var err error
 	for len(ms) != 0 {
 		ms, err = GetMessagesBetween(after, before)
@@ -82,7 +82,7 @@ func ProcessMessages(q queue.MQ) error {
 				log.WithError(err).Error("Couldn't publish message.")
 				return err
 			}
-			m.Status = messages.Queued
+			m.Status = message.Queued
 			m.QueuedAt = time.Now().UTC().Unix()
 			m.Update()
 		}

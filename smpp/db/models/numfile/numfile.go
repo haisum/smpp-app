@@ -1,4 +1,4 @@
-package models
+package numfile
 
 import (
 	"fmt"
@@ -111,19 +111,19 @@ const (
 	MaxFileSize int64 = 5 * 1024 * 1024
 )
 
-//NumFileRow represents one single row in excel or csv file
-type NumFileRow struct {
+//Row represents one single Row in excel or csv file
+type Row struct {
 	Destination string
 	Params      map[string]string
 }
 
 var (
-	//NumFilePath is folder relative to path where httpserver binary is, we'll save all files here
-	NumFilePath = "./files"
+	//Path is folder relative to path where httpserver binary is, we'll save all files here
+	Path = "./files"
 )
 
-// NumFileCriteria represents filters we can give to GetFiles method.
-type NumFileCriteria struct {
+// Criteria represents filters we can give to GetFiles method.
+type Criteria struct {
 	ID              string
 	Username        string
 	SubmittedAfter  int64
@@ -152,8 +152,8 @@ func (nf *NumFile) Update() error {
 	return err
 }
 
-// GetNumFiles filters files based on criteria
-func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
+// List filters files based on criteria
+func List(c Criteria) ([]NumFile, error) {
 	var (
 		f          []NumFile
 	)
@@ -261,7 +261,7 @@ func RowsFromString(numbers string) []NumFileRow {
 	}
 	parts := strings.Split(numbers, ",")
 	for _, num := range parts {
-		nums = append(nums, NumFileRow{
+		nums = append(nums, Row{
 			Destination: num,
 		})
 	}
@@ -279,11 +279,12 @@ func (nf *NumFile) ToNumbers(nio NumFileIO) ([]NumFileRow, error) {
 	}
 	if nf.Type == CSV || nf.Type == TXT {
 		for i, num := range strings.Split(stringutils.ByteToString(b), ",") {
+		for i, num := range strings.Split(string(b[:]), ",") {
 			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
 			if len(num) > 15 || len(num) < 5 {
 				return nums, fmt.Errorf("Entry number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
 			}
-			nummap[num] = NumFileRow{Destination: num}
+			nummap[num] = Row{Destination: num}
 		}
 	} else if nf.Type == XLSX {
 		xlFile, err := xlsx.OpenBinary(b)
@@ -312,7 +313,7 @@ func (nf *NumFile) ToNumbers(nio NumFileIO) ([]NumFileRow, error) {
 			if len(num) > 15 || len(num) < 5 {
 				return nums, fmt.Errorf("Row number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
 			}
-			nr := NumFileRow{
+			nr := Row{
 				Destination: num,
 				Params:      map[string]string{},
 			}

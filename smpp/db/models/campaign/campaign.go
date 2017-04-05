@@ -1,4 +1,4 @@
-package campaigns
+package campaign
 
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
@@ -7,6 +7,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 	"strconv"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
 )
 
 // Campaign represents a message campaign
@@ -73,7 +74,7 @@ func (c *Campaign) Save() (string, error) {
 		return id, err
 	}
 	if c.FileID != "" {
-		f, _ := GetNumFiles(NumFileCriteria{
+		f, _ := numfile.List(numfile.Criteria{
 			ID: c.FileID,
 		})
 		if len(f) != 1 {
@@ -95,7 +96,7 @@ func (c *Campaign) Save() (string, error) {
 }
 
 //GetProgress returns count for a campaign in progress
-func GetProgress(id string) (Progress, error) {
+func (c *Campaign) GetProgress() (Progress, error) {
 	cp := Progress{
 		"Total" : 0,
 		"Queued"  : 0,
@@ -139,22 +140,13 @@ func GetProgress(id string) (Progress, error) {
 	return cp, err
 }
 
-// GetReport returns CampaignReport struct filled with stats from campaign with given id
-func GetReport(id string) (Report, error) {
+// GetReport returns Report struct filled with stats from campaign with given id
+func (c *Campaign) GetReport() (Report, error) {
 	cr := Report{
-		ID: id,
-	}
-	c, err := GetCampaigns(Criteria{
-		ID: id,
-	})
-	if err != nil {
-		return cr, fmt.Errorf("Couldn't fetch report from db. %s.", err)
-	}
-	if len(c) == 0 {
-		return cr, fmt.Errorf("No campaign with id %s could be found.", id)
+		ID: c.ID,
 	}
 	// get total in campaign
-	err = sphinx.Get().Get(&cr, "SELECT count(*) as Total from Message where campaignID='"+id+"'")
+	err := sphinx.Get().Get(&cr, "SELECT count(*) as Total from Message where campaignID='"+id+"'")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
@@ -214,8 +206,8 @@ func GetReport(id string) (Report, error) {
 	return cr, nil
 }
 
-// Filter fetches list of campaigns based on criteria
-func Filter(camps *[]Campaign, c Criteria) (error) {
+// List fetches list of campaigns based on criteria
+func List(c Criteria) ([]Campaign, error) {
 	var (
 		indexUsed  bool
 		filterUsed bool

@@ -10,7 +10,6 @@ func TestEscapeQuote(t *testing.T) {
 	expectedString := `I\'m fine how\'re you`
 	if EscapeQuote(testString) != expectedString {
 		t.Errorf("Expected: %s. Got: %s", expectedString, EscapeQuote(testString))
-		t.Fail()
 	}
 }
 

@@ -1,6 +1,7 @@
 package utils
 
 //Query builder is a simple utility to create complex sql queries
+// this is obsolete, please use goqu in future.
 type QueryBuilder struct {
 	query   string
 	where   string
