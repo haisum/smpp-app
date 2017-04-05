@@ -14,37 +14,91 @@ import (
 	log "github.com/Sirupsen/logrus"
 	r "github.com/dancannon/gorethink"
 	"github.com/tealeg/xlsx"
+	"gopkg.in/doug-martin/goqu.v3"
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
+	"io"
+	"errors"
 )
 
 // NumFile represents file uploaded to system for saving
 // files with numbers
 type NumFile struct {
-	ID          string `gorethink:"id,omitempty"`
-	Name        string
-	Description string
-	LocalName   string
-	Username    string
-	UserID      string
-	SubmittedAt int64
-	Deleted     bool
-	Type        NumFileType
+	ID          int64 `db:"id" goqu:"skipinsert"`
+	Name        string `db:"name"`
+	Description string `db:"description"`
+	LocalName   string `db:"localname"`
+	Username    string `db:"username"`
+	UserID      string `db:"userid"`
+	SubmittedAt int64  `db:"submittedat"`
+	Deleted     bool   `db:"deleted"`
+	Type        Type   `db:"type"`
 }
 
-//NumFileType represents type of file we're uploading
-//can be excel/csv etc.
-type NumFileType string
+type NumFileIO interface{
+	Load(file io.Reader) ([]byte, error)
+	LoadFile(filename string) ([]byte, error)
+	Write(nf *NumFile) error
+}
 
-func (n *NumFileType) Scan(nf interface{}) error {
-	*n = NumFileType(fmt.Sprintf("%s", nf))
+type RealNumFileIO struct {
+	b []byte
+}
+
+func (nio *RealNumFileIO) Load(file io.Reader) ([]byte, error){
+	var err error
+	nio.b, err = ioutil.ReadAll(file)
+	if err != nil {
+		return nio.b, errors.New("Couldn't read file.")
+	}
+	if http.DetectContentType(nio.b) != "text/plain; charset=utf-8" && http.DetectContentType(nio.b) != "application/zip" {
+		return nio.b, errors.New("File doesn't seem to be a text or excel file.")
+	}
+	return nio.b, nil
+}
+
+func (nio *RealNumFileIO) LoadFile(filename string) ([]byte, error){
+	var err error
+	nio.b, err = ioutil.ReadFile(filename)
+	if err != nil {
+		return nio.b, errors.New("Couldn't read file.")
+	}
+	if http.DetectContentType(nio.b) != "text/plain; charset=utf-8" && http.DetectContentType(nio.b) != "application/zip" {
+		return nio.b, errors.New("File doesn't seem to be a text or excel file.")
+	}
+	return nio.b, nil
+}
+
+func (nio *RealNumFileIO) Write(file *NumFile) error {
+	if file.LocalName == "" {
+		return errors.New("Local Name can't be blank")
+	}
+	numfilePath := filepath.Join(NumFilePath, file.UserID)
+	err := os.MkdirAll(numfilePath, 0711)
+	if err != nil {
+		return fmt.Errorf("Couldn't create directory %s", numfilePath)
+	}
+	err = ioutil.WriteFile(filepath.Join(numfilePath, file.LocalName), nio.b, 0600)
+	if err != nil {
+		return fmt.Errorf("Couldn't write file to disk at path %s.", filepath.Join(numfilePath, file.LocalName))
+	}
+	return nil
+}
+
+//Type represents type of file we're uploading
+//can be excel/csv etc.
+type Type string
+
+func (n *Type) Scan(nf interface{}) error {
+	*n = Type(fmt.Sprintf("%s", nf))
 	return nil
 }
 
 const (
-	//NumFileCSV is text file with .csv extension. This file should have comma separated numbers
-	NumFileCSV NumFileType = ".csv"
-	//NumFileTxt is text file with .txt extension. This file should have comma separated numbers
-	NumFileTxt = ".txt"
-	//NumFileXLSX is excel file with .xlsx extension. These files should follow following structure:
+	//CSV is text file with .csv extension. This file should have comma separated numbers
+	CSV Type = ".csv"
+	//TXT is text file with .txt extension. This file should have comma separated numbers
+	TXT = ".txt"
+	//XLSX is excel file with .xlsx extension. These files should follow following structure:
 	// -----------------------------------------
 	// Destination | Param1 | Param2 | ..ParamN |
 	// ------------------------------------------
@@ -52,7 +106,7 @@ const (
 	//-------------------------------------------
 	// First header must be Destination and firs cell value will be used as destination number
 	// Rest of cells will be replacement values in message. A message with text "{{Param1}} {{Param2}} how are you" will become "hello World how are you"
-	NumFileXLSX = ".xlsx"
+	XLSX = ".xlsx"
 	// MaxFileSize is maximum file size in bytes
 	MaxFileSize int64 = 5 * 1024 * 1024
 )
@@ -72,70 +126,46 @@ var (
 type NumFileCriteria struct {
 	ID              string
 	Username        string
-	UserID          string
 	SubmittedAfter  int64
 	SubmittedBefore int64
-	Type            NumFileType
+	Type            Type
 	Name            string
 	Deleted         bool
 	OrderByKey      string
 	OrderByDir      string
 	From            string
-	PerPage         int
+	PerPage         uint
 }
 
 // Delete marks Deleted=true for a NumFile
-func (nf *NumFile) Delete() error {
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return err
-	}
+func (nf *NumFile) Delete() error{
 	nf.Deleted = true
-	err = r.DB(db.DBName).Table("NumFile").Get(nf.ID).Update(nf).Exec(s)
+	return nf.Update()
+
+}
+
+func (nf *NumFile) Update() error {
+	_, err := db.Get().From("Message").Where(goqu.I("id").Eq(nf.ID)).Update(nf).Exec()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-			"Query": r.DB(db.DBName).Table("NumFile").Get(nf.ID).Update(nf).String(),
-		}).Error("Error in updating file.")
-		return err
+		log.WithError(err).Error("Couldn't update numfile. %+v", nf)
 	}
-	return nil
+	return err
 }
 
 // GetNumFiles filters files based on criteria
 func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 	var (
 		f          []NumFile
-		indexUsed  bool
-		filterUsed bool
 	)
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return f, err
-	}
-	t := r.DB(db.DBName).Table("NumFile")
-
+	query := db.Get().From("NumFile")
 	if c.ID != "" {
-		t = t.Get(c.ID)
-		cur, errR := t.Run(s)
-		if errR != nil {
-			log.WithError(errR).Error("Couldn't run query.")
-			return f, errR
-		}
-		defer cur.Close()
-		errR = cur.All(&f)
-		if err != nil {
-			log.WithError(errR).Error("Couldn't load files.")
-		}
-		return f, errR
+		query = query.Where(goqu.I("ID").Eq(c.ID))
 	}
 
 	var from interface{}
 	if c.From != "" {
 		if c.OrderByKey == "SubmittedAt" {
-			from, err = strconv.ParseInt(c.From, 10, 64)
+			from, err := strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return f, fmt.Errorf("Invalid value for from: %s", from)
 			}
@@ -143,113 +173,88 @@ func GetNumFiles(c NumFileCriteria) ([]NumFile, error) {
 			from = c.From
 		}
 	}
-	if from != nil || c.SubmittedAfter+c.SubmittedBefore != 0 {
-		indexUsed = true
-	}
 	if c.OrderByKey == "" {
 		c.OrderByKey = "SubmittedAt"
 	}
-	if !indexUsed {
-		if c.Username != "" {
-			if c.OrderByKey == SubmittedAt && !indexUsed {
-				t = t.Between([]interface{}{c.Username, r.MinVal}, []interface{}{c.Username, r.MaxVal}, r.BetweenOpts{
-					Index: "Username_SubmittedAt",
-				})
-				c.OrderByKey = "Username_SubmittedAt"
-			} else {
-				t = t.GetAllByIndex("Username", c.Username)
-				indexUsed = true
-			}
-			c.Username = ""
+	if c.SubmittedAfter != 0 {
+		query = query.Where(goqu.I("submittedat").Gte(c.SubmittedAfter))
+	}
+	if c.SubmittedBefore != 0 {
+		query = query.Where(goqu.I("submittedat").Lte(c.SubmittedAfter))
+	}
+	if c.Username != ""{
+		query = query.Where(goqu.I("username").Eq(c.Username))
+	}
+	if c.Type != ""{
+		query = query.Where(goqu.I("type").Eq(c.Type))
+	}
+	if c.Name != ""{
+		query = query.Where(goqu.I("name").Eq(c.Name))
+	}
+	query = query.Where(goqu.I("deleted").Eq(c.Deleted))
+	orderDir := "DESC"
+	if strings.ToUpper(c.OrderByDir) == "ASC" {
+		orderDir = "ASC"
+	}
+	if from != nil {
+		if orderDir == "ASC" {
+			query = query.Where(goqu.I(c.OrderByKey).Gt(from))
+		} else {
+			query = query.Where(goqu.I(c.OrderByKey).Lt(from))
 		}
 	}
-	// keep between before Eq
-	betweenFields := map[string]map[string]int64{
-		"SubmittedAt": {
-			"after":  c.SubmittedAfter,
-			"before": c.SubmittedBefore,
-		},
+	orderExp := goqu.I(c.OrderByKey).Desc()
+	if orderDir == "ASC" {
+		orderExp = goqu.I(c.OrderByKey).Asc()
 	}
-	t, filterUsed = filterBetweenInt(betweenFields, t)
-	strFields := map[string]string{
-		"Username": c.Username,
-		"UserID":   c.UserID,
-		"Type":     string(c.Type),
-		"Name":     c.Name,
-	}
-	var filtered bool
-	t, filtered = filterEqStr(strFields, t)
-	filterUsed = filterUsed || filtered
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t, indexUsed, filterUsed)
-	t = t.Filter(map[string]bool{"Deleted": c.Deleted})
+	query = query.Order(orderExp)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}
-	t = t.Limit(c.PerPage)
-	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
-	cur, err := t.Run(s)
+	query = query.Limit(c.PerPage)
+	queryStr, _, _ := query.ToSql()
+	log.WithFields(log.Fields{"query": queryStr, "crtieria": c}).Info("Running query.")
+	err := query.ScanStructs(&f)
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
-		return f, err
-	}
-	defer cur.Close()
-	err = cur.All(&f)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load files.")
 	}
 	return f, err
 }
 
 // Save saves a message struct in Message table
-func (nf *NumFile) Save(name string, f multipart.File) (string, error) {
-	var id string
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return id, err
-	}
-	fileType := NumFileType(filepath.Ext(strings.ToLower(name)))
-	if fileType != NumFileCSV && fileType != NumFileTxt && fileType != NumFileXLSX {
-		return id, fmt.Errorf("Only csv, txt and xlsx extensions are allowed Given file %s has extension %s.", name, fileType)
+func (nf *NumFile) Save(name string, f multipart.File, fileIO NumFileIO) (int64, error) {
+	fileType := Type(filepath.Ext(strings.ToLower(name)))
+	if fileType != CSV && fileType != TXT && fileType != XLSX {
+		return 0, fmt.Errorf("Only csv, txt and xlsx extensions are allowed Given file %s has extension %s.", name, fileType)
 	}
 	nf.Type = fileType
 	nf.Name = name
-	b, err := ioutil.ReadAll(f)
+	_, err := fileIO.Load(f)
 	if err != nil {
-		return id, fmt.Errorf("Couldn't read file.")
+		log.WithError(err).Error("Couldn't load file.")
+		return 0, err
 	}
-	if http.DetectContentType(b) != "text/plain; charset=utf-8" && http.DetectContentType(b) != "application/zip" {
-		return id, fmt.Errorf("File doesn't seem to be a text or excel file.")
-	}
-	numfilePath := fmt.Sprintf("%s/%s", NumFilePath, nf.UserID)
-	err = os.MkdirAll(numfilePath, 0711)
+	err = fileIO.Write(nf)
 	if err != nil {
-		return id, fmt.Errorf("Couldn't create directory %s", numfilePath)
+		return 0, fmt.Errorf("Couldn't write file to disk. Error: %s", err)
 	}
-	nf.LocalName = secureRandomAlphaString(20)
-	err = ioutil.WriteFile(fmt.Sprintf("%s/%s", numfilePath, nf.LocalName), b, 0600)
-	if err != nil {
-		return id, fmt.Errorf("Couldn't write file to disk at path %s.", fmt.Sprintf("%s/%s", numfilePath, nf.LocalName))
-	}
-	_, err = nf.ToNumbers()
+	_, err = nf.ToNumbers(fileIO)
 	if err != nil {
 		log.WithError(err).Error("Couldn't read numbers from file.")
-		return id, err
+		return 0, err
 	}
-	resp, err := r.DB(db.DBName).Table("NumFile").Insert(nf).RunWrite(s)
+	resp, err := db.Get().From("NumFile").Insert(nf).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB(db.DBName).Table("NumFile").Insert(nf).String(),
 		}).Error("Error in inserting file in db.")
-		return id, err
+		return 0, err
 	}
-	id = resp.GeneratedKeys[0]
-	return id, nil
+	return resp.LastInsertId()
 }
 
-// NumbersFromString makes a NumFileRow list from comma separated numbers
-func NumbersFromString(numbers string) []NumFileRow {
+// RowsFromString makes a NumFileRow list from comma separated numbers
+func RowsFromString(numbers string) []NumFileRow {
 	var nums []NumFileRow
 	if numbers == "" {
 		return nums
@@ -264,23 +269,23 @@ func NumbersFromString(numbers string) []NumFileRow {
 }
 
 // ToNumbers reads a csv or xlsx file and returns array of NumFileRow with Destination and Params map
-func (nf *NumFile) ToNumbers() ([]NumFileRow, error) {
+func (nf *NumFile) ToNumbers(nio NumFileIO) ([]NumFileRow, error) {
 	var nums []NumFileRow
 	nummap := make(map[string]NumFileRow) // used for unique numbers
 	numfilePath := fmt.Sprintf("%s/%s/%s", NumFilePath, nf.UserID, nf.LocalName)
-	b, err := ioutil.ReadFile(numfilePath)
+	b, err := nio.LoadFile(numfilePath)
 	if err != nil {
 		return nums, err
 	}
-	if nf.Type == NumFileCSV || nf.Type == NumFileTxt {
-		for i, num := range strings.Split(string(b[:]), ",") {
+	if nf.Type == CSV || nf.Type == TXT {
+		for i, num := range strings.Split(stringutils.ByteToString(b), ",") {
 			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
 			if len(num) > 15 || len(num) < 5 {
 				return nums, fmt.Errorf("Entry number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
 			}
 			nummap[num] = NumFileRow{Destination: num}
 		}
-	} else if nf.Type == NumFileXLSX {
+	} else if nf.Type == XLSX {
 		xlFile, err := xlsx.OpenBinary(b)
 		if err != nil {
 			return nums, err
