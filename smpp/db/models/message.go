@@ -459,7 +459,6 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 	log.WithFields(log.Fields{"query": qb.GetQuery(), "crtieria": c}).Info("Running query.")
 	stats := make(map[string]int64, 8)
 	rows, err := sphinx.Get().Queryx(qb.GetQuery())
-	defer rows.Close()
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
 		return m, err
