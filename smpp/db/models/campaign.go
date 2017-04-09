@@ -112,7 +112,6 @@ func GetProgress(id string) (CampaignProgress, error) {
 		log.WithError(err).Error("Couldn't get campaign stats")
 		return cp, err
 	}
-	defer rows.Close()
 	for rows.Next(){
 		var vals struct {
 			Status string
@@ -124,6 +123,7 @@ func GetProgress(id string) (CampaignProgress, error) {
 		}
 		cp[vals.Status] = vals.Total
 	}
+	rows.Close()
 	camps, err := GetCampaigns(CampaignCriteria{ID : id})
 	if err != nil || len(camps) != 1 {
 		log.Error("Couldn't load campaign")

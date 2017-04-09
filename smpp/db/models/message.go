@@ -471,6 +471,7 @@ func GetMessageStats(c MessageCriteria) (MessageStats, error) {
 		rows.Scan(&status, &total)
 		stats[status] = total
 	}
+	rows.Close()
 	for k, v := range stats {
 		switch MessageStatus(k) {
 		case MsgDelivered:
