@@ -1,87 +1,37 @@
 package numfile
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	"fmt"
-	"io/ioutil"
+	log "github.com/Sirupsen/logrus"
+	"github.com/tealeg/xlsx"
+	"gopkg.in/doug-martin/goqu.v3"
+	"io"
 	"mime/multipart"
-	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	log "github.com/Sirupsen/logrus"
-	r "github.com/dancannon/gorethink"
-	"github.com/tealeg/xlsx"
-	"gopkg.in/doug-martin/goqu.v3"
-	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
-	"io"
-	"errors"
 )
 
 // NumFile represents file uploaded to system for saving
 // files with numbers
 type NumFile struct {
-	ID          int64 `db:"id" goqu:"skipinsert"`
+	ID          int64  `db:"id" goqu:"skipinsert"`
 	Name        string `db:"name"`
 	Description string `db:"description"`
 	LocalName   string `db:"localname"`
 	Username    string `db:"username"`
-	UserID      string `db:"userid"`
+	UserID      int64  `db:"userid"`
 	SubmittedAt int64  `db:"submittedat"`
 	Deleted     bool   `db:"deleted"`
 	Type        Type   `db:"type"`
 }
 
-type NumFileIO interface{
+type NumFileIO interface {
 	Load(file io.Reader) ([]byte, error)
 	LoadFile(filename string) ([]byte, error)
 	Write(nf *NumFile) error
-}
-
-type RealNumFileIO struct {
-	b []byte
-}
-
-func (nio *RealNumFileIO) Load(file io.Reader) ([]byte, error){
-	var err error
-	nio.b, err = ioutil.ReadAll(file)
-	if err != nil {
-		return nio.b, errors.New("Couldn't read file.")
-	}
-	if http.DetectContentType(nio.b) != "text/plain; charset=utf-8" && http.DetectContentType(nio.b) != "application/zip" {
-		return nio.b, errors.New("File doesn't seem to be a text or excel file.")
-	}
-	return nio.b, nil
-}
-
-func (nio *RealNumFileIO) LoadFile(filename string) ([]byte, error){
-	var err error
-	nio.b, err = ioutil.ReadFile(filename)
-	if err != nil {
-		return nio.b, errors.New("Couldn't read file.")
-	}
-	if http.DetectContentType(nio.b) != "text/plain; charset=utf-8" && http.DetectContentType(nio.b) != "application/zip" {
-		return nio.b, errors.New("File doesn't seem to be a text or excel file.")
-	}
-	return nio.b, nil
-}
-
-func (nio *RealNumFileIO) Write(file *NumFile) error {
-	if file.LocalName == "" {
-		return errors.New("Local Name can't be blank")
-	}
-	numfilePath := filepath.Join(NumFilePath, file.UserID)
-	err := os.MkdirAll(numfilePath, 0711)
-	if err != nil {
-		return fmt.Errorf("Couldn't create directory %s", numfilePath)
-	}
-	err = ioutil.WriteFile(filepath.Join(numfilePath, file.LocalName), nio.b, 0600)
-	if err != nil {
-		return fmt.Errorf("Couldn't write file to disk at path %s.", filepath.Join(numfilePath, file.LocalName))
-	}
-	return nil
 }
 
 //Type represents type of file we're uploading
@@ -138,7 +88,7 @@ type Criteria struct {
 }
 
 // Delete marks Deleted=true for a NumFile
-func (nf *NumFile) Delete() error{
+func (nf *NumFile) Delete() error {
 	nf.Deleted = true
 	return nf.Update()
 
@@ -155,7 +105,7 @@ func (nf *NumFile) Update() error {
 // List filters files based on criteria
 func List(c Criteria) ([]NumFile, error) {
 	var (
-		f          []NumFile
+		f []NumFile
 	)
 	query := db.Get().From("NumFile")
 	if c.ID != "" {
@@ -182,13 +132,13 @@ func List(c Criteria) ([]NumFile, error) {
 	if c.SubmittedBefore != 0 {
 		query = query.Where(goqu.I("submittedat").Lte(c.SubmittedAfter))
 	}
-	if c.Username != ""{
+	if c.Username != "" {
 		query = query.Where(goqu.I("username").Eq(c.Username))
 	}
-	if c.Type != ""{
+	if c.Type != "" {
 		query = query.Where(goqu.I("type").Eq(c.Type))
 	}
-	if c.Name != ""{
+	if c.Name != "" {
 		query = query.Where(goqu.I("name").Eq(c.Name))
 	}
 	query = query.Where(goqu.I("deleted").Eq(c.Deleted))
@@ -253,9 +203,9 @@ func (nf *NumFile) Save(name string, f multipart.File, fileIO NumFileIO) (int64,
 	return resp.LastInsertId()
 }
 
-// RowsFromString makes a NumFileRow list from comma separated numbers
-func RowsFromString(numbers string) []NumFileRow {
-	var nums []NumFileRow
+// RowsFromString makes a Row list from comma separated numbers
+func RowsFromString(numbers string) []Row {
+	var nums []Row
 	if numbers == "" {
 		return nums
 	}
@@ -268,18 +218,17 @@ func RowsFromString(numbers string) []NumFileRow {
 	return nums
 }
 
-// ToNumbers reads a csv or xlsx file and returns array of NumFileRow with Destination and Params map
-func (nf *NumFile) ToNumbers(nio NumFileIO) ([]NumFileRow, error) {
-	var nums []NumFileRow
-	nummap := make(map[string]NumFileRow) // used for unique numbers
-	numfilePath := fmt.Sprintf("%s/%s/%s", NumFilePath, nf.UserID, nf.LocalName)
+// ToNumbers reads a csv or xlsx file and returns array of Row with Destination and Params map
+func (nf *NumFile) ToNumbers(nio NumFileIO) ([]Row, error) {
+	var nums []Row
+	nummap := make(map[string]Row) // used for unique numbers
+	numfilePath := fmt.Sprintf("%s/%d/%s", Path, nf.UserID, nf.LocalName)
 	b, err := nio.LoadFile(numfilePath)
 	if err != nil {
 		return nums, err
 	}
 	if nf.Type == CSV || nf.Type == TXT {
 		for i, num := range strings.Split(stringutils.ByteToString(b), ",") {
-		for i, num := range strings.Split(string(b[:]), ",") {
 			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
 			if len(num) > 15 || len(num) < 5 {
 				return nums, fmt.Errorf("Entry number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
