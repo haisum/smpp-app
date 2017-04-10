@@ -33,11 +33,11 @@ func (dsm *deliverySM) Value() (driver.Value, error) {
 // Message represents a smpp message
 // @todo check if it inserts properly using goqu
 type Message struct {
-	ID              int64 `db:"id" goqu:"skipinsert"`
+	ID              int64  `db:"id" goqu:"skipinsert"`
 	RespID          string `db:"respid"`
 	ConnectionGroup string `db:"connectiongroup"`
 	Connection      string `db:"connection"`
-	Total           int `db:"total"`
+	Total           int    `db:"total"`
 	Username        string `db:"username"`
 	Msg             string `db:"msg"`
 	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
@@ -45,18 +45,18 @@ type Message struct {
 	Enc         string `db:"enc"`
 	Dst         string `db:"dst"`
 	Src         string `db:"src"`
-	Priority    int `db:"priority"`
-	QueuedAt    int64 `db:"queuedat"`
-	SentAt      int64 `db:"sentat"`
-	DeliveredAt int64 `db:"deliveredat"`
-	CampaignID  int64 `db:"campaignid"`
+	Priority    int    `db:"priority"`
+	QueuedAt    int64  `db:"queuedat"`
+	SentAt      int64  `db:"sentat"`
+	DeliveredAt int64  `db:"deliveredat"`
+	CampaignID  int64  `db:"campaignid"`
 	Campaign    string `db:"campaign"`
 	Status      Status `db:"status"`
 	Error       string `db:"error"`
 	SendBefore  string `db:"sendbefore"`
 	SendAfter   string `db:"sendafter"`
-	ScheduledAt int64 `db:"scheduledat"`
-	IsFlash     bool `db:"isflash"`
+	ScheduledAt int64  `db:"scheduledat"`
+	IsFlash     bool   `db:"isflash"`
 }
 
 // Criteria represents filters we can give to List method.
@@ -411,6 +411,7 @@ func GetStats(c Criteria) (Stats, error) {
 		rows.Scan(&status, &total)
 		stats[status] = total
 	}
+	rows.Close()
 	for k, v := range stats {
 		switch Status(k) {
 		case Delivered:
