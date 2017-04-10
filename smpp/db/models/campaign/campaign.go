@@ -113,7 +113,6 @@ func (c *Campaign) GetProgress() (Progress, error) {
 		log.WithError(err).Error("Couldn't get campaign stats")
 		return cp, err
 	}
-	defer rows.Close()
 	for rows.Next(){
 		var vals struct {
 			Status string
@@ -126,6 +125,7 @@ func (c *Campaign) GetProgress() (Progress, error) {
 		cp[vals.Status] = vals.Total
 	}
 	camps, err := Select(Criteria{ID : id})
+	rows.Close()
 	if err != nil || len(camps) != 1 {
 		log.Error("Couldn't load campaign")
 		return cp, err
@@ -209,6 +209,7 @@ func (c *Campaign) GetReport() (Report, error) {
 // List fetches list of campaigns based on criteria
 func List(c Criteria) ([]Campaign, error) {
 	var (
+		camps      []Campaign
 		indexUsed  bool
 		filterUsed bool
 	)
