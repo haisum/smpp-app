@@ -74,7 +74,7 @@ var (
 
 // Criteria represents filters we can give to GetFiles method.
 type Criteria struct {
-	ID              string
+	ID              int64
 	Username        string
 	SubmittedAfter  int64
 	SubmittedBefore int64
@@ -95,9 +95,9 @@ func (nf *NumFile) Delete() error {
 }
 
 func (nf *NumFile) Update() error {
-	_, err := db.Get().From("Message").Where(goqu.I("id").Eq(nf.ID)).Update(nf).Exec()
+	_, err := db.Get().From("NumFile").Where(goqu.I("id").Eq(nf.ID)).Update(nf).Exec()
 	if err != nil {
-		log.WithError(err).Error("Couldn't update numfile. %+v", nf)
+		log.WithError(err).Errorf("Couldn't update numfile. %+v", nf)
 	}
 	return err
 }
@@ -108,7 +108,7 @@ func List(c Criteria) ([]NumFile, error) {
 		f []NumFile
 	)
 	query := db.Get().From("NumFile")
-	if c.ID != "" {
+	if c.ID != 0 {
 		query = query.Where(goqu.I("ID").Eq(c.ID))
 	}
 
@@ -130,7 +130,7 @@ func List(c Criteria) ([]NumFile, error) {
 		query = query.Where(goqu.I("submittedat").Gte(c.SubmittedAfter))
 	}
 	if c.SubmittedBefore != 0 {
-		query = query.Where(goqu.I("submittedat").Lte(c.SubmittedAfter))
+		query = query.Where(goqu.I("submittedat").Lte(c.SubmittedBefore))
 	}
 	if c.Username != "" {
 		query = query.Where(goqu.I("username").Eq(c.Username))
