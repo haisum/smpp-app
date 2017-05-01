@@ -1,16 +1,18 @@
 package fresh
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	log "github.com/Sirupsen/logrus"
-	"io/ioutil"
-	"bytes"
 	goqu "gopkg.in/doug-martin/goqu.v3"
+	"io/ioutil"
+	"strings"
 )
 
 const (
-	dbValidationQuery  = "select MIN(id) from Message"
-	SQLFile = "./sqls/fresh-mysql.sql"
+	dbValidationQuery = "select MIN(id) from Message"
+	SQLFile           = "./sqls/fresh-mysql.sql"
 )
+
 // Create creates a fresh database, tables, indexes and populates primary data
 func Create(db *goqu.Database) error {
 	b, err := ioutil.ReadFile(SQLFile)
@@ -18,8 +20,9 @@ func Create(db *goqu.Database) error {
 		log.WithError(err).WithField("SQLFile", SQLFile).Error("Couldn't read file")
 		return err
 	}
-	n := bytes.Index(b, []byte{0})
-	_, err = db.Exec(string(b[:n]))
+	query := stringutils.ByteToString(b)
+	replacer := strings.NewReplacer("\n", "", "\r", "")
+	_, err = db.Exec(replacer.Replace(query))
 	if err != nil {
 		log.WithError(err).WithField("error", err).Error("Couldn't read file")
 		return err
@@ -29,7 +32,7 @@ func Create(db *goqu.Database) error {
 
 // Exists checks if a database exists
 func Exists(db *goqu.Database) bool {
-	_, err := db.Exec(dbValidationQuery);
+	_, err := db.Exec(dbValidationQuery)
 	if err != nil {
 		log.WithError(err).Error("Error in db validation, db probably isn't created.")
 		return false

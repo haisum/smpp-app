@@ -10,7 +10,7 @@ import (
 // Get gets value against a name from settings table
 func Get(name string) (string, error) {
 	var val string
-	found, err := db.Get().From("settings").Where(goqu.I("name").Eq(name)).ScanVal(&val)
+	found, err := db.Get().From("settings").Select("value").Where(goqu.I("name").Eq(name)).ScanVal(&val)
 	if !found && err == nil {
 		err = fmt.Errorf("Setting %s not found in db.", name)
 	}

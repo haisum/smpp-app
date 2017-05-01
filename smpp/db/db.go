@@ -28,11 +28,12 @@ func CheckAndCreateDB() (*goqu.Database, error) {
 
 func Connect(host, port, dbName, user, password string) (*goqu.Database, error) {
 	config := mysql.Config{
-		Addr:   fmt.Sprintf("%s:%s", host, port),
-		Net:    "tcp",
-		User:   user,
-		Passwd: password,
-		DBName: dbName,
+		Addr:            fmt.Sprintf("%s:%s", host, port),
+		Net:             "tcp",
+		User:            user,
+		Passwd:          password,
+		DBName:          dbName,
+		MultiStatements: true,
 	}
 	log.WithField("dsn", config.FormatDSN()).Info("Connecting")
 	con, err := sql.Open("mysql", config.FormatDSN())
