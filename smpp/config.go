@@ -1,9 +1,11 @@
 package smpp
 
 import (
-	"fmt"
-	"encoding/json"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/settings"
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 )
 
 // Config represents all settings defined in settings file
@@ -29,6 +31,26 @@ type Conn struct {
 	Pfxs     []string
 	Fields   PduFields
 	Receiver string
+}
+
+// Fetches config from settings table in db
+func GetConfig() (Config, error) {
+	var c Config
+	configJSON, err := settings.Get("config")
+	if err != nil {
+		return c, err
+	}
+	err = json.Unmarshal([]byte(configJSON), &c)
+	return c, err
+}
+
+// Sets config in settings table in db
+func SetConfig(c Config) error {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	return settings.Set("config", stringutils.ByteToString(b))
 }
 
 // PduFields are fields that may be sent to smpp server

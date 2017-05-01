@@ -1,14 +1,12 @@
 package services
 
 import (
-	"net/http"
-
 	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bitbucket.org/codefreak/hsmpp/smpp/supervisor"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 type postConfigRequest struct {
@@ -35,10 +33,10 @@ var PostConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermEditConfig); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, permission.EditConfig); !ok {
 		return
 	}
-	err = models.SetConfig(uReq.Config)
+	err = smpp.SetConfig(uReq.Config)
 	if err != nil {
 		log.WithError(err).Error("Couldn't set config.")
 		resp := routes.Response{

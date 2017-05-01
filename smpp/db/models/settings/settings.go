@@ -2,9 +2,9 @@ package settings
 
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/doug-martin/goqu.v3"
-	"fmt"
 )
 
 // Get gets value against a name from settings table
@@ -18,4 +18,15 @@ func Get(name string) (string, error) {
 		log.WithError(err).Error("Couldn't get setting.")
 	}
 	return val, err
+}
+
+// Set sets value against a name from settings table
+func Set(name, value string) error {
+	_, err := db.Get().From("settings").Where(goqu.I("name").Eq(name)).Delete().Exec()
+	if err == nil {
+		err = fmt.Errorf("Couldn't delete from db. %s", err)
+		return err
+	}
+	_, err = db.Get().From("settings").Insert(goqu.Record{"name": name, "value": value}).Exec()
+	return err
 }

@@ -1,22 +1,21 @@
 package campaign
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 type reportRequest struct {
-	CampaignID string
+	CampaignID int64
 	URL        string
 	Token      string
 }
 
 type reportResponse struct {
-	models.CampaignReport
+	campaign.Report
 }
 
 //ReportHandler echoes throughput report for a campaign
@@ -37,10 +36,14 @@ var ReportHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermStartCampaign); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, permission.StartCampaign); !ok {
 		return
 	}
-	cr, err := models.GetReport(uReq.CampaignID)
+	c, err := campaign.List(campaign.Criteria{ID: uReq.CampaignID})
+	var cr campaign.Report
+	if len(c) > 0 && err == nil {
+		cr, err = c[0].GetReport()
+	}
 	if err != nil {
 		log.WithError(err).Error("Error getting campaign report.")
 		resp := routes.Response{}
@@ -53,7 +56,7 @@ var ReportHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-	uResp.CampaignReport = cr
+	uResp.Report = cr
 	resp := routes.Response{
 		Obj:     uResp,
 		Ok:      true,

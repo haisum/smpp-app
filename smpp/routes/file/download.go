@@ -1,18 +1,18 @@
 package file
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
-	log "github.com/Sirupsen/logrus"
 )
 
 type downloadRequest struct {
-	ID    string
+	ID    int64
 	Token string
 	URL   string
 }
@@ -36,18 +36,18 @@ var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  user.User
 		ok bool
 	)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
 		return
 	}
-	files, err := models.GetNumFiles(models.NumFileCriteria{
+	files, err := numfile.List(numfile.Criteria{
 		ID: uReq.ID,
 	})
 
 	if u.ID != files[0].UserID {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermListNumFiles); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.ListNumFiles); !ok {
 			return
 		}
 	}
@@ -69,7 +69,7 @@ var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	filepath := fmt.Sprintf("%s/%s/%s", models.NumFilePath, files[0].UserID, files[0].LocalName)
+	filepath := fmt.Sprintf("%s/%s/%s", numfile.Path, files[0].UserID, files[0].LocalName)
 	b, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		log.WithFields(log.Fields{

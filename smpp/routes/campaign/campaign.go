@@ -1,26 +1,28 @@
 package campaign
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/queue"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
-	log "github.com/Sirupsen/logrus"
 )
 
 type campaignRequest struct {
 	URL         string
 	Token       string
-	FileID      string
+	FileID      int64
 	Numbers     string
 	Description string
 	Priority    int
@@ -34,7 +36,7 @@ type campaignRequest struct {
 }
 
 type campaignResponse struct {
-	ID string
+	ID int64
 }
 
 const (
@@ -61,21 +63,21 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  user.User
 		ok bool
 	)
-	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermStartCampaign); !ok {
+	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.StartCampaign); !ok {
 		return
 	}
 	if uReq.Mask {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermMask); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.Mask); !ok {
 			return
 		}
 	}
-	var numbers []models.NumFileRow
-	if uReq.FileID != "" {
-		var files []models.NumFile
-		files, err = models.GetNumFiles(models.NumFileCriteria{
+	var numbers []numfile.Row
+	if uReq.FileID != 0 {
+		var files []numfile.NumFile
+		files, err = numfile.List(numfile.Criteria{
 			ID: uReq.FileID,
 		})
 		if err != nil || len(files) == 0 {
@@ -89,7 +91,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			}
 			resp.Send(w, *r, http.StatusBadRequest)
 		}
-		numbers, err = files[0].ToNumbers()
+		numbers, err = files[0].ToNumbers(numfile.RealNumFileIO{})
 		if err != nil {
 			log.WithError(err).Error("Couldn't read numbers from file.")
 			resp := routes.Response{}
@@ -103,7 +105,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			resp.Send(w, *r, http.StatusInternalServerError)
 		}
 	} else if uReq.Numbers != "" {
-		numbers = models.NumbersFromString(uReq.Numbers)
+		numbers = numfile.RowsFromString(uReq.Numbers)
 	} else {
 		log.WithError(err).Error("No numbers provided.")
 		resp := routes.Response{}
@@ -115,7 +117,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		}
 		resp.Send(w, *r, http.StatusBadRequest)
 	}
-	c := models.Campaign{
+	c := campaign.Campaign{
 		Description: uReq.Description,
 		Src:         uReq.Src,
 		Msg:         uReq.Msg,
@@ -125,7 +127,6 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		SendBefore:  uReq.SendBefore,
 		SendAfter:   uReq.SendAfter,
 		ScheduledAt: uReq.ScheduledAt,
-		UserID:      u.ID,
 		Username:    u.Username,
 	}
 
@@ -163,8 +164,21 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		}
 		resp.Send(w, *r, http.StatusInternalServerError)
 	}
-	q, err := queue.GetQueue("", "", 0)
-	config, err := models.GetConfig()
+	q := queue.Get()
+	config, err := smpp.GetConfig()
+	if err != nil {
+		log.WithError(err).Error("Couldn't Get config.")
+		resp := routes.Response{
+			Errors: []routes.ResponseError{
+				{
+					Type:    routes.ErrorTypeDB,
+					Message: "Couldn't get config.",
+				},
+			},
+			Request: uReq,
+		}
+		resp.Send(w, *r, http.StatusInternalServerError)
+	}
 	keys := config.GetKeys(u.ConnectionGroup)
 	var group smpp.ConnGroup
 	if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
@@ -203,16 +217,16 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	}
 	resp.Send(w, *r, http.StatusOK)
 
-	go func (){
-		var ms []models.Message
-		c.Errors = make([]string,0)
+	go func() {
+		var ms []message.Message
+		c.Errors = make([]string, 0)
 		for i, nr := range numbers {
 			var (
-				queuedTime int64                = time.Now().UTC().Unix()
-				status     models.MessageStatus = models.MsgQueued
+				queuedTime int64          = time.Now().UTC().Unix()
+				status     message.Status = message.Queued
 			)
 			if uReq.ScheduledAt > 0 {
-				status = models.MsgScheduled
+				status = message.Scheduled
 			}
 			maskedMsg := c.Msg
 			realMsg := msg
@@ -224,7 +238,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			if msg != realMsg {
 				realTotal = smtext.Total(realMsg, enc)
 			}
-			m := models.Message{
+			m := message.Message{
 				ConnectionGroup: u.ConnectionGroup,
 				Username:        u.Username,
 				Msg:             maskedMsg,
@@ -246,7 +260,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			ms = append(ms, m)
 			// if we have 200 msgs or last few messages
 			if (i+1)%MaxBulkInsert == 0 || (i+1) == len(numbers) {
-				ids, err := models.SaveBulk(ms)
+				ids, err := message.SaveBulk(ms)
 				if err != nil {
 					//error agaya bhai
 					log.WithFields(log.Fields{
@@ -274,14 +288,13 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 						}
 					}
 				}
-				ms = []models.Message{}
+				ms = []message.Message{}
 			}
 		}
 		if len(c.Errors) > 0 {
 			c.Save()
 		}
 	}()
-
 
 })
 

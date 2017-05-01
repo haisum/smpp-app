@@ -1,12 +1,11 @@
 package services
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 type getConfigRequest struct {
@@ -32,10 +31,10 @@ var GetConfigHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermShowConfig); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, permission.ShowConfig); !ok {
 		return
 	}
-	c, err := models.GetConfig()
+	c, err := smpp.GetConfig()
 	if err != nil {
 		log.WithError(err).Error("Couldn't get config")
 		resp := routes.Response{

@@ -1,11 +1,8 @@
 package queue
 
-
 var (
 	q MQ
 )
-
-
 
 // Handler is a function which accepts deliveries channel and a error channel to indicate when processing is done
 type Handler func(QueueDelivery)
@@ -26,7 +23,7 @@ type QueueDelivery interface {
 }
 
 // GetQueue returns a rabbit object. It makes one connection per process life and reuses same rabbitmq connection.
-func GetQueue() MQ {
+func Get() MQ {
 	return q
 }
 
@@ -40,4 +37,3 @@ func ConnectRabbitMQ(url string, ex string, pCount int) (MQ, error) {
 // Priority represents priority of a message. O is default priority
 // Higher number means higher priority. 10 is max priority after that, every number is considered to be 10
 type Priority uint8
-

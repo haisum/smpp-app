@@ -1,21 +1,21 @@
 package message
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/tealeg/xlsx"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
-	log "github.com/Sirupsen/logrus"
-	"github.com/tealeg/xlsx"
 )
 
 type messagesRequest struct {
-	models.MessageCriteria
+	message.Criteria
 	URL   string
 	Token string
 	XLSX  bool
@@ -35,8 +35,8 @@ var (
 )
 
 type messagesResponse struct {
-	Messages []models.Message
-	Stats    models.MessageStats
+	Messages []message.Message
+	Stats    message.Stats
 }
 
 // MessagesHandler allows adding a user to database
@@ -59,18 +59,18 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  user.User
 		ok bool
 	)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
 		return
 	}
 	if u.Username != uReq.Username {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermListMessages); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.ListMessages); !ok {
 			return
 		}
 	}
-	messages, err := models.GetMessages(uReq.MessageCriteria)
+	messages, err := message.List(uReq.Criteria)
 	resp := routes.Response{}
 	if err != nil {
 		resp.Ok = false
@@ -86,7 +86,7 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if uReq.Stats == true {
-		stats, err := models.GetMessageStats(uReq.MessageCriteria)
+		stats, err := message.GetStats(uReq.Criteria)
 		if err != nil {
 			resp.Ok = false
 			log.WithError(err).Error("Couldn't get message stats.")
@@ -113,7 +113,7 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	}
 })
 
-func toXLS(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string, cols []string) {
+func toXLS(w http.ResponseWriter, r *http.Request, m []message.Message, TZ string, cols []string) {
 	availableCols := []string{
 		"ID",
 		"Connection",
@@ -190,7 +190,7 @@ func toXLS(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 			scheduled = time.Unix(v.ScheduledAt, 0).In(loc).Format("02-01-2006 03:04:05 MST")
 		}
 		infoAvailable := map[string]string{
-			"ID":              v.ID,
+			"ID":              strconv.FormatInt(v.ID, 10),
 			"Connection":      v.Connection,
 			"ConnectionGroup": v.ConnectionGroup,
 			"Status":          string(v.Status),
@@ -202,7 +202,7 @@ func toXLS(w http.ResponseWriter, r *http.Request, m []models.Message, TZ string
 			"Enc":             v.Enc,
 			"Dst":             v.Dst,
 			"Src":             v.Src,
-			"CampaignID":      v.CampaignID,
+			"CampaignID":      strconv.FormatInt(v.CampaignID, 10),
 			"Campaign":        v.Campaign,
 			"Priority":        strconv.Itoa(v.Priority),
 			"QueuedAt":        queued,

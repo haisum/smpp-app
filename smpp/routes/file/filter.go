@@ -1,22 +1,22 @@
 package file
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 type filterRequest struct {
-	models.NumFileCriteria
+	numfile.Criteria
 	URL   string
 	Token string
 }
 
 type filterResponse struct {
-	NumFiles []models.NumFile
+	NumFiles []numfile.NumFile
 }
 
 // FilterHandler searches files in NumFiles table
@@ -39,18 +39,18 @@ var FilterHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  user.User
 		ok bool
 	)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
 		return
 	}
 	if u.Username != uReq.Username {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermListNumFiles); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.ListNumFiles); !ok {
 			return
 		}
 	}
-	files, err := models.GetNumFiles(uReq.NumFileCriteria)
+	files, err := numfile.List(uReq.Criteria)
 	resp := routes.Response{}
 	if err != nil {
 		resp.Ok = false

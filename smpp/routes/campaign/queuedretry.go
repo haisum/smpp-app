@@ -1,20 +1,20 @@
 package campaign
 
 import (
-	"fmt"
-	"net/http"
-	"time"
-
 	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
+	"time"
 )
 
 type retryQdRequest struct {
-	CampaignID string
+	CampaignID int64
 	URL        string
 	Token      string
 }
@@ -42,13 +42,13 @@ var RetryQdHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  user.User
 		ok bool
 	)
-	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermRetryCampaign); !ok {
+	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.RetryCampaign); !ok {
 		return
 	}
-	msgs, err := models.GetQueuedMessages(uReq.CampaignID)
+	msgs, err := message.ListQueued(uReq.CampaignID)
 	if err != nil {
 		log.WithError(err).Error("Error getting queued messages.")
 		resp := routes.Response{}
@@ -61,8 +61,8 @@ var RetryQdHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-	q, err := queue.GetQueue("", "", 0)
-	config, err := models.GetConfig()
+	q := queue.Get()
+	config, err := smpp.GetConfig()
 	keys := config.GetKeys(u.ConnectionGroup)
 	var noKey string
 	var group smpp.ConnGroup
@@ -82,7 +82,7 @@ var RetryQdHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	}
 	for _, m := range msgs {
 		m.QueuedAt = time.Now().UTC().Unix()
-		m.Status = models.MsgQueued
+		m.Status = message.Queued
 		err = m.Update()
 		if err != nil {
 			log.WithFields(log.Fields{

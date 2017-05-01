@@ -1,18 +1,18 @@
 package file
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 type deleteRequest struct {
 	URL   string
 	Token string
-	ID    string
+	ID    int64
 }
 
 type deleteResponse struct {
@@ -38,13 +38,13 @@ var DeleteHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  user.User
 		ok bool
 	)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
 		return
 	}
-	files, err := models.GetNumFiles(models.NumFileCriteria{
+	files, err := numfile.List(numfile.Criteria{
 		ID: uReq.ID,
 	})
 	resp := routes.Response{}
@@ -61,7 +61,7 @@ var DeleteHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	} else if files[0].Username != u.Username {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermDeleteNumFile); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.DeleteNumFile); !ok {
 			return
 		}
 	}

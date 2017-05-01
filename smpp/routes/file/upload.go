@@ -1,14 +1,12 @@
 package file
 
 import (
-	"net/http"
-	"time"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfiles"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
+	"net/http"
+	"time"
 )
 
 type uploadReq struct {
@@ -18,7 +16,7 @@ type uploadReq struct {
 }
 
 type uploadResponse struct {
-	ID string
+	ID int64
 }
 
 // UploadHandler handles uploading of files
@@ -71,7 +69,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  users.User
+		u  user.User
 		ok bool
 	)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
@@ -98,7 +96,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	id, err := nf.Save(h.Filename, f)
+	id, err := nf.Save(h.Filename, f, numfile.RealNumFileIO{})
 	if err != nil {
 		log.WithError(err).Error("Error saving file.")
 		resp := routes.Response{

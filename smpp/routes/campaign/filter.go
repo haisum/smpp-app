@@ -1,22 +1,22 @@
 package campaign
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 type campaignsRequest struct {
-	models.CampaignCriteria
+	campaign.Criteria
 	URL   string
 	Token string
 }
 
 type campaignsResponse struct {
-	Campaigns []models.Campaign
+	Campaigns []campaign.Campaign
 }
 
 // CampaignsHandler handles filter requests for campaigns
@@ -39,18 +39,18 @@ var CampaignsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  user.User
 		ok bool
 	)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
 		return
 	}
 	if u.Username != uReq.Username {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermListCampaigns); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.ListCampaigns); !ok {
 			return
 		}
 	}
-	camps, err := models.GetCampaigns(uReq.CampaignCriteria)
+	camps, err := campaign.List(uReq.Criteria)
 	resp := routes.Response{}
 	if err != nil {
 		resp.Ok = false

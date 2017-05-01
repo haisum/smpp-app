@@ -1,21 +1,21 @@
 package campaign
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
 )
 
 type progressRequest struct {
-	CampaignID string
+	CampaignID int64
 	URL        string
 	Token      string
 }
 
 type progressResponse struct {
-	models.CampaignProgress
+	campaign.Progress
 }
 
 //ReportHandler echoes throughput report for a campaign
@@ -36,11 +36,14 @@ var ProgressHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermStartCampaign); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, permission.StartCampaign); !ok {
 		return
 	}
-	cp, err := models.GetProgress(uReq.CampaignID)
-	if err != nil {
+	cp, err := campaign.List(campaign.Criteria{ID: uReq.CampaignID})
+	var p campaign.Progress
+	if err == nil && len(cp) > 0 {
+		p, err = cp[0].GetProgress()
+	} else {
 		log.WithError(err).Error("Error getting campaign progress.")
 		resp := routes.Response{}
 		resp.Errors = []routes.ResponseError{
@@ -52,7 +55,7 @@ var ProgressHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-	uResp.CampaignProgress= cp
+	uResp.Progress = p
 	resp := routes.Response{
 		Obj:     uResp,
 		Ok:      true,

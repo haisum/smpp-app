@@ -1,16 +1,15 @@
 package campaign
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 type stopRequest struct {
-	CampaignID string
+	CampaignID int64
 	URL        string
 	Token      string
 }
@@ -37,10 +36,10 @@ var StopHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermStopCampaign); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, permission.StopCampaign); !ok {
 		return
 	}
-	count, err := models.StopPendingMessages(uReq.CampaignID)
+	count, err := message.StopPending(uReq.CampaignID)
 	if err != nil {
 		log.WithError(err).Error("Error stopping campaign.")
 		resp := routes.Response{}

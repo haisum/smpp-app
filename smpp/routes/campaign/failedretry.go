@@ -1,20 +1,20 @@
 package campaign
 
 import (
-	"fmt"
-	"net/http"
-	"time"
-
 	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
+	"time"
 )
 
 type retryRequest struct {
-	CampaignID string
+	CampaignID int64
 	URL        string
 	Token      string
 }
@@ -42,13 +42,13 @@ var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  user.User
 		ok bool
 	)
-	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermRetryCampaign); !ok {
+	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.RetryCampaign); !ok {
 		return
 	}
-	msgs, err := models.GetErrorMessages(uReq.CampaignID)
+	msgs, err := message.ListWithError(uReq.CampaignID)
 	if err != nil {
 		log.WithError(err).Error("Error getting error messages.")
 		resp := routes.Response{}
@@ -61,8 +61,8 @@ var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-	q, err := queue.GetQueue("", "", 0)
-	config, err := models.GetConfig()
+	q := queue.Get()
+	config, _ := smpp.GetConfig()
 	keys := config.GetKeys(u.ConnectionGroup)
 	var noKey string
 	var group smpp.ConnGroup
@@ -84,9 +84,9 @@ var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	okCh := make(chan bool, len(msgs))
 	burstCh := make(chan int, 1000)
 	for _, msg := range msgs {
-		go func(m models.Message) {
+		go func(m message.Message) {
 			m.QueuedAt = time.Now().UTC().Unix()
-			m.Status = models.MsgQueued
+			m.Status = message.Queued
 			errU := m.Update()
 			if errU != nil {
 				errCh <- errU
