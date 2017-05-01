@@ -2,32 +2,32 @@ package campaign
 
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	r "github.com/dancannon/gorethink"
+	"gopkg.in/doug-martin/goqu.v3"
 	"strconv"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"strings"
 )
 
 // Campaign represents a message campaign
 type Campaign struct {
-	ID            string `gorethink:"id,omitempty" db:"campaignid"`
-	Description   string
-	Src           string
-	Msg           string
-	Enc           string
-	FileName      string
-	Priority      int
-	FileLocalName string
-	FileID        string
-	UserID        string
-	Username      string
-	SendBefore    string
-	SendAfter     string
-	ScheduledAt   int64
-	SubmittedAt   int64
-	Total int
+	ID            int64 `db:"id" goqu:"skipinsert"`
+	Description   string `db:"description"`
+	Src           string `db:"src"`
+	Msg           string `db:"msg"`
+	Enc           string `db:"enc"`
+	FileName      string `db:"filename"`
+	Priority      int `db:"priority"`
+	FileLocalName string `db:"filelocalname"`
+	FileID        int64 `db:"numfileid"`
+	Username      string `db:"username"`
+	SendBefore    string `db:"sendbefore"`
+	SendAfter     string `db:"sendafter"`
+	ScheduledAt   int64 `db:"scheduledat"`
+	SubmittedAt   int64 `db:"submittedat"`
+	Total int `db:"total"`
 	Errors []string
 }
 
@@ -38,20 +38,20 @@ const (
 
 // Criteria represents filters we can give to Select method.
 type Criteria struct {
-	ID              string
+	ID              int64
 	Username        string
-	FileID          string
+	FileID          int64
 	SubmittedAfter  int64
 	SubmittedBefore int64
 	OrderByKey      string
 	OrderByDir      string
 	From            string
-	PerPage         int
+	PerPage         uint
 }
 
 // Report is report of campaign performance
 type Report struct {
-	ID            string
+	ID            int64
 	Total         int
 	MsgSize       int
 	TotalMsgs     int
@@ -66,33 +66,25 @@ type Report struct {
 type Progress map[string]int
 
 // Save saves a campaign in db
-func (c *Campaign) Save() (string, error) {
-	var id string
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return id, err
-	}
-	if c.FileID != "" {
+func (c *Campaign) Save() (int64, error) {
+	if c.FileID != 0 {
 		f, _ := numfile.List(numfile.Criteria{
 			ID: c.FileID,
 		})
 		if len(f) != 1 {
-			return id, fmt.Errorf("Couldn't find file.")
+			return 0, fmt.Errorf("Couldn't find file.")
 		}
 		c.FileLocalName = f[0].LocalName
 		c.FileName = f[0].Name
 	}
-	resp, err := r.DB(db.DBName).Table("Campaign").Insert(c).RunWrite(s)
+	resp, err := db.Get().From("Campaign").Insert(c).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": r.DB(db.DBName).Table("Campaign").Insert(c).String(),
 		}).Error("Error in adding campaign in db.")
-		return id, err
+		return 0, err
 	}
-	id = resp.GeneratedKeys[0]
-	return id, nil
+	return resp.LastInsertId()
 }
 
 //GetProgress returns count for a campaign in progress
@@ -108,24 +100,19 @@ func (c *Campaign) GetProgress() (Progress, error) {
 		"Stopped" : 0,
 		"Pending" : 0,
 	}
-	rows,err := sphinx.Get().Queryx("SELECT status, count(*) as total from Message where campaignid = ?  group by status", id)
+	var vals []struct {
+		Status string `db:"status"`
+		Total int `db:"total"`
+	}
+	err := sphinx.Get().ScanStructs(&vals, "SELECT status, count(*) as total from Message where campaignid = ?  group by status", c.ID)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get campaign stats")
 		return cp, err
 	}
-	for rows.Next(){
-		var vals struct {
-			Status string
-			Total int
-		}
-		err = rows.StructScan(&vals)
-		if err != nil {
-			return cp, err
-		}
-		cp[vals.Status] = vals.Total
+	for _, val := range vals{
+		cp[val.Status] = val.Total
 	}
-	camps, err := Select(Criteria{ID : id})
-	rows.Close()
+	camps, err := List(Criteria{ID : c.ID})
 	if err != nil || len(camps) != 1 {
 		log.Error("Couldn't load campaign")
 		return cp, err
@@ -146,45 +133,40 @@ func (c *Campaign) GetReport() (Report, error) {
 		ID: c.ID,
 	}
 	// get total in campaign
-	err := sphinx.Get().Get(&cr, "SELECT count(*) as Total from Message where campaignID='"+id+"'")
+	_, err := sphinx.Get().ScanVal(&cr.Total, "SELECT count(*) as Total from Message where campaignID = ?", c.ID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": "SELECT count(*) as Total from Message where campaignID='" + id + "'",
 		}).Error("Error executing total msgs query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
 	//select message size in campaign
-	err = sphinx.Get().Get(&cr, "SELECT Total as MsgSize from Message where campaignID='"+id+"'")
+	_, err = sphinx.Get().ScanVal(&cr.MsgSize, "SELECT Total as MsgSize from Message where campaignID = ?", c.ID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": "SELECT Total as MsgSize from Message where campaignID='" + id + "'",
 		}).Error("Error executing MsgSize query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
 	//select min sentat in campaign
-	err = sphinx.Get().Get(&cr, "SELECT Min(SentAt) as FirstQueued from Message where campaignID='"+id+"' AND SentAt > 0")
+	_, err = sphinx.Get().ScanVal(&cr.FirstQueued, "SELECT Min(SentAt) as FirstQueued from Message where campaignID = ? AND SentAt > 0", c.ID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": "SELECT Min(SentAt) as FirstQueued from Message where campaignID='" + id + "'",
 		}).Error("Error executing Min(SentAt) query")
 	}
 	//select max sentat in campaign
-	err = sphinx.Get().Get(&cr, "SELECT Max(SentAt) as LastSent from Message where campaignID='"+id+"'")
+	_, err = sphinx.Get().ScanVal(&cr.LastSent, "SELECT Max(SentAt) as LastSent from Message where campaignID=?", c.ID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": "SELECT Max(SentAt) as LastSent from Message where campaignID='" + id + "'",
 		}).Error("Error executing Max(SentAt) query")
 	}
 	//Select connection wise
-	err = sphinx.Get().Select(&cr.Connections, "SELECT Connection as Name, count(*) as Count from Message where campaignID='"+id+"' group by Connection")
+	err = sphinx.Get().ScanStructs(&cr.Connections, "SELECT Connection as Name, count(*) as Count from Message where campaignID= ? group by Connection", c.ID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
-			"Query": "SELECT Connection as Name, count(*) as Count from Message where campaignID='" + id + "' group by Connection",
 		}).Error("Error executing Connection wise query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
@@ -210,20 +192,13 @@ func (c *Campaign) GetReport() (Report, error) {
 func List(c Criteria) ([]Campaign, error) {
 	var (
 		camps      []Campaign
-		indexUsed  bool
-		filterUsed bool
 	)
-	s, err := db.GetSession()
-	if err != nil {
-		log.WithError(err).Error("Couldn't get session.")
-		return camps, err
-	}
-	t := r.DB(db.DBName).Table("Campaign")
+	t := db.Get().From("Campaign")
 
 	var from interface{}
 	if c.From != "" {
 		if c.OrderByKey == SubmittedAt || c.OrderByKey == "ScheduledAt" {
-			from, err = strconv.ParseInt(c.From, 10, 64)
+			from, err := strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return camps, fmt.Errorf("Invalid value for from: %s", from)
 			}
@@ -231,56 +206,46 @@ func List(c Criteria) ([]Campaign, error) {
 			from = c.From
 		}
 	}
-	if from != nil || c.SubmittedAfter+c.SubmittedBefore != 0 {
-		indexUsed = true
-	}
 	if c.OrderByKey == "" {
 		c.OrderByKey = SubmittedAt
 	}
-	if !indexUsed {
-		if c.Username != "" {
-			if c.OrderByKey == SubmittedAt && !indexUsed {
-				t = t.Between([]interface{}{c.Username, r.MinVal}, []interface{}{c.Username, r.MaxVal}, r.BetweenOpts{
-					Index: "Username_SubmittedAt",
-				})
-				c.OrderByKey = "Username_SubmittedAt"
-			} else {
-				t = t.GetAllByIndex("Username", c.Username)
-				indexUsed = true
-			}
-			c.Username = ""
+	if c.SubmittedAfter > 0 {
+		t = t.Where(goqu.I("submittedat").Gte(c.SubmittedAfter))
+	}
+	if c.SubmittedBefore > 0 {
+		t = t.Where(goqu.I("submittedat").Lte(c.SubmittedBefore))
+	}
+	if c.ID> 0 {
+		t = t.Where(goqu.I("id").Eq(c.ID))
+	}
+	if c.Username != "" {
+		t = t.Where(goqu.I("username").Eq(c.Username))
+	}
+	orderDir := "DESC"
+	if strings.ToUpper(c.OrderByDir) == "ASC" {
+		orderDir = "ASC"
+	}
+	if from != nil {
+		if orderDir == "ASC" {
+			t = t.Where(goqu.I(c.OrderByKey).Gt(from))
+		} else {
+			t= t.Where(goqu.I(c.OrderByKey).Lt(from))
 		}
 	}
-	// keep between before Eq
-	betweenFields := map[string]map[string]int64{
-		"SubmittedAt": {
-			"after":  c.SubmittedAfter,
-			"before": c.SubmittedBefore,
-		},
+	orderExp := goqu.I(c.OrderByKey).Desc()
+	if orderDir == "ASC" {
+		orderExp = goqu.I(c.OrderByKey).Asc()
 	}
-	t, filterUsed = filterBetweenInt(betweenFields, t)
-	strFields := map[string]string{
-		"id":         c.ID,
-		"Username":   c.Username,
-	}
-	var filtered bool
-	t, filtered = filterEqStr(strFields, t)
-	filterUsed = filtered || filterUsed
-	t = orderBy(c.OrderByKey, c.OrderByDir, from, t, indexUsed, filterUsed)
+	t = t.Order(orderExp)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}
 	t = t.Limit(c.PerPage)
-	log.WithFields(log.Fields{"query": t.String(), "crtieria": c}).Info("Running query.")
-	cur, err := t.Run(s)
+	queryStr, _, _ := t.ToSql()
+	log.WithFields(log.Fields{"query": queryStr, "crtieria": c}).Info("Running query.")
+	err := t.ScanStructs(&camps)
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
-		return camps, err
-	}
-	defer cur.Close()
-	err = cur.All(&camps)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load files.")
 	}
 	return camps, err
 }
