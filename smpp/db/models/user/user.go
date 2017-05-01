@@ -16,7 +16,7 @@ type permissions []permission.Permission
 
 // User contains data for a single user
 type User struct {
-	ID              int64       `db:"id,skipinsert"`
+	ID              int64       `db:"id" goqu:"skipinsert"`
 	Username        string      `db:"username"`
 	Password        string      `db:"password"`
 	Name            string      `db:"name"`
@@ -124,7 +124,7 @@ func (u *User) Update(passwdChanged bool) error {
 // Get gets a single user identified by username (if provided string parameter) or user id (if parameter is int64).
 func Get(v interface{}) (User, error) {
 	var u User
-	q := goqu.From("User")
+	q := db.Get().From("User")
 	switch v.(type) {
 	case string:
 		q = q.Where(goqu.I("username").Eq(v))

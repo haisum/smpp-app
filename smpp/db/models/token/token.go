@@ -1,14 +1,13 @@
 package token
 
 import (
-	"fmt"
-	"time"
-
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	log "github.com/Sirupsen/logrus"
-	"gopkg.in/doug-martin/goqu.v3"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	"errors"
+	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"gopkg.in/doug-martin/goqu.v3"
+	"time"
 )
 
 const (
@@ -20,11 +19,11 @@ const (
 
 // Token represents a token given produced against valid authentication request
 type Token struct {
-	ID           int64 `db:"id" goqu:"skipinsert"`
-	LastAccessed int64 `db:"lastaccessed"`
-	Token        string `db:"token"`
-	Username     string `db:"username"`
-	Validity     int `db:"validity"`
+	ID           int64 `db:"ID" goqu:"skipinsert"`
+	LastAccessed int64 `db:"LastAccessed"`
+	Token        string `db:"Token"`
+	Username     string `db:"Username"`
+	Validity     int `db:"Validity"`
 }
 
 // Get looks for token in Token table and returns it or error if
