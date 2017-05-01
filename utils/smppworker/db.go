@@ -1,20 +1,18 @@
 package main
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	log "github.com/Sirupsen/logrus"
 )
 
-func updateMessage(m models.Message, respID, con, errMsg string, fields smpp.PduFields, sent int64) {
+func updateMessage(m message.Message, respID, con, errMsg string, sent int64) {
 	m.RespID = respID
 	m.Connection = con
 	m.Error = errMsg
-	m.Fields = fields
 	m.SentAt = sent
-	m.Status = models.MsgSent
+	m.Status = message.Sent
 	if errMsg != "" {
-		m.Status = models.MsgError
+		m.Status = message.Error
 	}
 	err := m.Update()
 	if err != nil {

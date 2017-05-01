@@ -1,11 +1,11 @@
 package user
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/token"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 type authRequest struct {
@@ -42,7 +42,7 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		Request: uReq,
 		Ok:      true,
 	}
-	u, err := models.GetUser(uReq.Username)
+	u, err := user.Get(uReq.Username)
 	if err != nil {
 		resp.Ok = false
 		resp.Errors = []routes.ResponseError{
@@ -82,7 +82,7 @@ var AuthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	token, _ := models.CreateToken(u.Username, uReq.Validity)
+	token, _ := token.Create(u.Username, uReq.Validity)
 	uResp.Token = token
 	resp.Obj = uResp
 	resp.Ok = true

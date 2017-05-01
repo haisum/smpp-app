@@ -96,7 +96,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	id, err := nf.Save(h.Filename, f, numfile.RealNumFileIO{})
+	id, err := nf.Save(h.Filename, f, &numfile.RealNumFileIO{})
 	if err != nil {
 		log.WithError(err).Error("Error saving file.")
 		resp := routes.Response{

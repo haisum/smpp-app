@@ -3,7 +3,6 @@ package user
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
-	"encoding/json"
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -44,8 +43,8 @@ func (p *permissions) String() string {
 	return strings.Join(perms, ",")
 }
 
-// UserCriteria is used to filter users
-type UserCriteria struct {
+// Criteria is used to filter users
+type Criteria struct {
 	Username         string
 	Email            string
 	Name             string
@@ -63,10 +62,6 @@ type UserCriteria struct {
 const (
 	//DefaultConnectionGroup is set for each user who doesn't specifically specify a group
 	DefaultConnectionGroup string = "Default"
-	//RegisteredAt is time at which user got inserted into system
-	RegisteredAt = "RegisteredAt"
-	//ASC is used in criteria to sort in ascending order, anything else will be assumed to be descending
-	ASC = "ASC"
 )
 
 // Add adds a user to database and returns its primary key
@@ -148,8 +143,8 @@ func Get(v interface{}) (User, error) {
 	return u, err
 }
 
-// GetUsers filters users by a criteria and returns filtered users
-func GetUsers(c UserCriteria) ([]User, error) {
+// List filters users by a criteria and returns filtered users
+func List(c Criteria) ([]User, error) {
 	var users []User
 	log.WithField("Criteria", c).Info("Making query.")
 	t := db.Get().From("User")
@@ -236,16 +231,16 @@ func Exists(username string) bool {
 
 // Validate performs sanity checks on User data
 func (u *User) Validate() (map[string]string, error) {
-	errors := make(map[string]string)
+	errs := make(map[string]string)
 	if len(u.Username) < 4 {
-		errors["Username"] = "Username must be 4 characters or more."
+		errs["Username"] = "Username must be 4 characters or more."
 	}
 	if len(u.Password) < 6 {
-		errors["Password"] = "Password must be 6 characters or more."
+		errs["Password"] = "Password must be 6 characters or more."
 	}
 	_, err := mail.ParseAddress(u.Email)
 	if err != nil {
-		errors["Email"] = "Invalid email address"
+		errs["Email"] = "Invalid email address"
 	}
 	for _, x := range u.Permissions {
 		var isValidPerm bool
@@ -256,14 +251,14 @@ func (u *User) Validate() (map[string]string, error) {
 			}
 		}
 		if !isValidPerm {
-			errors["Permissions"] = "Invalid permissions."
+			errs["Permissions"] = "Invalid permissions."
 			break
 		}
 	}
-	if len(errors) > 0 {
-		return errors, fmt.Errorf("Validation failed")
+	if len(errs) > 0 {
+		return errs, fmt.Errorf("Validation failed")
 	}
-	return errors, nil
+	return errs, nil
 }
 
 // Auth authenticates given password against user's password hash
@@ -291,9 +286,4 @@ func hashMatch(hash, pass string) bool {
 	// Comparing the password with the hash
 	err := bcrypt.CompareHashAndPassword(hashedPassword, password)
 	return err == nil
-}
-
-func jsonPrint(v interface{}) string {
-	b, _ := json.Marshal(v)
-	return string(b[:])
 }

@@ -1,16 +1,15 @@
 package db
 
 import (
-	"fmt"
-
 	"bitbucket.org/codefreak/hsmpp/smpp/db/fresh"
+	"database/sql"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-sql-driver/mysql"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	goqu "gopkg.in/doug-martin/goqu.v3"
 	_ "gopkg.in/doug-martin/goqu.v3/adapters/mysql"
-	"database/sql"
 	"testing"
-	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 var db *goqu.Database
@@ -44,7 +43,7 @@ func Connect(host, port, dbName, user, password string) (*goqu.Database, error) 
 	if err != nil {
 		return db, err
 	}
-	db = goqu.New("", con)
+	db = goqu.New("mysql", con)
 	db.Logger(log.StandardLogger())
 	return db, nil
 }

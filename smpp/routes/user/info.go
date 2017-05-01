@@ -1,11 +1,10 @@
 package user
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
+	"net/http"
 )
 
 type infoRequest struct {
@@ -18,7 +17,7 @@ type infoResponse struct {
 	Name            string
 	Email           string
 	ConnectionGroup string
-	Permissions     []user.Permission
+	Permissions     []permission.Permission
 	RegisteredAt    int64
 	Suspended       bool
 }
@@ -42,7 +41,7 @@ var InfoHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  user.User
 		ok bool
 	)
 	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {

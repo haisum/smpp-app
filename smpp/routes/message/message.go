@@ -1,20 +1,20 @@
 package message
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/queue"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
-	log "github.com/Sirupsen/logrus"
 )
 
 type messageReq struct {
@@ -32,7 +32,7 @@ type messageReq struct {
 }
 
 type messageResponse struct {
-	ID string
+	ID int64
 }
 
 // MessageHandler allows sending one sms
@@ -55,14 +55,14 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	}
 	uReq.URL = r.URL.RequestURI()
 	var (
-		u  models.User
+		u  user.User
 		ok bool
 	)
-	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermSendMessage); !ok {
+	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.SendMessage); !ok {
 		return
 	}
 	if uReq.Mask {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, user.PermMask); !ok {
+		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.Mask); !ok {
 			return
 		}
 	}
@@ -75,8 +75,8 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	q, err := queue.GetQueue("", "", 0)
-	config, err := models.GetConfig()
+	q := queue.Get()
+	config, err := smpp.GetConfig()
 	keys := config.GetKeys(u.ConnectionGroup)
 	var noKey string
 	var group smpp.ConnGroup
@@ -95,17 +95,17 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	var (
-		queuedTime int64                = time.Now().UTC().Unix()
-		status     models.MessageStatus = models.MsgQueued
+		queuedTime int64          = time.Now().UTC().Unix()
+		status     message.Status = message.Queued
 	)
 	if uReq.ScheduledAt > 0 {
-		status = models.MsgScheduled
+		status = message.Scheduled
 	}
 	enc := smtext.EncLatin
 	if !smtext.IsASCII(uReq.Msg) {
 		enc = smtext.EncUCS
 	}
-	m := models.Message{
+	m := message.Message{
 		ConnectionGroup: u.ConnectionGroup,
 		Username:        u.Username,
 		Msg:             uReq.Msg,

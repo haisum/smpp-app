@@ -1,22 +1,22 @@
 package routes
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/token"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 // Authenticate is helper function that checks if token is valid and user has given permission
 // If auth fails, it returns 401 if token is invalid or 403 if user doesn't have given permission
 // "" in permisssion means this function will only check validity of token
-func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token string, p user.Permission) (models.User, bool) {
-	var u models.User
+func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, ts string, p permission.Permission) (user.User, bool) {
+	var u user.User
 	resp := Response{
 		Request: req,
 	}
-	t, err := models.GetToken(token)
+	t, err := token.Get(ts)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get token.")
 		resp.Errors = []ResponseError{
@@ -28,7 +28,7 @@ func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, token 
 		resp.Send(w, r, http.StatusUnauthorized)
 		return u, false
 	}
-	u, err = models.GetUser(t.Username)
+	u, err = user.Get(t.Username)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get user.")
 		resp.Errors = []ResponseError{

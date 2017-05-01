@@ -91,7 +91,7 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			}
 			resp.Send(w, *r, http.StatusBadRequest)
 		}
-		numbers, err = files[0].ToNumbers(numfile.RealNumFileIO{})
+		numbers, err = files[0].ToNumbers(&numfile.RealNumFileIO{})
 		if err != nil {
 			log.WithError(err).Error("Couldn't read numbers from file.")
 			resp := routes.Response{}

@@ -1,13 +1,12 @@
 package users
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"time"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
-	log "github.com/Sirupsen/logrus"
 )
 
 type addRequest struct {
@@ -15,7 +14,7 @@ type addRequest struct {
 	Token           string
 	Username        string
 	Password        string
-	Permissions     []user.Permission
+	Permissions     []permission.Permission
 	Name            string
 	Email           string
 	ConnectionGroup string
@@ -23,7 +22,7 @@ type addRequest struct {
 }
 
 type addResponse struct {
-	ID string
+	ID int64
 }
 
 // AddHandler allows adding a user to database
@@ -45,10 +44,10 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermAddUsers); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, permission.AddUsers); !ok {
 		return
 	}
-	u := models.User{
+	u := user.User{
 		Email:           uReq.Email,
 		ConnectionGroup: uReq.ConnectionGroup,
 		Username:        uReq.Username,

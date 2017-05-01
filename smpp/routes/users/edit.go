@@ -1,12 +1,11 @@
 package users
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 type editRequest struct {
@@ -14,7 +13,7 @@ type editRequest struct {
 	Token           string
 	Username        string
 	Password        string
-	Permissions     []user.Permission
+	Permissions     []permission.Permission
 	Name            string
 	Email           string
 	ConnectionGroup string
@@ -22,7 +21,7 @@ type editRequest struct {
 }
 
 type editResponse struct {
-	User models.User
+	User user.User
 }
 
 //EditHandler allows editing a user
@@ -44,10 +43,10 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermEditUsers); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, permission.EditUsers); !ok {
 		return
 	}
-	u, err := models.GetUser(uReq.Username)
+	u, err := user.Get(uReq.Username)
 	if err != nil {
 		log.WithError(err).Error("Error getting user.")
 		resp := routes.Response{

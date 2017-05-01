@@ -1,16 +1,14 @@
 package main
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	"bytes"
 	"fmt"
-	"os/exec"
-	"strings"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp/pdu"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
+	"os/exec"
+	"strings"
 )
 
 func receiver(p pdu.Body) {
@@ -51,11 +49,11 @@ func saveDeliverySM(pdu pdu.Body) {
 	}
 	status, _ := splitShortMessage(deliverSM["short_message"].String(), "stat:")
 	if status == "DELIVRD" {
-		status = string(models.MsgDelivered)
+		status = string(message.Delivered)
 	} else {
-		status = string(models.MsgNotDelivered)
+		status = string(message.Delivered)
 	}
-	models.SaveDelivery(id, status)
+	message.SaveDelivery(id, status)
 }
 
 func callReceiver(deliverSM pdufield.Map) {

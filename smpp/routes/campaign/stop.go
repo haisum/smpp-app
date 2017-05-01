@@ -15,7 +15,7 @@ type stopRequest struct {
 }
 
 type stopResponse struct {
-	Count int
+	Count int64
 }
 
 //StopHandler accepts post request to stop all pending messages of a campaign

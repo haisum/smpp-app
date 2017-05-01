@@ -1,14 +1,6 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"net/http"
-	"os"
-	"os/signal"
-	"runtime"
-	"syscall"
-
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/influx"
@@ -21,10 +13,16 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
 	"bitbucket.org/codefreak/hsmpp/smpp/supervisor"
+	"flag"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
-	r "github.com/dancannon/gorethink"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"net/http"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
 )
 
 var (
@@ -42,19 +40,23 @@ func main() {
 		os.Exit(0)
 	}
 	log.Info("Connecting database.")
-	db, err := db.Connect("127.0.0.1", "3306",  "hsmppdb", "root", "")
+	conn, err := db.Connect("127.0.0.1", "3306", "hsmppdb", "root", "")
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't setup database connection.")
 	}
-	defer db.Close()
+	defer conn.Db.Close()
+	_, err = db.CheckAndCreateDB()
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't check and create db.")
+	}
 	log.Info("Connecting sphinx.")
 	spDB, err := sphinx.Connect("127.0.0.1", "9306")
 	if err != nil {
 		log.WithError(err).Fatalf("Error in connecting to sphinx.")
 	}
-	defer spDB.Close()
+	defer spDB.Db.Close()
 	log.Info("Connecting with rabbitmq.")
-	q, err := queue.GetQueue(*amqpURL, "smppworker-exchange", 1)
+	q, err := queue.ConnectRabbitMQ(*amqpURL, "smppworker-exchange", 1)
 	if err != nil {
 		log.WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
 	}

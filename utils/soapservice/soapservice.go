@@ -1,23 +1,21 @@
 package main
 
 import (
-	"encoding/xml"
-	"fmt"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
-
 	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
 	"bitbucket.org/codefreak/hsmpp/smpp/soap"
+	"encoding/xml"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
-	r "github.com/dancannon/gorethink"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 const (
@@ -27,22 +25,16 @@ const (
 
 func main() {
 	go license.CheckExpiry()
-
-	s, err := db.GetSession()
+	q, err := queue.ConnectRabbitMQ("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
 	if err != nil {
-		log.WithError(err).Fatal("Couldn't connect to rethinkdb")
-	}
-	defer s.(*r.Session).Close()
-	q, err := queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
-	if err != nil {
-		log.WithError(err).Fatal("Couldn't connect to rabbitmq")
+		log.WithField("err", err).Fatal("Error occured in connecting to rabbitmq.")
 	}
 	defer q.Close()
 	spconn, err := sphinx.Connect("127.0.0.1", "9306")
 	if err != nil {
 		log.WithError(err).Fatalf("Error in connecting to sphinx.")
 	}
-	defer spconn.Close()
+	defer spconn.Db.Close()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 		decoder := xml.NewDecoder(r.Body)
@@ -52,7 +44,7 @@ func main() {
 			http.Error(w, fmt.Sprintf(soap.Response, "Couldn't understand soap request.", ""), http.StatusBadRequest)
 			return
 		}
-		u, err := models.GetUser(e.Body.Request.Username)
+		u, err := user.Get(e.Body.Request.Username)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong.", ""), http.StatusUnauthorized)
 			return
@@ -61,7 +53,7 @@ func main() {
 			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong.", ""), http.StatusUnauthorized)
 			return
 		}
-		config, err := models.GetConfig()
+		config, err := smpp.GetConfig()
 		keys := config.GetKeys(u.ConnectionGroup)
 		var noKey string
 		var group smpp.ConnGroup
@@ -79,7 +71,7 @@ func main() {
 			e.Body.Request.Priority = 7
 		}
 
-		m := models.Message{
+		m := message.Message{
 			ConnectionGroup: u.ConnectionGroup,
 			Username:        u.Username,
 			Msg:             e.Body.Request.Message,
@@ -89,7 +81,7 @@ func main() {
 			Dst:             e.Body.Request.Dst,
 			Src:             e.Body.Request.Src,
 			QueuedAt:        time.Now().UTC().Unix(),
-			Status:          models.MsgQueued,
+			Status:          message.Queued,
 			Total:           total,
 			SendAfter:       e.Body.Request.SendAfter,
 			SendBefore:      e.Body.Request.SendBefore,

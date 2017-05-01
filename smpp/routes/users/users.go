@@ -1,22 +1,21 @@
 package users
 
 import (
-	"net/http"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/user"
 	log "github.com/Sirupsen/logrus"
+	"net/http"
 )
 
 type usersRequest struct {
-	models.UserCriteria
+	user.Criteria
 	URL   string
 	Token string
 }
 
 type usersResponse struct {
-	Users []models.User
+	Users []user.User
 }
 
 // UsersHandler allows adding a user to database
@@ -38,10 +37,10 @@ var UsersHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	uReq.URL = r.URL.RequestURI()
-	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, user.PermListUsers); !ok {
+	if _, ok := routes.Authenticate(w, *r, uReq, uReq.Token, permission.ListUsers); !ok {
 		return
 	}
-	users, err := models.GetUsers(uReq.UserCriteria)
+	users, err := user.List(uReq.Criteria)
 	resp := routes.Response{}
 	if err != nil {
 		resp.Ok = false

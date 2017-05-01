@@ -1,19 +1,14 @@
 package smpp
 
 import (
-	"fmt"
-	"os"
-	"time"
-
 	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp"
 	"github.com/fiorix/go-smpp/smpp/pdu"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
-)
-
-const (
-	esmClassUdhiMask uint8 = 0x40
+	"os"
+	"time"
 )
 
 var (
@@ -31,7 +26,7 @@ func GetSender() Sender {
 // Channel fiorix.Connected is filled if smpp gets connected. Other routines
 // that depend on smpp connection should wait for Connected channel before
 // proceeding.
-func ConnectFiorix(tx smpp.Transceiver) error {
+func ConnectFiorix(tx *smpp.Transceiver) error {
 	s := &fiorix{}
 	s.tx = tx
 	s.conn = s.tx.Bind() // make persistent connection.
@@ -64,7 +59,7 @@ type Sender interface {
 // fiorix holds smpp transmitter and a channel indicating when smpp connection
 // becomes connected.
 type fiorix struct {
-	tx     smpp.Transceiver
+	tx     *smpp.Transceiver
 	fields PduFields
 	conn   <-chan smpp.ConnStatus
 }

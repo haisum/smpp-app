@@ -1,19 +1,16 @@
 package queue
 
 import (
-	"fmt"
-	"os"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
+	"os"
 )
-
 
 type rabbitDelivery struct {
 	amqp.Delivery
 }
 
-func (r *rabbitDelivery) Body() []byte{
+func (r *rabbitDelivery) Body() []byte {
 	return r.Delivery.Body
 }
 
@@ -187,8 +184,8 @@ func (r *rabbit) Bind(keys []string, handler Handler) error {
 			return err
 		}
 		go func() {
-			for m := range r.msgs{
-				rd := rabbitDelivery{
+			for m := range r.msgs {
+				rd := &rabbitDelivery{
 					Delivery: m,
 				}
 				handler(rd)

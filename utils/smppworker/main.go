@@ -1,23 +1,22 @@
 package main
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
+	"bitbucket.org/codefreak/hsmpp/smpp/influx"
+	"bitbucket.org/codefreak/hsmpp/smpp/license"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"flag"
+	log "github.com/Sirupsen/logrus"
+	fiorix "github.com/fiorix/go-smpp/smpp"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
-
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
-	"bitbucket.org/codefreak/hsmpp/smpp/influx"
-	"bitbucket.org/codefreak/hsmpp/smpp/license"
-	"bitbucket.org/codefreak/hsmpp/smpp/queue"
-	log "github.com/Sirupsen/logrus"
-	fiorix "github.com/fiorix/go-smpp/smpp"
-	"github.com/streadway/amqp"
 )
 
 var (
@@ -61,10 +60,11 @@ func handler(d queue.QueueDelivery) {
 	go send(i)
 	d.Ack(false)
 }
+
 // This function also increments count by ceil of number of characters divided by number of characters per message.
 // When count reaches a certain number defined per connection, worker waits for time t defined in configuration before resuming operations.
 func send(i queue.Item) {
-	m, err := models.GetMessage(i.MsgID)
+	m, err := message.Get(i.MsgID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
@@ -72,7 +72,7 @@ func send(i queue.Item) {
 		}).Error("Failed in fetching message from db.")
 		return
 	}
-	if m.Status != models.MsgQueued {
+	if m.Status != message.Queued {
 		log.Info("Message is not queued skipping.")
 		return
 	}
@@ -106,7 +106,7 @@ func send(i queue.Item) {
 			}
 			log.WithField("time", scheduledTime.String()).Info("Scheduling message.")
 			m.ScheduledAt = scheduledTime.Unix()
-			m.Status = models.MsgScheduled
+			m.Status = message.Scheduled
 			m.Update()
 			return
 		}
@@ -195,7 +195,7 @@ func send(i queue.Item) {
 			//exit code 2, because supervisord wont restart this
 			os.Exit(2)
 		}
-		go updateMessage(m, respID, sconn.ID, err.Error(), s.GetFields(), sent)
+		go updateMessage(m, respID, sconn.ID, err.Error(), sent)
 	} else {
 		log.WithFields(log.Fields{
 			"Src":    m.Src,
@@ -203,7 +203,7 @@ func send(i queue.Item) {
 			"Enc":    m.Enc,
 			"Fields": s.GetFields(),
 		}).Info("Sent message.")
-		go updateMessage(m, respID, sconn.ID, "", s.GetFields(), sent)
+		go updateMessage(m, respID, sconn.ID, "", sent)
 	}
 	log.WithField("RespID", respID).Info("response id")
 }
@@ -231,7 +231,7 @@ func bind() {
 		log.WithField("connid", connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")
 	}
 	s = smpp.GetSender()
-	err = s.Connect(&fiorix.Transceiver{
+	err = smpp.ConnectFiorix(&fiorix.Transceiver{
 		Addr:    sconn.URL,
 		User:    sconn.User,
 		Passwd:  sconn.Passwd,
@@ -249,7 +249,7 @@ func bind() {
 	go s.ConnectOrDie()
 	defer s.Close()
 	s.SetFields(sconn.Fields)
-	r, err = queue.GetQueue("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
+	r, err = queue.ConnectRabbitMQ("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get queue")
 		os.Exit(2)
@@ -270,7 +270,10 @@ func bind() {
 	bucket = make(chan int, sconn.Size)
 	defer close(bucket)
 	log.WithField("Pfxs", sconn.Pfxs).Info("Binding to routing keys")
-	err = r.Bind(*group, sconn.Pfxs, handler)
+	for i := range sconn.Pfxs {
+		sconn.Pfxs[i] = *group + "-" + sconn.Pfxs[i]
+	}
+	err = r.Bind(sconn.Pfxs, handler)
 	defer r.Close()
 	if err != nil {
 		os.Exit(2)
@@ -289,9 +292,14 @@ func main() {
 		flag.Usage()
 		os.Exit(2)
 	}
-	var err error
+	log.Info("Connecting database.")
+	conn, err := db.Connect("127.0.0.1", "3306", "hsmppdb", "root", "")
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't setup database connection.")
+	}
+	defer conn.Db.Close()
 	c = &smpp.Config{}
-	*c, err = models.GetConfig()
+	*c, err = smpp.GetConfig()
 	if err != nil {
 		log.Fatal("Can't continue without settings. Exiting.")
 	}
@@ -299,6 +307,6 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatalf("Error in connecting to sphinx.")
 	}
-	defer spconn.Close()
+	defer spconn.Db.Close()
 	bind()
 }

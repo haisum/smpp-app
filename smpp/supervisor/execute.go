@@ -1,7 +1,9 @@
 package supervisor
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -9,10 +11,6 @@ import (
 	"runtime"
 	"strings"
 	"text/template"
-
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models"
-	log "github.com/Sirupsen/logrus"
 )
 
 // Group represents group of related processes
@@ -69,14 +67,14 @@ func (t *TplData) load(c smpp.Config) {
 			},
 		},
 	}
-	user, err := user.Current()
+	currentuser, err := user.Current()
 	if err != nil {
 		log.Fatal("Couldn't get current user!")
 	}
 	if runtime.GOOS == "windows" {
-		t.User = strings.Split(user.Username, "\\")[1]
+		t.User = strings.Split(currentuser.Username, "\\")[1]
 	} else {
-		t.User = user.Username
+		t.User = currentuser.Username
 	}
 }
 
@@ -104,7 +102,7 @@ func tpl() {
 		log.WithField("err", err).Fatal("Couldn't create file supervisord.conf.")
 	}
 
-	c, err := models.GetConfig()
+	c, err := smpp.GetConfig()
 	if err != nil {
 		log.WithField("err", err).Fatal("Could not read settings.")
 	}
