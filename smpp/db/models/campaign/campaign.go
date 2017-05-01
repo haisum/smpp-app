@@ -13,22 +13,22 @@ import (
 
 // Campaign represents a message campaign
 type Campaign struct {
-	ID            int64 `db:"id" goqu:"skipinsert"`
+	ID            int64  `db:"id" goqu:"skipinsert"`
 	Description   string `db:"description"`
 	Src           string `db:"src"`
 	Msg           string `db:"msg"`
 	Enc           string `db:"enc"`
 	FileName      string `db:"filename"`
-	Priority      int `db:"priority"`
+	Priority      int    `db:"priority"`
 	FileLocalName string `db:"filelocalname"`
-	FileID        int64 `db:"numfileid"`
+	FileID        int64  `db:"numfileid"`
 	Username      string `db:"username"`
 	SendBefore    string `db:"sendbefore"`
 	SendAfter     string `db:"sendafter"`
-	ScheduledAt   int64 `db:"scheduledat"`
-	SubmittedAt   int64 `db:"submittedat"`
-	Total int `db:"total"`
-	Errors []string
+	ScheduledAt   int64  `db:"scheduledat"`
+	SubmittedAt   int64  `db:"submittedat"`
+	Total         int    `db:"total"`
+	Errors        []string
 }
 
 const (
@@ -90,29 +90,29 @@ func (c *Campaign) Save() (int64, error) {
 //GetProgress returns count for a campaign in progress
 func (c *Campaign) GetProgress() (Progress, error) {
 	cp := Progress{
-		"Total" : 0,
-		"Queued"  : 0,
-		"Delivered" : 0,
-		"NotDelivered" : 0,
-		"Sent" : 0,
-		"Error" : 0,
-		"Scheduled" : 0,
-		"Stopped" : 0,
-		"Pending" : 0,
+		"Total":        0,
+		"Queued":       0,
+		"Delivered":    0,
+		"NotDelivered": 0,
+		"Sent":         0,
+		"Error":        0,
+		"Scheduled":    0,
+		"Stopped":      0,
+		"Pending":      0,
 	}
 	var vals []struct {
 		Status string `db:"status"`
-		Total int `db:"total"`
+		Total  int    `db:"total"`
 	}
 	err := sphinx.Get().ScanStructs(&vals, "SELECT status, count(*) as total from Message where campaignid = ?  group by status", c.ID)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get campaign stats")
 		return cp, err
 	}
-	for _, val := range vals{
+	for _, val := range vals {
 		cp[val.Status] = val.Total
 	}
-	camps, err := List(Criteria{ID : c.ID})
+	camps, err := List(Criteria{ID: c.ID})
 	if err != nil || len(camps) != 1 {
 		log.Error("Couldn't load campaign")
 		return cp, err
@@ -191,7 +191,7 @@ func (c *Campaign) GetReport() (Report, error) {
 // List fetches list of campaigns based on criteria
 func List(c Criteria) ([]Campaign, error) {
 	var (
-		camps      []Campaign
+		camps []Campaign
 	)
 	t := db.Get().From("Campaign")
 
@@ -215,7 +215,7 @@ func List(c Criteria) ([]Campaign, error) {
 	if c.SubmittedBefore > 0 {
 		t = t.Where(goqu.I("submittedat").Lte(c.SubmittedBefore))
 	}
-	if c.ID> 0 {
+	if c.ID > 0 {
 		t = t.Where(goqu.I("id").Eq(c.ID))
 	}
 	if c.Username != "" {
@@ -229,7 +229,7 @@ func List(c Criteria) ([]Campaign, error) {
 		if orderDir == "ASC" {
 			t = t.Where(goqu.I(c.OrderByKey).Gt(from))
 		} else {
-			t= t.Where(goqu.I(c.OrderByKey).Lt(from))
+			t = t.Where(goqu.I(c.OrderByKey).Lt(from))
 		}
 	}
 	orderExp := goqu.I(c.OrderByKey).Desc()
