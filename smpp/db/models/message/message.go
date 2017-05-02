@@ -30,8 +30,7 @@ func (dsm *deliverySM) Value() (driver.Value, error) {
 	return json.Marshal(dsm)
 }
 
-// Message represents a smpp message
-// @todo check if it inserts properly using goqu
+// Message represents a smpp message inside db
 type Message struct {
 	ID              int64  `db:"id" goqu:"skipinsert"`
 	RespID          string `db:"respid"`
@@ -39,6 +38,34 @@ type Message struct {
 	Connection      string `db:"connection"`
 	Total           int    `db:"total"`
 	Username        string `db:"username"`
+	Msg             string `db:"msg"`
+	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
+	RealMsg     string `json:"-" db:"realmsg"`
+	Enc         string `db:"enc"`
+	Dst         string `db:"dst"`
+	Src         string `db:"src"`
+	Priority    int    `db:"priority"`
+	QueuedAt    int64  `db:"queuedat"`
+	SentAt      int64  `db:"sentat"`
+	DeliveredAt int64  `db:"deliveredat"`
+	CampaignID  int64  `db:"campaignid"`
+	Campaign    string `db:"campaign"`
+	Status      Status `db:"status"`
+	Error       string `db:"error"`
+	SendBefore  string `db:"sendbefore"`
+	SendAfter   string `db:"sendafter"`
+	ScheduledAt int64  `db:"scheduledat"`
+	IsFlash     bool   `db:"isflash"`
+}
+
+// Same as above but used for loading data from sphinx, notice different use of tags for ID and username
+type messageSphinx struct {
+	ID              int64  `db:"id"`
+	RespID          string `db:"respid"`
+	ConnectionGroup string `db:"connectiongroup"`
+	Connection      string `db:"connection"`
+	Total           int    `db:"total"`
+	Username        string `db:"user"`
 	Msg             string `db:"msg"`
 	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
 	RealMsg     string `json:"-" db:"realmsg"`
@@ -179,6 +206,7 @@ func saveInSphinx(m []Message, isUpdate bool) error {
 		valuePart = append(valuePart, values)
 	}
 	query = query + strings.Join(valuePart, ",")
+	log.WithField("query", query).Info("Executing")
 	rs, err := sp.Exec(query)
 	if err != nil {
 		log.WithFields(log.Fields{"query": query, "error": err}).Error("Couldn't insert in db.")
@@ -350,32 +378,39 @@ func List(c Criteria) ([]Message, error) {
 	}
 	qb.Limit(strconv.Itoa(c.PerPage))
 	log.WithFields(log.Fields{"query": qb.GetQuery() + "  option max_matches=500000", "crtieria": c}).Info("Running query.")
-	err = sphinx.Get().ScanStructs(&m, qb.GetQuery()+"  option max_matches=500000")
+	var spM []messageSphinx
+	err = sphinx.Get().ScanStructs(&spM, qb.GetQuery()+"  option max_matches=500000")
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
+	} else {
+		for _, msg := range spM {
+			m = append(m, Message(msg))
+		}
 	}
 	if c.FetchMsg && len(m) > 0 {
 		msg, err := Get(m[0].ID)
 		if err != nil {
-			log.WithError(err).Error("Something ain't right. We couldn't get sphinx msg from rethinkdb")
+			log.WithError(err).Error("Something ain't right. We couldn't get sphinx msg from db")
 			return m, err
 		}
-		if msg.RealMsg == msg.Msg && c.CampaignID != 0 && c.CampaignID == msg.CampaignID {
-			for k, _ := range m {
+		if msg.RealMsg == msg.Msg &&
+			c.CampaignID != 0 &&
+			c.CampaignID == msg.CampaignID {
+			for k := range m {
 				m[k].Msg = msg.Msg
 			}
 		} else {
-			for k, _ := range m {
+			for k := range m {
 				msg, err = Get(m[k].ID)
 				if err != nil {
-					log.WithError(err).WithField("msg", m[k]).Error("Something ain't right. We couldn't get sphinx msg from rethinkdb")
-					return m, err
+					log.WithError(err).WithField("msg", m[k]).Error("Something ain't right. We couldn't get sphinx msg from db")
+					return []Message(m), err
 				}
 				m[k].Msg = msg.Msg
 			}
 		}
 	}
-	return m, err
+	return []Message(m), err
 }
 
 // GetStats filters messages based on criteria and finds total number of messages in different statuses
@@ -538,32 +573,32 @@ func prepareQuery(c Criteria, from interface{}) utils.QueryBuilder {
 
 // Validate validates a message and returns error messages if any
 func (m *Message) Validate() []string {
-	var errors []string
+	var errs []string
 	if m.Dst == "" {
-		errors = append(errors, "Destination can't be empty.")
+		errs = append(errs, "Destination can't be empty.")
 	}
 	if m.Msg == "" {
-		errors = append(errors, "Can't send empty message")
+		errs = append(errs, "Can't send empty message")
 	}
 	if m.Src == "" {
-		errors = append(errors, "Source address can't be empty.")
+		errs = append(errs, "Source address can't be empty.")
 	}
 	if m.Enc != "ucs" && m.Enc != "latin" {
-		errors = append(errors, "Encoding can either be latin or UCS")
+		errs = append(errs, "Encoding can either be latin or UCS")
 	}
 	if (m.SendAfter == "" && m.SendBefore != "") || (m.SendBefore == "" && m.SendAfter != "") {
-		errors = append(errors, "Send before time and Send after time, both should be provided at a time.")
+		errs = append(errs, "Send before time and Send after time, both should be provided at a time.")
 	}
 	parts := strings.Split(m.SendAfter, ":")
 	if m.SendAfter != "" {
 		if len(parts) != 2 {
-			errors = append(errors, "Send after must be of 24 hour format such as \"09:00\".")
+			errs = append(errs, "Send after must be of 24 hour format such as \"09:00\".")
 		} else {
 			hour, errH := strconv.ParseInt(parts[0], 10, 32)
 			minute, errM := strconv.ParseInt(parts[1], 10, 32)
 			if errH != nil || errM != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
 
-				errors = append(errors, "Send after must be of 24 hour format such as \"09:00\".")
+				errs = append(errs, "Send after must be of 24 hour format such as \"09:00\".")
 			}
 		}
 	}
@@ -571,15 +606,15 @@ func (m *Message) Validate() []string {
 	if m.SendBefore != "" {
 		if len(parts) != 2 {
 
-			errors = append(errors, "Send before must be of 24 hour format such as \"09:00\".")
+			errs = append(errs, "Send before must be of 24 hour format such as \"09:00\".")
 		} else {
 			hour, errH := strconv.ParseInt(parts[0], 10, 32)
 			minute, errM := strconv.ParseInt(parts[1], 10, 32)
 			if errH != nil || errM != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
 
-				errors = append(errors, "Send before must be of 24 hour format such as \"09:00\".")
+				errs = append(errs, "Send before must be of 24 hour format such as \"09:00\".")
 			}
 		}
 	}
-	return errors
+	return errs
 }

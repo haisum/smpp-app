@@ -29,9 +29,10 @@ func Get() MQ {
 
 // ConnectRabbitMQ connects to rabbitmq and sets q to rabbit instance.
 func ConnectRabbitMQ(url string, ex string, pCount int) (MQ, error) {
-	q := &rabbit{}
-	err := q.init(url, ex, pCount)
-	return q, err
+	rq := &rabbit{}
+	err := rq.init(url, ex, pCount)
+	q = rq
+	return rq, err
 }
 
 // Priority represents priority of a message. O is default priority

@@ -3,7 +3,6 @@ package token
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
-	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/doug-martin/goqu.v3"
@@ -19,11 +18,11 @@ const (
 
 // Token represents a token given produced against valid authentication request
 type Token struct {
-	ID           int64 `db:"ID" goqu:"skipinsert"`
-	LastAccessed int64 `db:"LastAccessed"`
+	ID           int64  `db:"ID" goqu:"skipinsert"`
+	LastAccessed int64  `db:"LastAccessed"`
 	Token        string `db:"Token"`
 	Username     string `db:"Username"`
-	Validity     int `db:"Validity"`
+	Validity     int    `db:"Validity"`
 }
 
 // Get looks for token in Token table and returns it or error if
@@ -34,7 +33,7 @@ func Get(token string) (Token, error) {
 	if err != nil || !found {
 		log.WithFields(log.Fields{
 			"err":   err,
-			"found" : found,
+			"found": found,
 		}).Error("Error occured while getting token.")
 		return t, err
 	}
@@ -50,22 +49,11 @@ func Get(token string) (Token, error) {
 	}
 	//renew token last accessed
 	t.LastAccessed = now.Unix()
-	result, err := db.Get().From("Token").Prepared(true).Update(t).Exec()
+	_, err = db.Get().From("Token").Where(goqu.I("ID").Eq(t.ID)).Update(t).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"err":   err,
+			"err": err,
 		}).Error("Error occured while updating last accessed of token.")
-		return t, err
-	}
-	var affected int64
-	if affected, err = result.RowsAffected(); affected != 1 || err != nil {
-		log.WithFields(log.Fields{
-			"affected" : affected,
-			"err" : err,
-		}).Error("Error occured getting last affected")
-		if err == nil {
-			err = errors.New("Last affected isn't equal to 1")
-		}
 	}
 	return t, err
 }
@@ -85,7 +73,7 @@ func Create(username string, validity int) (string, error) {
 	_, err := db.Get().From("Token").Insert(t).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"err":   err,
+			"err": err,
 		}).Error("Error occured while inserting token.")
 		return "", err
 	}
@@ -98,7 +86,7 @@ func (t *Token) Delete() error {
 	_, err := db.Get().From("Token").Where(goqu.I("token").Eq(t.Token)).Delete().Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"err":   err,
+			"err": err,
 		}).Error("Error occured while deleting token.")
 	}
 	return err
@@ -111,7 +99,7 @@ func (t *Token) DeleteAll() error {
 	_, err := db.Get().From("Token").Where(goqu.I("username").Eq(t.Username)).Delete().Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"err":   err,
+			"err": err,
 		}).Error("Error occured while deleting tokens.")
 	}
 	return err
