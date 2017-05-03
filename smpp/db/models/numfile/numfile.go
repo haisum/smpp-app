@@ -22,7 +22,6 @@ type NumFile struct {
 	Description string `db:"description"`
 	LocalName   string `db:"localname"`
 	Username    string `db:"username"`
-	UserID      int64  `db:"userid"`
 	SubmittedAt int64  `db:"submittedat"`
 	Deleted     bool   `db:"deleted"`
 	Type        Type   `db:"type"`
@@ -184,6 +183,7 @@ func (nf *NumFile) Save(name string, f multipart.File, fileIO NumFileIO) (int64,
 		log.WithError(err).Error("Couldn't load file.")
 		return 0, err
 	}
+	nf.LocalName = stringutils.SecureRandomAlphaString(20)
 	err = fileIO.Write(nf)
 	if err != nil {
 		return 0, fmt.Errorf("Couldn't write file to disk. Error: %s", err)
@@ -222,7 +222,7 @@ func RowsFromString(numbers string) []Row {
 func (nf *NumFile) ToNumbers(nio NumFileIO) ([]Row, error) {
 	var nums []Row
 	nummap := make(map[string]Row) // used for unique numbers
-	numfilePath := fmt.Sprintf("%s/%d/%s", Path, nf.UserID, nf.LocalName)
+	numfilePath := fmt.Sprintf("%s/%s/%s", Path, nf.Username, nf.LocalName)
 	b, err := nio.LoadFile(numfilePath)
 	if err != nil {
 		return nums, err

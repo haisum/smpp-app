@@ -23,7 +23,7 @@ func Get(name string) (string, error) {
 // Set sets value against a name from settings table
 func Set(name, value string) error {
 	_, err := db.Get().From("settings").Where(goqu.I("name").Eq(name)).Delete().Exec()
-	if err == nil {
+	if err != nil {
 		err = fmt.Errorf("Couldn't delete from db. %s", err)
 		return err
 	}

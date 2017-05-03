@@ -46,7 +46,7 @@ var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		ID: uReq.ID,
 	})
 
-	if u.ID != files[0].UserID {
+	if u.Username != files[0].Username {
 		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.ListNumFiles); !ok {
 			return
 		}
@@ -69,7 +69,7 @@ var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	filepath := fmt.Sprintf("%s/%s/%s", numfile.Path, files[0].UserID, files[0].LocalName)
+	filepath := fmt.Sprintf("%s/%s/%s", numfile.Path, files[0].Username, files[0].LocalName)
 	b, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		log.WithFields(log.Fields{

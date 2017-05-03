@@ -4,6 +4,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/doug-martin/goqu.v3"
@@ -13,22 +14,19 @@ import (
 
 // Campaign represents a message campaign
 type Campaign struct {
-	ID            int64  `db:"id" goqu:"skipinsert"`
-	Description   string `db:"description"`
-	Src           string `db:"src"`
-	Msg           string `db:"msg"`
-	Enc           string `db:"enc"`
-	FileName      string `db:"filename"`
-	Priority      int    `db:"priority"`
-	FileLocalName string `db:"filelocalname"`
-	FileID        int64  `db:"numfileid"`
-	Username      string `db:"username"`
-	SendBefore    string `db:"sendbefore"`
-	SendAfter     string `db:"sendafter"`
-	ScheduledAt   int64  `db:"scheduledat"`
-	SubmittedAt   int64  `db:"submittedat"`
-	Total         int    `db:"total"`
-	Errors        []string
+	ID          int64  `db:"id" goqu:"skipinsert"`
+	Description string `db:"description"`
+	Src         string `db:"src"`
+	Msg         string `db:"msg"`
+	Priority    int    `db:"priority"`
+	FileID      int64  `db:"numfileid"`
+	Username    string `db:"username"`
+	SendBefore  string `db:"sendbefore"`
+	SendAfter   string `db:"sendafter"`
+	ScheduledAt int64  `db:"scheduledat"`
+	SubmittedAt int64  `db:"submittedat"`
+	Total       int    `db:"total"`
+	Errors      stringutils.StringList
 }
 
 const (
@@ -74,8 +72,6 @@ func (c *Campaign) Save() (int64, error) {
 		if len(f) != 1 {
 			return 0, fmt.Errorf("Couldn't find file.")
 		}
-		c.FileLocalName = f[0].LocalName
-		c.FileName = f[0].Name
 	}
 	resp, err := db.Get().From("Campaign").Insert(c).Exec()
 	if err != nil {

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 )
 
 type RealNumFileIO struct {
@@ -43,7 +42,7 @@ func (nio *RealNumFileIO) Write(file *NumFile) error {
 	if file.LocalName == "" {
 		return errors.New("Local Name can't be blank")
 	}
-	numfilePath := filepath.Join(Path, strconv.FormatInt(file.UserID, 10))
+	numfilePath := filepath.Join(Path, file.Username)
 	err := os.MkdirAll(numfilePath, 0711)
 	if err != nil {
 		return fmt.Errorf("Couldn't create directory %s", numfilePath)

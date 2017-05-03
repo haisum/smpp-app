@@ -176,11 +176,8 @@ func (m *Message) Save() (int64, error) {
 
 func saveInSphinx(m []Message, isUpdate bool) error {
 	sp := sphinx.Get()
-	if sp == nil {
-		return errors.New("Sphinx db connection is not initialized yet")
-	}
 	if len(m) < 1 {
-		return errors.New("No messages provided to save.")
+		return nil
 	}
 	op := "INSERT"
 	if isUpdate {
@@ -259,10 +256,29 @@ func (m *Message) Update() error {
 func stopCampaignInSphinx(campaignID int64) error {
 	ms, err := List(Criteria{
 		CampaignID: campaignID,
-		Status:     Stopped,
+		Status:     Queued,
+		PerPage:    500000,
 	})
 	if err != nil {
 		return err
+	}
+	for i := range ms {
+		ms[i].Status = Stopped
+	}
+	err = saveInSphinx(ms, true)
+	if err != nil {
+		return err
+	}
+	ms, err = List(Criteria{
+		CampaignID: campaignID,
+		Status:     Scheduled,
+		PerPage:    500000,
+	})
+	if err != nil {
+		return err
+	}
+	for i := range ms {
+		ms[i].Status = Stopped
 	}
 	err = saveInSphinx(ms, true)
 	return err
@@ -289,6 +305,9 @@ func SaveDelivery(respID, status string) error {
 	})
 	if len(ms) < 1 || err != nil {
 		log.WithFields(log.Fields{"ms": ms, "error": err, "respID": respID}).Error("Couldn't get msgs with respID")
+	}
+	for i := range ms {
+		ms[i].Status = Status(status)
 	}
 	err = saveInSphinx(ms, true)
 	if err != nil {

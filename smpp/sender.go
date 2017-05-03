@@ -37,7 +37,6 @@ func ConnectFiorix(tx *smpp.Transceiver) error {
 		if st != smpp.Connected {
 			return fmt.Errorf("Error in establising connection. Status: %s, Error: %s", c.Status(), c.Error())
 		}
-		return nil
 	case <-time.After(time.Second * 5):
 		return fmt.Errorf("Timed out waiting for smpp connection.")
 	}

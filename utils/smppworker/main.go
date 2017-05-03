@@ -230,7 +230,6 @@ func bind() {
 	if err != nil {
 		log.WithField("connid", connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")
 	}
-	s = smpp.GetSender()
 	err = smpp.ConnectFiorix(&fiorix.Transceiver{
 		Addr:    sconn.URL,
 		User:    sconn.User,
@@ -246,6 +245,7 @@ func bind() {
 		}).Error("Aborting due to connection error.")
 		os.Exit(2)
 	}
+	s = smpp.GetSender()
 	go s.ConnectOrDie()
 	defer s.Close()
 	s.SetFields(sconn.Fields)
