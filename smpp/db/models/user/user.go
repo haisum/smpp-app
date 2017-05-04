@@ -3,6 +3,7 @@ package user
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
@@ -41,6 +42,10 @@ func (p *permissions) String() string {
 		perms = append(perms, string(v))
 	}
 	return strings.Join(perms, ",")
+}
+
+func (p permissions) Value() (driver.Value, error) {
+	return p.String(), nil
 }
 
 // Criteria is used to filter users
@@ -85,6 +90,7 @@ func (u *User) Add() (int64, error) {
 	if u.ConnectionGroup == "" {
 		u.ConnectionGroup = DefaultConnectionGroup
 	}
+	_ = driver.Valuer(u.Permissions)
 	w, err := db.Get().From("User").Insert(u).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -175,9 +181,8 @@ func List(c Criteria) ([]User, error) {
 	if c.Suspended == true {
 		t = t.Where(goqu.I("Suspended").Eq(c.Suspended))
 	}
-	key := c.OrderByKey
-	if key == "" {
-		key = "RegisteredAt"
+	if c.OrderByKey == "" {
+		c.OrderByKey = "RegisteredAt"
 	}
 	if c.PerPage == 0 {
 		c.PerPage = 100
