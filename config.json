@@ -1,0 +1,20 @@
+{
+  "SPHINX_HOST" : "127.0.0.1",
+  "SPHINX_PORT": 9306,
+  "MYSQL_HOST" : "127.0.0.1",
+  "MYSQL_PORT": 3306,
+  "MYSQL_DBNAME" : "hsmppdb",
+  "MYSQL_USER" : "root",
+  "MYSQL_PASSWORD" : "",
+  "RABBITMQ_URL" : "amqp://guest:guest@localhost:5672/",
+  "RABBITMQ_EXCHANGE" : "smppworker-exchange",
+  "INFLUXDB_ADDR" : "http://localhost:8086",
+  "INFLUXDB_USERNAME" : "",
+  "INFLUXDB_PASSWORD" : "",
+  "HTTP_PORT": 8443,
+  "HTTP_HOST" : "",
+  "HTTP_CERTFILE" : "keys/cert.pem",
+  "HTTP_KEYFILE" : "keys/server.key",
+  "SOAPSERVICE_HOST" : "",
+  "SOAPSERVICE_PORT": 8445
+}
