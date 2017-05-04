@@ -2,6 +2,7 @@ package main
 
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
@@ -12,6 +13,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/spf13/viper"
 	"net/http"
 	"strconv"
 	"strings"
@@ -25,16 +27,22 @@ const (
 
 func main() {
 	go license.CheckExpiry()
-	q, err := queue.ConnectRabbitMQ("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
+	q, err := queue.ConnectRabbitMQ(viper.GetString("RABBITMQ_URL"), viper.GetString("RABBITMQ_EXCHANGE"), 1)
 	if err != nil {
 		log.WithField("err", err).Fatal("Error occured in connecting to rabbitmq.")
 	}
 	defer q.Close()
-	spconn, err := sphinx.Connect("127.0.0.1", "9306")
+	spconn, err := sphinx.Connect(viper.GetString("SPHINX_HOST"), viper.GetInt("SPHINX_PORT"))
 	if err != nil {
 		log.WithError(err).Fatalf("Error in connecting to sphinx.")
 	}
 	defer spconn.Db.Close()
+	log.Info("Connecting database.")
+	conn, err := db.Connect(viper.GetString("MYSQL_HOST"), viper.GetInt("MYSQL_PORT"), viper.GetString("MYSQL_DBNAME"), viper.GetString("MYSQL_USER"), viper.GetString("MYSQL_PASSWORD"))
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't setup database connection.")
+	}
+	defer conn.Db.Close()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
 		decoder := xml.NewDecoder(r.Body)
@@ -126,8 +134,8 @@ func main() {
 		fmt.Fprintf(w, soap.WSDL, host, port)
 		return
 	})
-	log.Infof("Listening on port %s.", HTTPPort)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", HTTPPort), nil))
+	log.Infof("Listening on port %d.", viper.GetInt("SOAPSERVICE_PORT"))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%d", viper.GetString("SOAPSERVICE_HOST"), viper.GetInt("SOAPSERVICE_PORT")), nil))
 }
 
 // Given a list of strings and a string,

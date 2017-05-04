@@ -8,7 +8,7 @@ import (
 	"fmt"
 )
 
-// Config represents all settings defined in settings file
+// Config represents settings for smpp connections
 type Config struct {
 	ConnGroups []ConnGroup
 }

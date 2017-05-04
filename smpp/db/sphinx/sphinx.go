@@ -5,18 +5,18 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-sql-driver/mysql"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	goqu "gopkg.in/doug-martin/goqu.v3"
 	_ "gopkg.in/doug-martin/goqu.v3/adapters/mysql"
-	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"testing"
 )
 
 var db *goqu.Database
 
-func Connect(host, port string) (*goqu.Database, error) {
+func Connect(host string, port int) (*goqu.Database, error) {
 	config := mysql.Config{
-		Addr: fmt.Sprintf("%s:%s", host, port),
-		Net:  "tcp",
+		Addr:              fmt.Sprintf("%s:%d", host, port),
+		Net:               "tcp",
 		InterpolateParams: true,
 	}
 	log.WithField("dsn", config.FormatDSN()).Info("Connecting")
@@ -40,6 +40,7 @@ func setNamesUtf8() error {
 	}
 	return err
 }
+
 // ConnectMock makes a mock db connection for testing purposes
 func ConnectMock(t *testing.T) (*goqu.Database, sqlmock.Sqlmock, error) {
 	con, mock, err := sqlmock.New()

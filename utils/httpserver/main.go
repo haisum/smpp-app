@@ -18,6 +18,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/spf13/viper"
 	"net/http"
 	"os"
 	"os/signal"
@@ -26,8 +27,6 @@ import (
 )
 
 var (
-	port        = flag.Int("port", 8443, "Port on which http service should start.")
-	amqpURL     = flag.String("amqpUrl", "amqp://guest:guest@localhost:5672/", "Amqp url for rabbitmq")
 	version     = "undefined"
 	showVersion = flag.Bool("version", false, "Show binary version number.")
 )
@@ -40,7 +39,7 @@ func main() {
 		os.Exit(0)
 	}
 	log.Info("Connecting database.")
-	conn, err := db.Connect("127.0.0.1", "3306", "hsmppdb", "root", "")
+	conn, err := db.Connect(viper.GetString("MYSQL_HOST"), viper.GetInt("MYSQL_PORT"), viper.GetString("MYSQL_DBNAME"), viper.GetString("MYSQL_USER"), viper.GetString("MYSQL_PASSWORD"))
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't setup database connection.")
 	}
@@ -50,19 +49,19 @@ func main() {
 		log.WithError(err).Fatal("Couldn't check and create db.")
 	}
 	log.Info("Connecting sphinx.")
-	spDB, err := sphinx.Connect("127.0.0.1", "9306")
+	spDB, err := sphinx.Connect(viper.GetString("SPHINX_HOST"), viper.GetInt("SPHINX_PORT"))
 	if err != nil {
 		log.WithError(err).Fatalf("Error in connecting to sphinx.")
 	}
 	defer spDB.Db.Close()
 	log.Info("Connecting with rabbitmq.")
-	q, err := queue.ConnectRabbitMQ(*amqpURL, "smppworker-exchange", 1)
+	q, err := queue.ConnectRabbitMQ(viper.GetString("RABBITMQ_URL"), viper.GetString("RABBITMQ_EXCHANGE"), 1)
 	if err != nil {
 		log.WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
 	}
 	defer q.Close()
 	log.Info("Connecting to influxdb.")
-	_, err = influx.Connect("http://localhost:8086", "", "")
+	_, err = influx.Connect(viper.GetString("INFLUXDB_ADDR"), viper.GetString("INFLUXDB_USERNAME"), viper.GetString("INFLUXDB_PASSWORD"))
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't connect to influxdb")
 	}
@@ -103,8 +102,8 @@ func main() {
 
 	//Listen for termination signals from OS
 	go gracefulShutdown()
-	log.Infof("Listening for requests on port %d", *port)
-	log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", *port), "keys/cert.pem", "keys/server.key", handlers.CombinedLoggingHandler(os.Stdout, r)))
+	log.Infof("Listening for requests on port %d", viper.GetInt("HTTP_PORT"))
+	log.Fatal(http.ListenAndServeTLS(fmt.Sprintf("%s:%d", viper.GetString("HTTP_HOST"), viper.GetInt("HTTP_PORT")), viper.GetString("HTTP_CERTFILE"), viper.GetString("HTTP_KEYFILE"), handlers.CombinedLoggingHandler(os.Stdout, r)))
 }
 
 // When SIGTERM or SIGINT is received, this routine will close our workers

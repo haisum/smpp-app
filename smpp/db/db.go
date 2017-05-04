@@ -26,9 +26,9 @@ func CheckAndCreateDB() (*goqu.Database, error) {
 	return db, err
 }
 
-func Connect(host, port, dbName, user, password string) (*goqu.Database, error) {
+func Connect(host string, port int, dbName, user, password string) (*goqu.Database, error) {
 	config := mysql.Config{
-		Addr:            fmt.Sprintf("%s:%s", host, port),
+		Addr:            fmt.Sprintf("%s:%d", host, port),
 		Net:             "tcp",
 		User:            user,
 		Passwd:          password,

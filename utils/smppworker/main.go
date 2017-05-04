@@ -11,6 +11,7 @@ import (
 	"flag"
 	log "github.com/Sirupsen/logrus"
 	fiorix "github.com/fiorix/go-smpp/smpp"
+	"github.com/spf13/viper"
 	"os"
 	"os/signal"
 	"strconv"
@@ -249,12 +250,12 @@ func bind() {
 	go s.ConnectOrDie()
 	defer s.Close()
 	s.SetFields(sconn.Fields)
-	r, err = queue.ConnectRabbitMQ("amqp://guest:guest@localhost:5672/", "smppworker-exchange", 1)
+	r, err = queue.ConnectRabbitMQ(viper.GetString("RABBITMQ_URL"), viper.GetString("RABBITMQ_EXCHANGE"), 1)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get queue")
 		os.Exit(2)
 	}
-	cl, err := influx.Connect("http://localhost:8086", "", "")
+	cl, err := influx.Connect(viper.GetString("INFLUXDB_ADDR"), viper.GetString("INFLUXDB_USERNAME"), viper.GetString("INFLUXDB_PASSWORD"))
 	if err != nil {
 		log.WithError(err).Error("Couldn't connect to influxdb")
 		os.Exit(2)
@@ -293,7 +294,7 @@ func main() {
 		os.Exit(2)
 	}
 	log.Info("Connecting database.")
-	conn, err := db.Connect("127.0.0.1", "3306", "hsmppdb", "root", "")
+	conn, err := db.Connect(viper.GetString("MYSQL_HOST"), viper.GetInt("MYSQL_PORT"), viper.GetString("MYSQL_DBNAME"), viper.GetString("MYSQL_USER"), viper.GetString("MYSQL_PASSWORD"))
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't setup database connection.")
 	}
@@ -303,7 +304,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Can't continue without settings. Exiting.")
 	}
-	spconn, err := sphinx.Connect("127.0.0.1", "9306")
+	spconn, err := sphinx.Connect(viper.GetString("SPHINX_HOST"), viper.GetInt("SPHINX_PORT"))
 	if err != nil {
 		log.WithError(err).Fatalf("Error in connecting to sphinx.")
 	}

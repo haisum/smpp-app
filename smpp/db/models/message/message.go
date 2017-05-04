@@ -162,18 +162,6 @@ type Stats struct {
 var bulkInsertLock sync.Mutex
 
 // Save saves a message struct in Message table
-func (m *Message) Save() (int64, error) {
-	con := db.Get()
-	result, err := con.From("Message").Insert(m).Exec()
-	if err != nil {
-		log.WithError(err).Error("Couldn't insert message.")
-		return 0, err
-	}
-	m.ID, err = result.LastInsertId()
-	err = saveInSphinx([]Message{*m}, false)
-	return m.ID, err
-}
-
 func saveInSphinx(m []Message, isUpdate bool) error {
 	sp := sphinx.Get()
 	if len(m) < 1 {
@@ -214,6 +202,18 @@ func saveInSphinx(m []Message, isUpdate bool) error {
 		return fmt.Errorf("DB couldn't insert all of rows. Expected: %d, Inserted: %d", len(m), affected)
 	}
 	return nil
+}
+
+func (m *Message) Save() (int64, error) {
+	con := db.Get()
+	result, err := con.From("Message").Insert(m).Exec()
+	if err != nil {
+		log.WithError(err).Error("Couldn't insert message.")
+		return 0, err
+	}
+	m.ID, err = result.LastInsertId()
+	err = saveInSphinx([]Message{*m}, false)
+	return m.ID, err
 }
 
 // SaveBulk saves a list of messages in Message table
