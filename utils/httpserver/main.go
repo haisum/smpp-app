@@ -2,7 +2,6 @@ package main
 
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/influx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
@@ -48,12 +47,6 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't check and create db.")
 	}
-	log.Info("Connecting sphinx.")
-	spDB, err := sphinx.Connect(viper.GetString("SPHINX_HOST"), viper.GetInt("SPHINX_PORT"))
-	if err != nil {
-		log.WithError(err).Fatalf("Error in connecting to sphinx.")
-	}
-	defer spDB.Db.Close()
 	log.Info("Connecting with rabbitmq.")
 	q, err := queue.ConnectRabbitMQ(viper.GetString("RABBITMQ_URL"), viper.GetString("RABBITMQ_EXCHANGE"), 1)
 	if err != nil {

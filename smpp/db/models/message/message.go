@@ -2,9 +2,6 @@ package message
 
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/utils"
-	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -58,34 +55,6 @@ type Message struct {
 	IsFlash     bool   `db:"isflash"`
 }
 
-// Same as above but used for loading data from sphinx, notice different use of tags for ID and username
-type messageSphinx struct {
-	ID              int64  `db:"id"`
-	RespID          string `db:"respid"`
-	ConnectionGroup string `db:"connectiongroup"`
-	Connection      string `db:"connection"`
-	Total           int    `db:"total"`
-	Username        string `db:"user"`
-	Msg             string `db:"msg"`
-	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
-	RealMsg     string `json:"-" db:"realmsg"`
-	Enc         string `db:"enc"`
-	Dst         string `db:"dst"`
-	Src         string `db:"src"`
-	Priority    int    `db:"priority"`
-	QueuedAt    int64  `db:"queuedat"`
-	SentAt      int64  `db:"sentat"`
-	DeliveredAt int64  `db:"deliveredat"`
-	CampaignID  int64  `db:"campaignid"`
-	Campaign    string `db:"campaign"`
-	Status      Status `db:"status"`
-	Error       string `db:"error"`
-	SendBefore  string `db:"sendbefore"`
-	SendAfter   string `db:"sendafter"`
-	ScheduledAt int64  `db:"scheduledat"`
-	IsFlash     bool   `db:"isflash"`
-}
-
 // Criteria represents filters we can give to List method.
 type Criteria struct {
 	ID              int64
@@ -113,7 +82,7 @@ type Criteria struct {
 	OrderByKey      string
 	OrderByDir      string
 	From            string
-	PerPage         int
+	PerPage         uint
 	DisableOrder    bool
 	FetchMsg        bool
 }
@@ -161,49 +130,6 @@ type Stats struct {
 
 var bulkInsertLock sync.Mutex
 
-// Save saves a message struct in Message table
-func saveInSphinx(m []Message, isUpdate bool) error {
-	sp := sphinx.Get()
-	if len(m) < 1 {
-		return nil
-	}
-	op := "INSERT"
-	if isUpdate {
-		op = "REPLACE"
-	}
-	query := op + ` INTO Message(id, Msg, Username, ConnectionGroup, Connection, RespID, Total, Enc, Dst,
-		Src, Priority, QueuedAt, SentAt, DeliveredAt, CampaignID, Campaign, Status, Error, User, ScheduledAt, IsFlash, SendAfter, SendBefore) VALUES `
-	var valuePart []string
-	for _, v := range m {
-		isFlash := 0
-		if v.IsFlash {
-			isFlash = 1
-		}
-		params := []interface{}{
-			v.ID, v.Msg, v.Username, v.ConnectionGroup,
-			v.Connection, v.RespID, v.Total, v.Enc, v.Dst, v.Src, v.Priority,
-			v.QueuedAt, v.SentAt, v.DeliveredAt, v.CampaignID, v.Campaign, string(v.Status), v.Error,
-			v.Username, v.ScheduledAt, isFlash, v.SendAfter, v.SendBefore,
-		}
-		params = stringutils.EscapeQuotes(params...)
-		values := fmt.Sprintf(`(%d, '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s', %d,
-			%d , %d, %d, %d, '%s', '%s', '%s', '%s', %d, %d, '%s', '%s')`, params...)
-		valuePart = append(valuePart, values)
-	}
-	query = query + strings.Join(valuePart, ",")
-	log.WithField("query", query).Info("Executing")
-	rs, err := sp.Exec(query)
-	if err != nil {
-		log.WithFields(log.Fields{"query": query, "error": err}).Error("Couldn't insert in db.")
-		return err
-	}
-	affected, _ := rs.RowsAffected()
-	if affected != int64(len(m)) {
-		return fmt.Errorf("DB couldn't insert all of rows. Expected: %d, Inserted: %d", len(m), affected)
-	}
-	return nil
-}
-
 func (m *Message) Save() (int64, error) {
 	con := db.Get()
 	result, err := con.From("Message").Insert(m).Exec()
@@ -211,9 +137,7 @@ func (m *Message) Save() (int64, error) {
 		log.WithError(err).Error("Couldn't insert message.")
 		return 0, err
 	}
-	m.ID, err = result.LastInsertId()
-	err = saveInSphinx([]Message{*m}, false)
-	return m.ID, err
+	return result.LastInsertId()
 }
 
 // SaveBulk saves a list of messages in Message table
@@ -239,48 +163,12 @@ func SaveBulk(m []Message) ([]int64, error) {
 	for k := affected - 1; k >= 0; k-- {
 		m[k].ID = ids[k]
 	}
-	err = saveInSphinx(m, false)
 	return ids, err
 }
 
 // Update updates an existing message in Message table
 func (m *Message) Update() error {
 	_, err := db.Get().From("Message").Where(goqu.I("id").Eq(m.ID)).Update(m).Exec()
-	if err != nil {
-		return err
-	}
-	err = saveInSphinx([]Message{*m}, true)
-	return err
-}
-
-func stopCampaignInSphinx(campaignID int64) error {
-	ms, err := List(Criteria{
-		CampaignID: campaignID,
-		Status:     Queued,
-		PerPage:    500000,
-	})
-	if err != nil {
-		return err
-	}
-	for i := range ms {
-		ms[i].Status = Stopped
-	}
-	err = saveInSphinx(ms, true)
-	if err != nil {
-		return err
-	}
-	ms, err = List(Criteria{
-		CampaignID: campaignID,
-		Status:     Scheduled,
-		PerPage:    500000,
-	})
-	if err != nil {
-		return err
-	}
-	for i := range ms {
-		ms[i].Status = Stopped
-	}
-	err = saveInSphinx(ms, true)
 	return err
 }
 
@@ -299,19 +187,6 @@ func SaveDelivery(respID, status string) error {
 	if affected, _ := res.RowsAffected(); affected == 0 {
 		log.WithField("RespID", respID).Error("Couldn't update delivery sm. No such response id found.")
 		return errors.New("Couldn't update delivery sm. No such response id found.")
-	}
-	ms, err := List(Criteria{
-		RespID: respID,
-	})
-	if len(ms) < 1 || err != nil {
-		log.WithFields(log.Fields{"ms": ms, "error": err, "respID": respID}).Error("Couldn't get msgs with respID")
-	}
-	for i := range ms {
-		ms[i].Status = Status(status)
-	}
-	err = saveInSphinx(ms, true)
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -340,11 +215,6 @@ func StopPending(campID int64) (int64, error) {
 		return 0, err
 	}
 	affected, _ := res.RowsAffected()
-	err = stopCampaignInSphinx(campID)
-	if err != nil {
-		log.WithError(err).Error("Couldn't update records in sphinx")
-		return 0, err
-	}
 	return affected, nil
 }
 
@@ -391,45 +261,17 @@ func List(c Criteria) ([]Message, error) {
 			from = c.From
 		}
 	}
-	qb := prepareQuery(c, from)
+	ds := prepareQuery(c, from)
 	if c.PerPage == 0 {
 		c.PerPage = 100
 	}
-	qb.Limit(strconv.Itoa(c.PerPage))
-	log.WithFields(log.Fields{"query": qb.GetQuery() + "  option max_matches=500000", "crtieria": c}).Info("Running query.")
-	var spM []messageSphinx
-	err = sphinx.Get().ScanStructs(&spM, qb.GetQuery()+"  option max_matches=500000")
+	ds.Limit(c.PerPage)
+	log.WithFields(log.Fields{"query": ds.ToSql(), "crtieria": c}).Info("Running query.")
+	err = ds.ScanStructs(&m)
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
-	} else {
-		for _, msg := range spM {
-			m = append(m, Message(msg))
-		}
 	}
-	if c.FetchMsg && len(m) > 0 {
-		msg, err := Get(m[0].ID)
-		if err != nil {
-			log.WithError(err).Error("Something ain't right. We couldn't get sphinx msg from db")
-			return m, err
-		}
-		if msg.RealMsg == msg.Msg &&
-			c.CampaignID != 0 &&
-			c.CampaignID == msg.CampaignID {
-			for k := range m {
-				m[k].Msg = msg.Msg
-			}
-		} else {
-			for k := range m {
-				msg, err = Get(m[k].ID)
-				if err != nil {
-					log.WithError(err).WithField("msg", m[k]).Error("Something ain't right. We couldn't get sphinx msg from db")
-					return []Message(m), err
-				}
-				m[k].Msg = msg.Msg
-			}
-		}
-	}
-	return []Message(m), err
+	return m, err
 }
 
 // GetStats filters messages based on criteria and finds total number of messages in different statuses
@@ -446,13 +288,16 @@ func GetStats(c Criteria) (Stats, error) {
 			from = c.From
 		}
 	}
-	qb := prepareQuery(c, from)
-	qb.Select("status, count(*) as total").From("Message")
-	qb.GroupBy("Status")
+	ds := prepareQuery(c, from)
+	ds = ds.GroupBy("Status").Select(goqu.L("status, count(*) as total"))
 
-	log.WithFields(log.Fields{"query": qb.GetQuery(), "crtieria": c}).Info("Running query.")
+	log.WithFields(log.Fields{"query": ds.ToSql(), "crtieria": c}).Info("Running query.")
 	stats := make(map[string]int64, 8)
-	rows, err := sphinx.Get().Query(qb.GetQuery())
+	query, args, err := ds.ToSql()
+	if err != nil {
+		return m, err
+	}
+	rows, err := db.Get().Db.Query(query, args)
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
 		return m, err
@@ -488,83 +333,80 @@ func GetStats(c Criteria) (Stats, error) {
 	return m, err
 }
 
-func prepareQuery(c Criteria, from interface{}) utils.QueryBuilder {
-	qb := utils.QueryBuilder{}
-	qb.Select("*").From("Message")
-
+func prepareQuery(c Criteria, from interface{}) *goqu.Dataset {
+	t := db.Get().From("Message")
 	if c.OrderByKey == "" {
 		c.OrderByKey = QueuedAt
 	}
 	if c.Username != "" {
 		if strings.HasPrefix(c.Username, "(re)") {
 			c.Username = strings.Trim(c.Username, "(re)")
-			qb.WhereAnd("match('@Username " + stringutils.EscapeQuote(c.Username) + "')")
+			t = t.Where(goqu.L("match(Msg) against('?*' IN BOOLEAN MODE)", c.Username))
 		} else {
-			qb.WhereAnd("User = '" + stringutils.EscapeQuote(c.Username) + "'")
+			t = t.Where(goqu.I("User").Eq(c.Username))
 		}
 	}
 	if c.Msg != "" {
-		qb.WhereAnd("match('@Msg " + stringutils.EscapeQuote(c.Msg) + "')")
+		t = t.Where(goqu.L("match(Msg) against('?')", c.Msg))
 	}
 	if c.QueuedAfter != 0 {
-		qb.WhereAnd("QueuedAt >= " + strconv.FormatInt(c.QueuedAfter, 10))
+		t = t.Where(goqu.I("QueuedAt").Gte(c.QueuedAfter))
 	}
 	if c.QueuedBefore != 0 {
-		qb.WhereAnd("QueuedAt <= " + strconv.FormatInt(c.QueuedBefore, 10))
+		t = t.Where(goqu.I("QueuedAt").Lte(c.QueuedBefore))
 	}
-
 	if c.DeliveredAfter != 0 {
-		qb.WhereAnd("DeliveredAt >= " + strconv.FormatInt(c.DeliveredAfter, 10))
+		t = t.Where(goqu.I("DeliveredAt").Gte(c.DeliveredAfter))
 	}
 	if c.DeliveredBefore != 0 {
-		qb.WhereAnd("DeliveredAt <= " + strconv.FormatInt(c.DeliveredBefore, 10))
+		t = t.Where(goqu.I("DeliveredAt").Lte(c.DeliveredBefore))
 	}
 
 	if c.SentAfter != 0 {
-		qb.WhereAnd("SentAt >= " + strconv.FormatInt(c.SentAfter, 10))
+		t = t.Where(goqu.I("SentAt").Gte(c.SentAfter))
 	}
 	if c.SentBefore != 0 {
-		qb.WhereAnd("SentAt <= " + strconv.FormatInt(c.SentBefore, 10))
+		t = t.Where(goqu.I("SentAt").Lte(c.SentBefore))
 	}
 
 	if c.ScheduledAfter != 0 {
-		qb.WhereAnd("ScheduledAt >= " + strconv.FormatInt(c.ScheduledAfter, 10))
+		t = t.Where(goqu.I("ScheduledAt").Gte(c.ScheduledAfter))
 	}
 	if c.ScheduledBefore != 0 {
-		qb.WhereAnd("ScheduledAt <= " + strconv.FormatInt(c.ScheduledBefore, 10))
+		t = t.Where(goqu.I("ScheduledAt").Lte(c.ScheduledBefore))
 	}
 	if c.RespID != "" {
-		qb.WhereAnd("RespID = '" + stringutils.EscapeQuote(c.RespID) + "'")
+		t = t.Where(goqu.I("RespID").Eq(c.RespID))
 	}
 	if c.Connection != "" {
-		qb.WhereAnd("Connection = '" + stringutils.EscapeQuote(c.Connection) + "'")
+		t = t.Where(goqu.I("Connection").Eq(c.Connection))
 	}
 	if c.ConnectionGroup != "" {
-		qb.WhereAnd("ConnectionGroup = '" + stringutils.EscapeQuote(c.ConnectionGroup) + "'")
+		t = t.Where(goqu.I("ConnectionGroup").Eq(c.ConnectionGroup))
 	}
 	if c.Src != "" {
-		qb.WhereAnd("Src = '" + stringutils.EscapeQuote(c.Src) + "'")
+		t = t.Where(goqu.I("Src").Eq(c.Src))
 	}
 	if c.Dst != "" {
-		qb.WhereAnd("Dst = '" + stringutils.EscapeQuote(c.Dst) + "'")
+		t = t.Where(goqu.I("Dst").Eq(c.Dst))
 	}
 	if c.Enc != "" {
-		qb.WhereAnd("Enc = '" + stringutils.EscapeQuote(c.Enc) + "'")
+		t = t.Where(goqu.I("Enc").Eq(c.Enc))
 	}
 	if c.Status != "" {
-		qb.WhereAnd("Status = '" + stringutils.EscapeQuote(string(c.Status)) + "'")
+		t = t.Where(goqu.I("Status").Eq(c.Status))
 	}
 	if c.CampaignID != 0 {
-		qb.WhereAnd("CampaignID = " + strconv.Itoa(int(c.CampaignID)))
+		t = t.Where(goqu.I("CampaignID").Eq(c.CampaignID))
 	}
 	if c.Error != "" {
-		qb.WhereAnd("Error = '" + stringutils.EscapeQuote(string(c.Error)) + "'")
+		t = t.Where(goqu.I("Error").Eq(c.Error))
 	}
 	if c.Total > 0 {
-		qb.WhereAnd("Total = " + strconv.Itoa(c.Total))
+		t = t.Where(goqu.I("Total").Eq(c.Total))
 	}
 	if c.Priority > 0 {
-		qb.WhereAnd("Priority = " + strconv.Itoa(c.Priority))
+		t = t.Where(goqu.I("Priority").Eq(c.Priority))
 	}
 	if !c.DisableOrder {
 		orderDir := "DESC"
@@ -572,22 +414,19 @@ func prepareQuery(c Criteria, from interface{}) utils.QueryBuilder {
 			orderDir = "ASC"
 		}
 		if from != nil {
-			switch from.(type) {
-			case int:
-				from = strconv.Itoa(from.(int))
-			case int64:
-				from = strconv.FormatInt(from.(int64), 10)
-
-			}
 			if orderDir == "ASC" {
-				qb.WhereAnd(stringutils.EscapeQuote(c.OrderByKey) + " > '" + stringutils.EscapeQuote(fmt.Sprintf("%s", from)) + "'")
+				t = t.Where(goqu.I(c.OrderByKey).Gt(from))
 			} else {
-				qb.WhereAnd(stringutils.EscapeQuote(c.OrderByKey) + " < '" + stringutils.EscapeQuote(fmt.Sprintf("%s", from)) + "'")
+				t = t.Where(goqu.I(c.OrderByKey).Lt(from))
 			}
 		}
-		qb.OrderBy(stringutils.EscapeQuote(c.OrderByKey) + " " + orderDir)
+		orderExp := goqu.I(c.OrderByKey).Desc()
+		if orderDir == "ASC" {
+			orderExp = goqu.I(c.OrderByKey).Asc()
+		}
+		t = t.Order(orderExp)
 	}
-	return qb
+	return t
 }
 
 // Validate validates a message and returns error messages if any

@@ -3,7 +3,6 @@ package campaign
 import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
