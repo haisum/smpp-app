@@ -56,9 +56,9 @@ func (m *MockFile) Close() error {
 func TestNumFile_ToNumbers(t *testing.T) {
 	csvBytes := []byte("234235435,36545675467,324234234")
 	csvFileIO := &MockFileIO{}
-	csvFileIO.On("LoadFile", "./files/12/testfile.csv").Return(csvBytes, nil)
+	csvFileIO.On("LoadFile", "./files/admin/testfile.csv").Return(csvBytes, nil)
 	nf := NumFile{
-		UserID:    12,
+		Username:    "admin",
 		LocalName: "testfile.csv",
 		Type:      CSV,
 	}
@@ -88,9 +88,9 @@ func TestNumFile_ToNumbers2(t *testing.T) {
 	file.Write(&buf)
 	xlsBytes := buf.Bytes()
 	xlsFileIO := &MockFileIO{}
-	xlsFileIO.On("LoadFile", "./files/12/testfile.xlsx").Return(xlsBytes, nil)
+	xlsFileIO.On("LoadFile", "./files/admin/testfile.xlsx").Return(xlsBytes, nil)
 	nf := NumFile{
-		UserID:    12,
+		Username:    "admin",
 		LocalName: "testfile.xlsx",
 		Type:      XLSX,
 	}
@@ -141,12 +141,12 @@ func TestNumFile_Save(t *testing.T) {
 	con1, dbmock, _ := db.ConnectMock(t)
 	defer con1.Db.Close()
 	assert := assert.New(t)
-	nf := NumFile{ID: 20, UserID: 123, LocalName: "myfile.txt", Type: TXT, Name: "hello.txt"}
+	nf := NumFile{ID: 20, Username: "haisum", LocalName: "myfile.txt", Type: TXT, Name: "hello.txt"}
 	mockIO := &MockFileIO{}
 	mockFile := &MockFile{}
 	mockIO.On("Load", mockFile).Return([]byte{}, nil)
 	mockIO.On("Write", &nf).Return(nil)
-	mockIO.On("LoadFile", "./files/123/myfile.txt").Return([]byte("20340234"), nil)
+	mockIO.On("LoadFile", "./files/haisum/myfile.txt").Return([]byte("20340234"), nil)
 	dbmock.ExpectExec(regexp.QuoteMeta("INSERT INTO `NumFile` (`name`, `description`, `localname`, `username`, `userid`, `submittedat`, `deleted`, `type`) VALUES ('hello.txt', '', 'myfile.txt', '', 123, 0, 0, '.txt')")).WillReturnResult(sqlmock.NewResult(23, 1))
 	id, err := nf.Save("hello.txt", mockFile, mockIO)
 	if !assert.Nil(err) {

@@ -29,8 +29,8 @@ type Campaign struct {
 }
 
 const (
-	//SubmittedAt is time at which campaign was put in system
-	SubmittedAt string = "SubmittedAt"
+	// submittedAt is time at which campaign was put in system
+	submittedAt string = "submittedAt"
 )
 
 // Criteria represents filters we can give to Select method.
@@ -82,7 +82,7 @@ func (c *Campaign) Save() (int64, error) {
 	return resp.LastInsertId()
 }
 
-//GetProgress returns count for a campaign in progress
+// GetProgress returns count for a campaign in progress
 func (c *Campaign) GetProgress() (Progress, error) {
 	cp := Progress{
 		"Total":        0,
@@ -99,7 +99,7 @@ func (c *Campaign) GetProgress() (Progress, error) {
 		Status string `db:"status"`
 		Total  int    `db:"total"`
 	}
-	err := sphinx.Get().ScanStructs(&vals, "SELECT status, count(*) as total from Message where campaignid = ?  group by status", c.ID)
+	err := db.Get().ScanStructs(&vals, "SELECT status, count(*) as total from Message where campaignid = ?  group by status", c.ID)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get campaign stats")
 		return cp, err
@@ -128,37 +128,37 @@ func (c *Campaign) GetReport() (Report, error) {
 		ID: c.ID,
 	}
 	// get total in campaign
-	_, err := sphinx.Get().ScanVal(&cr.Total, "SELECT count(*) as Total from Message where campaignID = ?", c.ID)
+	_, err := db.Get().ScanVal(&cr.Total, "SELECT count(*) as Total from Message where campaignID = ?", c.ID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
 		}).Error("Error executing total msgs query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
-	//select message size in campaign
-	_, err = sphinx.Get().ScanVal(&cr.MsgSize, "SELECT Total as MsgSize from Message where campaignID = ?", c.ID)
+	// select message size in campaign
+	_, err = db.Get().ScanVal(&cr.MsgSize, "SELECT Total as MsgSize from Message where campaignID = ?", c.ID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
 		}).Error("Error executing MsgSize query")
 		return cr, fmt.Errorf("Could't run query.")
 	}
-	//select min sentat in campaign
-	_, err = sphinx.Get().ScanVal(&cr.FirstQueued, "SELECT Min(SentAt) as FirstQueued from Message where campaignID = ? AND SentAt > 0", c.ID)
+	// select min sentat in campaign
+	_, err = db.Get().ScanVal(&cr.FirstQueued, "SELECT Min(SentAt) as FirstQueued from Message where campaignID = ? AND SentAt > 0", c.ID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
 		}).Error("Error executing Min(SentAt) query")
 	}
-	//select max sentat in campaign
-	_, err = sphinx.Get().ScanVal(&cr.LastSent, "SELECT Max(SentAt) as LastSent from Message where campaignID=?", c.ID)
+	// select max sentat in campaign
+	_, err = db.Get().ScanVal(&cr.LastSent, "SELECT Max(SentAt) as LastSent from Message where campaignID=?", c.ID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
 		}).Error("Error executing Max(SentAt) query")
 	}
-	//Select connection wise
-	err = sphinx.Get().ScanStructs(&cr.Connections, "SELECT Connection as Name, count(*) as Count from Message where campaignID= ? group by Connection", c.ID)
+	// Select connection wise
+	err = db.Get().ScanStructs(&cr.Connections, "SELECT Connection as Name, count(*) as Count from Message where campaignID= ? group by Connection", c.ID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
@@ -192,7 +192,7 @@ func List(c Criteria) ([]Campaign, error) {
 
 	var from interface{}
 	if c.From != "" {
-		if c.OrderByKey == SubmittedAt || c.OrderByKey == "ScheduledAt" {
+		if c.OrderByKey == submittedAt || c.OrderByKey == "ScheduledAt" {
 			from, err := strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return camps, fmt.Errorf("Invalid value for from: %s", from)
@@ -202,7 +202,7 @@ func List(c Criteria) ([]Campaign, error) {
 		}
 	}
 	if c.OrderByKey == "" {
-		c.OrderByKey = SubmittedAt
+		c.OrderByKey = submittedAt
 	}
 	if c.SubmittedAfter > 0 {
 		t = t.Where(goqu.I("submittedat").Gte(c.SubmittedAfter))

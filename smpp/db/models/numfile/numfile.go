@@ -33,8 +33,8 @@ type NumFileIO interface {
 	Write(nf *NumFile) error
 }
 
-//Type represents type of file we're uploading
-//can be excel/csv etc.
+// Type represents type of file we're uploading
+// can be excel/csv etc.
 type Type string
 
 func (n *Type) Scan(nf interface{}) error {
@@ -43,11 +43,11 @@ func (n *Type) Scan(nf interface{}) error {
 }
 
 const (
-	//CSV is text file with .csv extension. This file should have comma separated numbers
+	// CSV is text file with .csv extension. This file should have comma separated numbers
 	CSV Type = ".csv"
-	//TXT is text file with .txt extension. This file should have comma separated numbers
+	// TXT is text file with .txt extension. This file should have comma separated numbers
 	TXT = ".txt"
-	//XLSX is excel file with .xlsx extension. These files should follow following structure:
+	// XLSX is excel file with .xlsx extension. These files should follow following structure:
 	// -----------------------------------------
 	// Destination | Param1 | Param2 | ..ParamN |
 	// ------------------------------------------
@@ -60,14 +60,14 @@ const (
 	MaxFileSize int64 = 5 * 1024 * 1024
 )
 
-//Row represents one single Row in excel or csv file
+// Row represents one single Row in excel or csv file
 type Row struct {
 	Destination string
 	Params      map[string]string
 }
 
 var (
-	//Path is folder relative to path where httpserver binary is, we'll save all files here
+	// Path is folder relative to path where httpserver binary is, we'll save all files here
 	Path = "./files"
 )
 
@@ -92,7 +92,7 @@ func (nf *NumFile) Delete() error {
 	return nf.Update()
 
 }
-
+// Update updates values of a given num file. ID field must be populated in nf object before calling update.
 func (nf *NumFile) Update() error {
 	_, err := db.Get().From("NumFile").Where(goqu.I("id").Eq(nf.ID)).Update(nf).Exec()
 	if err != nil {
@@ -183,7 +183,6 @@ func (nf *NumFile) Save(name string, f multipart.File, fileIO NumFileIO) (int64,
 		log.WithError(err).Error("Couldn't load file.")
 		return 0, err
 	}
-	nf.LocalName = stringutils.SecureRandomAlphaString(20)
 	err = fileIO.Write(nf)
 	if err != nil {
 		return 0, fmt.Errorf("Couldn't write file to disk. Error: %s", err)

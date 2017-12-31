@@ -266,7 +266,8 @@ func List(c Criteria) ([]Message, error) {
 		c.PerPage = 100
 	}
 	ds.Limit(c.PerPage)
-	log.WithFields(log.Fields{"query": ds.ToSql(), "crtieria": c}).Info("Running query.")
+	q, _, _ := ds.ToSql()
+	log.WithFields(log.Fields{"query": q, "crtieria": c}).Info("Running query.")
 	err = ds.ScanStructs(&m)
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
@@ -290,8 +291,8 @@ func GetStats(c Criteria) (Stats, error) {
 	}
 	ds := prepareQuery(c, from)
 	ds = ds.GroupBy("Status").Select(goqu.L("status, count(*) as total"))
-
-	log.WithFields(log.Fields{"query": ds.ToSql(), "crtieria": c}).Info("Running query.")
+	q, _, _ := ds.ToSql()
+	log.WithFields(log.Fields{"query": q, "crtieria": c}).Info("Running query.")
 	stats := make(map[string]int64, 8)
 	query, args, err := ds.ToSql()
 	if err != nil {

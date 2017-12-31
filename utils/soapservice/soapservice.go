@@ -5,7 +5,6 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
@@ -32,11 +31,6 @@ func main() {
 		log.WithField("err", err).Fatal("Error occured in connecting to rabbitmq.")
 	}
 	defer q.Close()
-	spconn, err := sphinx.Connect(viper.GetString("SPHINX_HOST"), viper.GetInt("SPHINX_PORT"))
-	if err != nil {
-		log.WithError(err).Fatalf("Error in connecting to sphinx.")
-	}
-	defer spconn.Db.Close()
 	log.Info("Connecting database.")
 	conn, err := db.Connect(viper.GetString("MYSQL_HOST"), viper.GetInt("MYSQL_PORT"), viper.GetString("MYSQL_DBNAME"), viper.GetString("MYSQL_USER"), viper.GetString("MYSQL_PASSWORD"))
 	if err != nil {

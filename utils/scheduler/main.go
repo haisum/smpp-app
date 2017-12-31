@@ -3,7 +3,6 @@ package main
 import (
 	_ "bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/scheduler"
@@ -28,11 +27,6 @@ func main() {
 		log.Error("Couldn't connect to rabbitmq")
 		os.Exit(2)
 	}
-	spconn, err := sphinx.Connect(viper.GetString("SPHINX_HOST"), viper.GetInt("SPHINX_PORT"))
-	if err != nil {
-		log.WithError(err).Fatalf("Error in connecting to sphinx.")
-	}
-	defer spconn.Db.Close()
 	log.Info("Waiting for scheduled messages.")
 	for {
 		err = scheduler.ProcessMessages(q)

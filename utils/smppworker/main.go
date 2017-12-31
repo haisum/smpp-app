@@ -4,7 +4,6 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/sphinx"
 	"bitbucket.org/codefreak/hsmpp/smpp/influx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
@@ -33,10 +32,10 @@ var (
 )
 
 const (
-	//ThrottlingError is 0x00000058 status
-	ThrottlingError = "throttling error"
-	//RetryCount is number of times we should retry sending throttling error messsages
-	RetryCount = 30
+	// throttlingError is 0x00000058 status
+	throttlingError = "throttling error"
+	// retryCount is number of times we should retry sending throttling error messsages
+	retryCount = 30
 )
 
 // Handler is called by rabbitmq library after a queue has been bound/
@@ -64,12 +63,12 @@ func handler(d queue.QueueDelivery) {
 
 // This function also increments count by ceil of number of characters divided by number of characters per message.
 // When count reaches a certain number defined per connection, worker waits for time t defined in configuration before resuming operations.
-func send(i queue.Item) {
-	m, err := message.Get(i.MsgID)
+func send(msg queue.Item) {
+	m, err := message.Get(msg.MsgID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
-			"id":  i.MsgID,
+			"id":  msg.MsgID,
 		}).Error("Failed in fetching message from db.")
 		return
 	}
@@ -84,13 +83,13 @@ func send(i queue.Item) {
 		hour, _ := strconv.ParseInt(afterParts[0], 10, 32)
 		minute, _ := strconv.ParseInt(afterParts[1], 10, 32)
 		now := time.Now().UTC()
-		//7  or 23
+		// 7  or 23
 		afterTime := time.Date(now.Year(), now.Month(), now.Day(), int(hour), int(minute), 0, 0, now.Location())
 		hour, _ = strconv.ParseInt(beforeParts[0], 10, 32)
 		minute, _ = strconv.ParseInt(beforeParts[1], 10, 32)
-		//19 or 1
+		// 19 or 1
 		beforeTime := time.Date(now.Year(), now.Month(), now.Day(), int(hour), int(minute), 0, 0, now.Location())
-		//if 1 is less than 23
+		// if 1 is less than 23
 		// then 1 is on next day
 		if beforeTime.Unix() < afterTime.Unix() {
 			beforeTime = beforeTime.AddDate(0, 0, 1)
@@ -100,7 +99,7 @@ func send(i queue.Item) {
 		// if 16 is greater than 7 and 16 is lesser than 19 // true, send it now
 		// if 20 is greater than 7 and 20 is lesser than 19// false, schedule it next day at 7:01
 		if !(now.Unix() > afterTime.Unix() && now.Unix() < beforeTime.Unix()) {
-			//don't send msg here
+			// don't send msg here
 			scheduledTime := afterTime.Add(time.Second * 1)
 			if now.Unix() > beforeTime.Unix() {
 				scheduledTime = scheduledTime.AddDate(0, 0, 1)
@@ -120,8 +119,8 @@ func send(i queue.Item) {
 		os.Exit(2)
 	}
 	sent := int64(0)
-	if i.Total == 1 {
-		for j := 1; j <= RetryCount; j++ {
+	if msg.Total == 1 {
+		for j := 1; j <= retryCount; j++ {
 			bucket <- 1
 			if sent == 0 {
 				sent = time.Now().UTC().Unix()
@@ -144,7 +143,7 @@ func send(i queue.Item) {
 				Time: time.Now(),
 			})
 			<-bucket
-			if err == nil || (err != nil && err.Error() != ThrottlingError) {
+			if err == nil || (err != nil && err.Error() != throttlingError) {
 				break
 			}
 			log.WithError(err).Infof("Error occured, retrying.")
@@ -176,7 +175,7 @@ func send(i queue.Item) {
 				})
 				<-bucket
 				log.WithField("part", i+1).Info("Sent part")
-				if err == nil || (err != nil && err.Error() != ThrottlingError) {
+				if err == nil || (err != nil && err.Error() != throttlingError) {
 					break
 				}
 				log.WithError(err).Infof("Error occured, retrying.")
@@ -193,7 +192,7 @@ func send(i queue.Item) {
 		}).Error("Couldn't send message.")
 		if err == fiorix.ErrNotConnected {
 			log.Error("SMPP not connected. Aborting worker.")
-			//exit code 2, because supervisord wont restart this
+			// exit code 2, because supervisord wont restart this
 			os.Exit(2)
 		}
 		go updateMessage(m, respID, sconn.ID, err.Error(), sent)
@@ -267,7 +266,7 @@ func bind() {
 	defer dlvTick.Stop()
 	sendTick = time.NewTicker(rate)
 	defer sendTick.Stop()
-	//bucket helps in keeping at max Size concurrent network requests at a time
+	// bucket helps in keeping at max Size concurrent network requests at a time
 	bucket = make(chan int, sconn.Size)
 	defer close(bucket)
 	log.WithField("Pfxs", sconn.Pfxs).Info("Binding to routing keys")
@@ -279,7 +278,7 @@ func bind() {
 	if err != nil {
 		os.Exit(2)
 	}
-	//Listen for termination signals from OS
+	// Listen for termination signals from OS
 	go gracefulShutdown()
 
 	forever := make(<-chan int)
@@ -304,10 +303,5 @@ func main() {
 	if err != nil {
 		log.Fatal("Can't continue without settings. Exiting.")
 	}
-	spconn, err := sphinx.Connect(viper.GetString("SPHINX_HOST"), viper.GetInt("SPHINX_PORT"))
-	if err != nil {
-		log.WithError(err).Fatalf("Error in connecting to sphinx.")
-	}
-	defer spconn.Db.Close()
 	bind()
 }
