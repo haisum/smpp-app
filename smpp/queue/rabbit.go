@@ -1,9 +1,10 @@
 package queue
 
 import (
+	"os"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
-	"os"
 )
 
 type rabbitDelivery struct {
@@ -40,8 +41,8 @@ func (r *rabbit) init(url string, ex string, pCount int) error {
 	return err
 }
 
-//Close closes the connection to rabbitmq
-//call this with defer after calling Init function
+// Close closes the connection to rabbitmq
+// call this with defer after calling Init function
 func (r *rabbit) Close() error {
 	if err := r.Conn.Close(); err != nil {
 		log.WithField("err", err).Error("AMQP connection close error")

@@ -1,17 +1,18 @@
 package message
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	goqu "gopkg.in/doug-martin/goqu.v3"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	log "github.com/Sirupsen/logrus"
+	"gopkg.in/doug-martin/goqu.v3"
 )
 
 type deliverySM map[string]string
@@ -36,7 +37,7 @@ type Message struct {
 	Total           int    `db:"total"`
 	Username        string `db:"username"`
 	Msg             string `db:"msg"`
-	//RealMsg is unmasked version of msg, this shouldn't be exposed to user
+	// RealMsg is unmasked version of msg, this shouldn't be exposed to user
 	RealMsg     string `json:"-" db:"realmsg"`
 	Enc         string `db:"enc"`
 	Dst         string `db:"dst"`
@@ -84,7 +85,6 @@ type Criteria struct {
 	From            string
 	PerPage         uint
 	DisableOrder    bool
-	FetchMsg        bool
 }
 
 // Status represents current state of message in
@@ -98,22 +98,30 @@ func (st *Status) Scan(src interface{}) error {
 }
 
 const (
-	//Queued shows that have been put in rabbitmq
+	// Queued shows that have been put in rabbitmq
 	Queued Status = "Queued"
-	//Error shows that message was sent to operator but returned error
+	// Error shows that message was sent to operator but returned error
 	Error Status = "Error"
-	//Sent shows that message was accepted by operator for delivery
+	// Sent shows that message was accepted by operator for delivery
 	Sent Status = "Sent"
-	//Delivered shows that message was delivered
+	// Delivered shows that message was delivered
 	Delivered Status = "Delivered"
-	//NotDelivered shows message was not delivered by operator
+	// NotDelivered shows message was not delivered by operator
 	NotDelivered Status = "Not Delivered"
-	//Scheduled shows message is schedueled to be delivered in future
+	// Scheduled shows message is schedueled to be delivered in future
 	Scheduled Status = "Scheduled"
-	//Stopped shows message was stopped by user intervention
+	// Stopped shows message was stopped by user intervention
 	Stopped Status = "Stopped"
 	// QueuedAt field is time at which message was put in rabbitmq queue
 	QueuedAt string = "QueuedAt"
+	// userTextSearchLiteral is used to do full text query for user
+	userTextSearchLiteral = "match(Username) against('?*' IN BOOLEAN MODE)"
+	// msgTextSearchLiteral is used to do full text query for message
+	msgTextSearchLiteral = "match(Msg) against('?')"
+	// maxPerPageListing is maximum number of records per List query
+	maxPerPageListing = 500000
+	// defaultPerPageListing is default number of records per List query
+	defaultPerPageListing = 100
 )
 
 // Stats records number of messages in different statuses.
@@ -130,11 +138,12 @@ type Stats struct {
 
 var bulkInsertLock sync.Mutex
 
+// Save saves a message in db
 func (m *Message) Save() (int64, error) {
 	con := db.Get()
 	result, err := con.From("Message").Insert(m).Exec()
 	if err != nil {
-		log.WithError(err).Error("Couldn't insert message.")
+		log.WithError(err).Error("couldn't insert message")
 		return 0, err
 	}
 	return result.LastInsertId()
@@ -185,19 +194,19 @@ func SaveDelivery(respID, status string) error {
 		return err
 	}
 	if affected, _ := res.RowsAffected(); affected == 0 {
-		log.WithField("RespID", respID).Error("Couldn't update delivery sm. No such response id found.")
-		return errors.New("Couldn't update delivery sm. No such response id found.")
+		log.WithField("RespID", respID).Error("couldn't update delivery sm. No such response id found")
+		return errors.New("couldn't update delivery sm. No such response id found")
 	}
 	return nil
 }
 
-//Get finds a message by primary key
+// Get finds a message by primary key
 func Get(id int64) (Message, error) {
 	var m Message
 	found, err := db.Get().From("Message").Where(goqu.I("id").Eq(id)).ScanStruct(&m)
 	if err != nil || !found {
 		log.WithFields(log.Fields{"error": err, "id": id}).Error("Couldn't get msg.")
-		return m, errors.New("Couldn't get message.")
+		return m, errors.New("couldn't get message")
 	}
 	return m, nil
 }
@@ -223,7 +232,7 @@ func ListWithError(campID int64) ([]Message, error) {
 	m, err := List(Criteria{
 		CampaignID: campID,
 		Status:     Error,
-		PerPage:    500000,
+		PerPage:    maxPerPageListing,
 	})
 	if err != nil {
 		log.WithError(err).Error("Couldn't load messages")
@@ -236,7 +245,7 @@ func ListQueued(campID int64) ([]Message, error) {
 	m, err := List(Criteria{
 		CampaignID: campID,
 		Status:     Queued,
-		PerPage:    500000,
+		PerPage:    maxPerPageListing,
 	})
 	if err != nil {
 		log.WithError(err).Error("Couldn't load messages")
@@ -251,11 +260,14 @@ func List(c Criteria) ([]Message, error) {
 		from interface{}
 		err  error
 	)
+	if c.OrderByKey == "" {
+		c.OrderByKey = QueuedAt
+	}
 	if c.From != "" && !c.DisableOrder {
 		if c.OrderByKey == QueuedAt || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" || c.OrderByKey == "ScheduledAt" {
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
-				return m, fmt.Errorf("Invalid value for from: %s", from)
+				return m, fmt.Errorf("invalid value for from: %s", from)
 			}
 		} else {
 			from = c.From
@@ -263,9 +275,9 @@ func List(c Criteria) ([]Message, error) {
 	}
 	ds := prepareQuery(c, from)
 	if c.PerPage == 0 {
-		c.PerPage = 100
+		c.PerPage = defaultPerPageListing
 	}
-	ds.Limit(c.PerPage)
+	ds = ds.Limit(c.PerPage)
 	q, _, _ := ds.ToSql()
 	log.WithFields(log.Fields{"query": q, "crtieria": c}).Info("Running query.")
 	err = ds.ScanStructs(&m)
@@ -279,11 +291,15 @@ func List(c Criteria) ([]Message, error) {
 func GetStats(c Criteria) (Stats, error) {
 	var m Stats
 	var from interface{}
+	if c.OrderByKey == "" {
+		c.OrderByKey = QueuedAt
+	}
 	if c.From != "" {
-		if c.OrderByKey == "QueuedAt" || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" {
-			from, err := strconv.ParseInt(c.From, 10, 64)
+		if c.OrderByKey == QueuedAt || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" {
+			var err error
+			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
-				return m, fmt.Errorf("Invalid value for from: %s", from)
+				return m, fmt.Errorf("invalid value for from: %d", from)
 			}
 		} else {
 			from = c.From
@@ -298,7 +314,7 @@ func GetStats(c Criteria) (Stats, error) {
 	if err != nil {
 		return m, err
 	}
-	rows, err := db.Get().Db.Query(query, args)
+	rows, err := db.Get().Db.Query(query, args...)
 	if err != nil {
 		log.WithError(err).Error("Couldn't run query.")
 		return m, err
@@ -342,13 +358,13 @@ func prepareQuery(c Criteria, from interface{}) *goqu.Dataset {
 	if c.Username != "" {
 		if strings.HasPrefix(c.Username, "(re)") {
 			c.Username = strings.Trim(c.Username, "(re)")
-			t = t.Where(goqu.L("match(Msg) against('?*' IN BOOLEAN MODE)", c.Username))
+			t = t.Where(goqu.L(userTextSearchLiteral, c.Username))
 		} else {
-			t = t.Where(goqu.I("User").Eq(c.Username))
+			t = t.Where(goqu.I("Username").Eq(c.Username))
 		}
 	}
 	if c.Msg != "" {
-		t = t.Where(goqu.L("match(Msg) against('?')", c.Msg))
+		t = t.Where(goqu.L(msgTextSearchLiteral, c.Msg))
 	}
 	if c.QueuedAfter != 0 {
 		t = t.Where(goqu.I("QueuedAt").Gte(c.QueuedAfter))

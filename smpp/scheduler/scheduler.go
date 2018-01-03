@@ -1,19 +1,20 @@
 package scheduler
 
 import (
+	"fmt"
+	"strings"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"strings"
-	"time"
 )
 
 // Given a list of strings and a string,
 // this function returns a list item if large string starts with list item.
 // string in parameter noKey is returned if no matches could be found
-func MatchKey(keys []string, str string, noKey string) string {
+func matchKey(keys []string, str string, noKey string) string {
 	for _, key := range keys {
 		if strings.HasPrefix(str, key) {
 			return key
@@ -22,8 +23,8 @@ func MatchKey(keys []string, str string, noKey string) string {
 	return noKey
 }
 
-func GetMessagesBetween(after, before time.Time) ([]message.Message, error) {
-	//fetch 10k at  a time
+func getMessagesBetween(after, before time.Time) ([]message.Message, error) {
+	// fetch 10k at  a time
 	ms, err := message.List(message.Criteria{
 		ScheduledAfter:  after.Unix(),
 		ScheduledBefore: before.Unix(),
@@ -33,7 +34,7 @@ func GetMessagesBetween(after, before time.Time) ([]message.Message, error) {
 	return ms, err
 }
 
-func GetKey(m message.Message) (string, error) {
+func getKey(m message.Message) (string, error) {
 	config, err := smpp.GetConfig()
 	if err != nil {
 		log.Error("Couldn't get config")
@@ -46,10 +47,11 @@ func GetKey(m message.Message) (string, error) {
 		return "", err
 	}
 	noKey = group.DefaultPfx
-	key := MatchKey(keys, m.Dst, noKey)
+	key := matchKey(keys, m.Dst, noKey)
 	return key, nil
 }
 
+// ProcessMessages finds out scheduled messages within the minute it's called in and schedules it in a queue
 func ProcessMessages(q queue.MQ) error {
 	now := time.Now().UTC()
 	after := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, now.Location())
@@ -61,7 +63,7 @@ func ProcessMessages(q queue.MQ) error {
 	ms := []message.Message{{}}
 	var err error
 	for len(ms) != 0 {
-		ms, err = GetMessagesBetween(after, before)
+		ms, err = getMessagesBetween(after, before)
 		if err != nil {
 			log.WithError(err).Error("Couldn't get messages.")
 			return err
@@ -75,7 +77,7 @@ func ProcessMessages(q queue.MQ) error {
 				Total: m.Total,
 			}
 			respJSON, _ := qItem.ToJSON()
-			key, _ := GetKey(m)
+			key, _ := getKey(m)
 			err = q.Publish(fmt.Sprintf("%s-%s", m.ConnectionGroup, key), respJSON, queue.Priority(m.Priority))
 			if err != nil {
 				log.WithError(err).Error("Couldn't publish message.")

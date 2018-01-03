@@ -1,17 +1,18 @@
 package numfile
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/tealeg/xlsx"
-	"gopkg.in/doug-martin/goqu.v3"
 	"io"
 	"mime/multipart"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
+	log "github.com/Sirupsen/logrus"
+	"github.com/tealeg/xlsx"
+	"gopkg.in/doug-martin/goqu.v3"
 )
 
 // NumFile represents file uploaded to system for saving
@@ -92,6 +93,7 @@ func (nf *NumFile) Delete() error {
 	return nf.Update()
 
 }
+
 // Update updates values of a given num file. ID field must be populated in nf object before calling update.
 func (nf *NumFile) Update() error {
 	_, err := db.Get().From("NumFile").Where(goqu.I("id").Eq(nf.ID)).Update(nf).Exec()
@@ -110,11 +112,14 @@ func List(c Criteria) ([]NumFile, error) {
 	if c.ID != 0 {
 		query = query.Where(goqu.I("ID").Eq(c.ID))
 	}
-
+	if c.OrderByKey == "" {
+		c.OrderByKey = "SubmittedAt"
+	}
 	var from interface{}
 	if c.From != "" {
 		if c.OrderByKey == "SubmittedAt" {
-			from, err := strconv.ParseInt(c.From, 10, 64)
+			var err error
+			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return f, fmt.Errorf("Invalid value for from: %s", from)
 			}

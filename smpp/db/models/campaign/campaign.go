@@ -1,14 +1,15 @@
 package campaign
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/doug-martin/goqu.v3"
-	"strconv"
-	"strings"
 )
 
 // Campaign represents a message campaign
@@ -57,7 +58,7 @@ type Report struct {
 	TotalTime     int
 	Throughput    string
 	PerConnection string
-	Connections   []GroupCount
+	Connections   []groupCount
 }
 
 type Progress map[string]int

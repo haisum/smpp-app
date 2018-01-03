@@ -1,18 +1,20 @@
 package numfile
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bytes"
-	"github.com/stretchr/testify/assert"
-	"github.com/tealeg/xlsx"
-	"gopkg.in/DATA-DOG/go-sqlmock.v1"
-	"gopkg.in/stretchr/testify.v1/mock"
 	"io"
 	"regexp"
 	"testing"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"github.com/stretchr/testify/assert"
+	"github.com/tealeg/xlsx"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
+	"gopkg.in/doug-martin/goqu.v3"
+	"gopkg.in/stretchr/testify.v1/mock"
 )
 
-//Mock implementation of NumFileIO interface used for unit tests
+// MockFileIO is Mock implementation of NumFileIO interface used for unit tests
 type MockFileIO struct {
 	mock.Mock
 }
@@ -58,7 +60,7 @@ func TestNumFile_ToNumbers(t *testing.T) {
 	csvFileIO := &MockFileIO{}
 	csvFileIO.On("LoadFile", "./files/admin/testfile.csv").Return(csvBytes, nil)
 	nf := NumFile{
-		Username:    "admin",
+		Username:  "admin",
 		LocalName: "testfile.csv",
 		Type:      CSV,
 	}
@@ -90,7 +92,7 @@ func TestNumFile_ToNumbers2(t *testing.T) {
 	xlsFileIO := &MockFileIO{}
 	xlsFileIO.On("LoadFile", "./files/admin/testfile.xlsx").Return(xlsBytes, nil)
 	nf := NumFile{
-		Username:    "admin",
+		Username:  "admin",
 		LocalName: "testfile.xlsx",
 		Type:      XLSX,
 	}
@@ -107,7 +109,15 @@ func TestList(t *testing.T) {
 	con1, dbmock, _ := db.ConnectMock(t)
 	defer con1.Db.Close()
 	assert := assert.New(t)
-	dbmock.ExpectQuery(regexp.QuoteMeta("SELECT `deleted`, `description`, `id`, `localname`, `name`, `submittedat`, `type`, `userid`, `username` FROM `NumFile` WHERE ((`ID` = 234) AND (`submittedat` >= 12) AND (`submittedat` <= 234) AND (`username` = 'haisum') AND (`name` = 'myfile.xslx') AND (`deleted` IS TRUE) AND (`SubmittedAt` > '1')) ORDER BY `SubmittedAt` ASC LIMIT 10")).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("1").AddRow("2").AddRow("3"))
+	expected, _, _ := db.Get().From("NumFile").Select(&NumFile{}).Where(goqu.I("ID").Eq(234),
+		goqu.I("submittedat").Gte(12),
+		goqu.I("submittedat").Lte(234),
+		goqu.I("username").Eq("haisum"),
+		goqu.I("name").Eq("myfile.xlsx"),
+		goqu.I("deleted").Is(true),
+		goqu.I("SubmittedAt").Gt(1)).Order(goqu.I("SubmittedAt").Asc()).Limit(10).ToSql()
+	dbmock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("1").AddRow("2").AddRow("3"))
+
 	nums, err := List(Criteria{
 		ID:              234,
 		Username:        "haisum",
@@ -138,8 +148,8 @@ func TestNumFile_Delete(t *testing.T) {
 }
 
 func TestNumFile_Save(t *testing.T) {
-	con1, dbmock, _ := db.ConnectMock(t)
-	defer con1.Db.Close()
+	con, mock, _ := db.ConnectMock(t)
+	defer con.Db.Close()
 	assert := assert.New(t)
 	nf := NumFile{ID: 20, Username: "haisum", LocalName: "myfile.txt", Type: TXT, Name: "hello.txt"}
 	mockIO := &MockFileIO{}
@@ -147,13 +157,14 @@ func TestNumFile_Save(t *testing.T) {
 	mockIO.On("Load", mockFile).Return([]byte{}, nil)
 	mockIO.On("Write", &nf).Return(nil)
 	mockIO.On("LoadFile", "./files/haisum/myfile.txt").Return([]byte("20340234"), nil)
-	dbmock.ExpectExec(regexp.QuoteMeta("INSERT INTO `NumFile` (`name`, `description`, `localname`, `username`, `userid`, `submittedat`, `deleted`, `type`) VALUES ('hello.txt', '', 'myfile.txt', '', 123, 0, 0, '.txt')")).WillReturnResult(sqlmock.NewResult(23, 1))
+	expected, _, _ := db.Get().From("NumFile").ToInsertSql(&nf)
+	mock.ExpectExec(regexp.QuoteMeta(expected)).WillReturnResult(sqlmock.NewResult(23, 1))
 	id, err := nf.Save("hello.txt", mockFile, mockIO)
 	if !assert.Nil(err) {
 		t.FailNow()
 	}
 	assert.Equal(int64(23), id)
-	assert.Nil(dbmock.ExpectationsWereMet())
+	assert.Nil(mock.ExpectationsWereMet())
 	assert.True(mockFile.AssertExpectations(t))
 	assert.True(mockIO.AssertExpectations(t))
 }
@@ -162,8 +173,9 @@ func TestNumFile_Update(t *testing.T) {
 	con1, dbmock, _ := db.ConnectMock(t)
 	defer con1.Db.Close()
 	assert := assert.New(t)
-	dbmock.ExpectExec(regexp.QuoteMeta("UPDATE `NumFile` SET `id`=20,`name`='',`description`='',`localname`='myfile',`username`='',`userid`=0,`submittedat`=0,`deleted`=0,`type`='' WHERE (`id` = 20)")).WillReturnResult(sqlmock.NewResult(0, 1))
 	nf := NumFile{ID: 20, LocalName: "myfile"}
+	expected, _, _ := db.Get().From("NumFile").Where(goqu.I("id").Eq(nf.ID)).ToUpdateSql(&nf)
+	dbmock.ExpectExec(regexp.QuoteMeta(expected)).WillReturnResult(sqlmock.NewResult(0, 1))
 	err := nf.Update()
 	assert.Nil(err)
 	assert.Nil(dbmock.ExpectationsWereMet())

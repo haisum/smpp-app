@@ -3,13 +3,9 @@ package smtext
 import "github.com/fiorix/go-smpp/smpp/pdu/pdutext"
 
 const (
-	//MaxLatinChars is number of characters allowed in single latin encoded text message
-	MaxLatinChars = 160
-	//MaxUCSChars is number of characters allowed in single ucs encoded text message
-	MaxUCSChars = 70
-	//EncUCS is string representation of ucs encoding
+	// EncUCS is string representation of ucs encoding
 	EncUCS = "ucs"
-	//EncLatin is string representation of latin encoding
+	// EncLatin is string representation of latin encoding
 	EncLatin = "latin"
 )
 

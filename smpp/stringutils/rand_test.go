@@ -10,7 +10,7 @@ func TestSecureRandomAlphaString(t *testing.T) {
 }
 
 func TestSecureRandomBytes(t *testing.T) {
-	randBytes := SecureRandomBytes(29)
+	randBytes := secureRandomBytes(29)
 	if len(randBytes) != 29 {
 		t.Fail()
 	}

@@ -1,20 +1,21 @@
 package db
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db/fresh"
 	"database/sql"
 	"fmt"
+	"testing"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db/fresh"
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
-	goqu "gopkg.in/doug-martin/goqu.v3"
+	"gopkg.in/doug-martin/goqu.v3"
 	_ "gopkg.in/doug-martin/goqu.v3/adapters/mysql"
-	"testing"
 )
 
 var db *goqu.Database
 
-//CheckAndCreateDB Checks if db exists, if not, creates one with basic tables, admin user and indexes
+// CheckAndCreateDB Checks if db exists, if not, creates one with basic tables, admin user and indexes
 func CheckAndCreateDB() (*goqu.Database, error) {
 	var err error
 	if !fresh.Exists(db) {

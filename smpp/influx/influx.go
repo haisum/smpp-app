@@ -54,7 +54,7 @@ var (
 	c Client
 )
 
-//GetClient returns client object
+// GetClient returns client object
 func GetClient() (Client, error) {
 	if c == nil {
 		return c, fmt.Errorf("Client hasn't been connected yet. Please call Connect before getting client.")

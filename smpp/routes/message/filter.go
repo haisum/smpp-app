@@ -1,17 +1,18 @@
 package message
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/tealeg/xlsx"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	log "github.com/Sirupsen/logrus"
+	"github.com/tealeg/xlsx"
 )
 
 type messagesRequest struct {
@@ -142,7 +143,7 @@ func toXLS(w http.ResponseWriter, r *http.Request, m []message.Message, TZ strin
 		cols = availableCols
 	} else {
 		cols = trimSpace(cols)
-		//trim all unknown columns
+		// trim all unknown columns
 		for k, v := range cols {
 			if !contains(availableCols, v) {
 				cols = append(cols[:k], cols[k+1:]...)
