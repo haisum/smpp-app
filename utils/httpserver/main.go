@@ -1,6 +1,14 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/influx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
@@ -12,17 +20,10 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
 	"bitbucket.org/codefreak/hsmpp/smpp/supervisor"
-	"flag"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
-	"net/http"
-	"os"
-	"os/signal"
-	"runtime"
-	"syscall"
 )
 
 var (
@@ -30,6 +31,10 @@ var (
 	showVersion = flag.Bool("version", false, "Show binary version number.")
 )
 
+// just make it single binary with mysql/smpp connections required! rest is done in go routines separately.
+// On DB connection failure, start giving error that db can't be accessed and wait for connection to re-establish. See for env vars for new connection.
+// On config changes, gracefully restart workers
+// Simple Master slave with HAPROXY gives us one way HA
 func main() {
 	go license.CheckExpiry()
 	flag.Parse()
@@ -61,7 +66,7 @@ func main() {
 	r := mux.NewRouter()
 	r.Handle("/api/message", handlers.MethodHandler{"POST": message.MessageHandler})
 	r.Handle("/api/message/filter", message.MessagesHandler)
-	r.Handle("/api/campaign", handlers.MethodHandler{"POST": campaign.CampaignHandler})
+	r.Handle("/api/campaign", handlers.MethodHandler{"POST": campaign.Handler})
 	r.Handle("/api/campaign/filter", campaign.CampaignsHandler)
 	r.Handle("/api/campaign/report", campaign.ReportHandler)
 	r.Handle("/api/campaign/progress", campaign.ProgressHandler)

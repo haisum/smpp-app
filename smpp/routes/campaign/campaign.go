@@ -1,6 +1,13 @@
 package campaign
 
 import (
+	"fmt"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
@@ -10,13 +17,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type campaignRequest struct {
@@ -40,12 +41,12 @@ type campaignResponse struct {
 }
 
 const (
-	// MaxBulkInsert is number of msgs to insert at a time.
-	MaxBulkInsert = 200
+	// maxBulkInsert is number of msgs to insert at a time.
+	maxBulkInsert = 200
 )
 
-// CampaignHandler allows starting a campaign
-var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// Handler allows starting a campaign
+var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	uResp := campaignResponse{}
 	var uReq campaignRequest
 	err := routes.ParseRequest(*r, &uReq)
@@ -259,10 +260,9 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			}
 			ms = append(ms, m)
 			// if we have 200 msgs or last few messages
-			if (i+1)%MaxBulkInsert == 0 || (i+1) == len(numbers) {
+			if (i+1)%maxBulkInsert == 0 || (i+1) == len(numbers) {
 				ids, err := message.SaveBulk(ms)
 				if err != nil {
-					//error agaya bhai
 					log.WithFields(log.Fields{
 						"error": err,
 						"uReq":  uReq,
@@ -273,13 +273,12 @@ var CampaignHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 					if m.ScheduledAt == 0 {
 						key := matchKey(keys, m.Dst, noKey)
 						qItem := queue.Item{
-							MsgID: ids[j], //m.ID is empty.
+							MsgID: ids[j], // m.ID is empty.
 							Total: m.Total,
 						}
 						respJSON, _ := qItem.ToJSON()
 						err = q.Publish(fmt.Sprintf("%s-%s", u.ConnectionGroup, key), respJSON, queue.Priority(uReq.Priority))
 						if err != nil {
-							//error here too
 							log.WithFields(log.Fields{
 								"error": err,
 								"uReq":  uReq,

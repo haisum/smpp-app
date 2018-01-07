@@ -68,9 +68,10 @@ func TestNumFile_ToNumbers(t *testing.T) {
 	if len(nums) != 3 || err != nil {
 		t.Fatalf("Failed. %s, %+v", err, nums)
 	}
-	assert.Equal(t, Row{Destination: "234235435"}, nums[0])
-	assert.Equal(t, Row{Destination: "36545675467"}, nums[1])
-	assert.Equal(t, Row{Destination: "324234234"}, nums[2])
+	assert.Contains(t, nums, Row{Destination: "234235435"})
+	assert.Contains(t, nums, Row{Destination: "36545675467"})
+	assert.Contains(t, nums, Row{Destination: "324234234"})
+	assert.Len(t, nums, 3)
 	assert.True(t, csvFileIO.AssertExpectations(t))
 }
 
@@ -122,7 +123,7 @@ func TestList(t *testing.T) {
 		ID:              234,
 		Username:        "haisum",
 		Deleted:         true,
-		Name:            "myfile.xslx",
+		Name:            "myfile.xlsx",
 		SubmittedAfter:  12,
 		SubmittedBefore: 234,
 		PerPage:         10,

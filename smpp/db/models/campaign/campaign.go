@@ -9,6 +9,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	log "github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
 )
 
@@ -31,7 +32,7 @@ type Campaign struct {
 
 const (
 	// submittedAt is time at which campaign was put in system
-	submittedAt string = "submittedAt"
+	submittedAt string = "submittedat"
 )
 
 // Criteria represents filters we can give to Select method.
@@ -61,16 +62,27 @@ type Report struct {
 	Connections   []groupCount
 }
 
+// Progress shows status of messages in a campaign
+// Current map of progress is like this:
+// "Total":        int,
+// "Queued":       int,
+// "Delivered":    int,
+// "NotDelivered": int,
+// "Sent":         int,
+// "Error":        int,
+// "Scheduled":    int,
+// "Stopped":      int,
+// "Pending":      int,
 type Progress map[string]int
 
 // Save saves a campaign in db
 func (c *Campaign) Save() (int64, error) {
 	if c.FileID != 0 {
-		f, _ := numfile.List(numfile.Criteria{
+		f, err := numfile.List(numfile.Criteria{
 			ID: c.FileID,
 		})
-		if len(f) != 1 {
-			return 0, fmt.Errorf("Couldn't find file.")
+		if len(f) != 1 || err != nil {
+			return 0, fmt.Errorf("couldn't find file")
 		}
 	}
 	resp, err := db.Get().From("Campaign").Insert(c).Exec()
@@ -100,7 +112,7 @@ func (c *Campaign) GetProgress() (Progress, error) {
 		Status string `db:"status"`
 		Total  int    `db:"total"`
 	}
-	err := db.Get().ScanStructs(&vals, "SELECT status, count(*) as total from Message where campaignid = ?  group by status", c.ID)
+	err := db.Get().From("Message").Select(goqu.L("status, count(*) as total")).Where(goqu.I("campaignid").Eq(c.ID)).GroupBy("status").ScanStructs(&vals)
 	if err != nil {
 		log.WithError(err).Error("Couldn't get campaign stats")
 		return cp, err
@@ -128,43 +140,26 @@ func (c *Campaign) GetReport() (Report, error) {
 	cr := Report{
 		ID: c.ID,
 	}
+	ds := db.Get().From("Message").Where(goqu.I("CampaignID").Eq(c.ID))
+	var errs []string
 	// get total in campaign
-	_, err := db.Get().ScanVal(&cr.Total, "SELECT count(*) as Total from Message where campaignID = ?", c.ID)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Error executing total msgs query")
-		return cr, fmt.Errorf("Could't run query.")
-	}
+	_, err := ds.Select(goqu.L("count(*) as Total")).ScanVal(&cr.Total)
+	errs = appendNotNil(errs, errors.WithMessage(err, "total query"))
 	// select message size in campaign
-	_, err = db.Get().ScanVal(&cr.MsgSize, "SELECT Total as MsgSize from Message where campaignID = ?", c.ID)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Error executing MsgSize query")
-		return cr, fmt.Errorf("Could't run query.")
-	}
+	_, err = ds.Select(goqu.L("Total as MsgSize")).Limit(1).ScanVal(&cr.MsgSize)
+	errs = appendNotNil(errs, errors.WithMessage(err, "msgSize query"))
 	// select min sentat in campaign
-	_, err = db.Get().ScanVal(&cr.FirstQueued, "SELECT Min(SentAt) as FirstQueued from Message where campaignID = ? AND SentAt > 0", c.ID)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Error executing Min(SentAt) query")
-	}
+	_, err = ds.Select(goqu.L("Min(SentAt) as FirstQueued")).Where(goqu.I("sentat").Gt(0)).ScanVal(&cr.FirstQueued)
+	errs = appendNotNil(errs, errors.WithMessage(err, "min(SentAt) query"))
 	// select max sentat in campaign
-	_, err = db.Get().ScanVal(&cr.LastSent, "SELECT Max(SentAt) as LastSent from Message where campaignID=?", c.ID)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Error executing Max(SentAt) query")
-	}
+	_, err = ds.Select(goqu.L("Max(SentAt) as LastSent")).ScanVal(&cr.LastSent)
+	errs = appendNotNil(errs, errors.WithMessage(err, "max(SentAt) query"))
 	// Select connection wise
-	err = db.Get().ScanStructs(&cr.Connections, "SELECT Connection as Name, count(*) as Count from Message where campaignID= ? group by Connection", c.ID)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Error executing Connection wise query")
-		return cr, fmt.Errorf("Could't run query.")
+	err = ds.Select(goqu.L("Connection as name, count(*) as count")).GroupBy("Connection").ScanStructs(&cr.Connections)
+	errs = appendNotNil(errs, errors.WithMessage(err, "connection query"))
+	if len(errs) > 0 {
+		err = errors.New(strings.Join(errs, "\n"))
+		return cr, err
 	}
 	cr.TotalMsgs = cr.Total * cr.MsgSize
 	if cr.LastSent == 0 {
@@ -191,19 +186,20 @@ func List(c Criteria) ([]Campaign, error) {
 	)
 	t := db.Get().From("Campaign")
 
+	if c.OrderByKey == "" {
+		c.OrderByKey = submittedAt
+	}
 	var from interface{}
 	if c.From != "" {
-		if c.OrderByKey == submittedAt || c.OrderByKey == "ScheduledAt" {
-			from, err := strconv.ParseInt(c.From, 10, 64)
+		if c.OrderByKey == submittedAt || c.OrderByKey == "scheduledat" {
+			var err error
+			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
-				return camps, fmt.Errorf("Invalid value for from: %s", from)
+				return camps, fmt.Errorf("invalid value for from: %s", from)
 			}
 		} else {
 			from = c.From
 		}
-	}
-	if c.OrderByKey == "" {
-		c.OrderByKey = submittedAt
 	}
 	if c.SubmittedAfter > 0 {
 		t = t.Where(goqu.I("submittedat").Gte(c.SubmittedAfter))
@@ -244,4 +240,11 @@ func List(c Criteria) ([]Campaign, error) {
 		log.WithError(err).Error("Couldn't run query.")
 	}
 	return camps, err
+}
+
+func appendNotNil(errs []string, err error) []string {
+	if err != nil {
+		errs = append(errs, err.Error())
+	}
+	return errs
 }

@@ -1,35 +1,36 @@
 package token
 
 import (
+	"fmt"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/doug-martin/goqu.v3"
-	"time"
 )
 
 const (
-	// DefaultTokenValidity is default No. of days token is valid for if unaccessed
-	DefaultTokenValidity int = 30
-	// TokenSize is length of token
-	TokenSize int = 40
+	// defaultTokenValidity is default No. of days token is valid for if unaccessed
+	defaultTokenValidity = 30
+	// tokenSize is length of token
+	tokenSize = 40
 )
 
 // Token represents a token given produced against valid authentication request
 type Token struct {
-	ID           int64  `db:"ID" goqu:"skipinsert"`
-	LastAccessed int64  `db:"LastAccessed"`
-	Token        string `db:"Token"`
-	Username     string `db:"Username"`
-	Validity     int    `db:"Validity"`
+	ID           int64  `db:"id" goqu:"skipinsert"`
+	LastAccessed int64  `db:"lastaccessed"`
+	Token        string `db:"token"`
+	Username     string `db:"username"`
+	Validity     int    `db:"validity"`
 }
 
 // Get looks for token in Token table and returns it or error if
 // it's not found.
 func Get(token string) (Token, error) {
 	var t Token
-	found, err := db.Get().From("Token").Select("*").Where(goqu.I("Token").Eq(stringutils.ToSHA1(token))).Prepared(true).ScanStruct(&t)
+	found, err := db.Get().From("Token").Where(goqu.I("Token").Eq(stringutils.ToSHA1(token))).Prepared(true).ScanStruct(&t)
 	if err != nil || !found {
 		log.WithFields(log.Fields{
 			"err":   err,
@@ -39,15 +40,15 @@ func Get(token string) (Token, error) {
 	}
 	now := time.Now()
 	if t.Validity == 0 {
-		t.Validity = DefaultTokenValidity
+		t.Validity = defaultTokenValidity
 	}
 	// TokenValidity days ago
 	then := time.Date(now.Year(), now.Month(), now.Day()-t.Validity, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), now.Location()).Unix()
 	// if token was accessed an year ago, delete it and return error.
 	if t.LastAccessed < then {
-		return t, fmt.Errorf("Token has expired.")
+		return t, fmt.Errorf("token has expired")
 	}
-	//renew token last accessed
+	// renew token last accessed
 	t.LastAccessed = now.Unix()
 	_, err = db.Get().From("Token").Where(goqu.I("ID").Eq(t.ID)).Update(t).Exec()
 	if err != nil {
@@ -60,9 +61,9 @@ func Get(token string) (Token, error) {
 
 // Create should be called to create a new token for a user
 func Create(username string, validity int) (string, error) {
-	token := stringutils.SecureRandomAlphaString(TokenSize)
+	token := stringutils.SecureRandomAlphaString(tokenSize)
 	if validity == 0 {
-		validity = DefaultTokenValidity
+		validity = defaultTokenValidity
 	}
 	t := Token{
 		Token:        stringutils.ToSHA1(token),

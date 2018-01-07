@@ -51,6 +51,7 @@ func Connect(host string, port int, dbName, user, password string) (*goqu.Databa
 }
 
 func Get() *goqu.Database {
+	// if bad connection, block here unless a connection is available
 	return db
 }
 

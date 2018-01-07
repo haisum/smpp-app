@@ -1,51 +1,31 @@
 package user
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
-	"database/sql/driver"
 	"errors"
 	"fmt"
+	"net/mail"
+	"strings"
+
+	"strconv"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	log "github.com/Sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/doug-martin/goqu.v3"
-	"net/mail"
-	"strings"
 )
-
-type permissions []permission.Permission
 
 // User contains data for a single user
 type User struct {
-	ID              int64       `db:"id" goqu:"skipinsert"`
-	Username        string      `db:"username"`
-	Password        string      `db:"password"`
-	Name            string      `db:"name"`
-	Email           string      `db:"email"`
-	ConnectionGroup string      `db:"connectiongroup"`
-	Permissions     permissions `db:"permissions"`
-	RegisteredAt    int64       `db:"registeredat"`
-	Suspended       bool        `db:"suspended"`
-}
-
-func (p *permissions) Scan(perms interface{}) error {
-	ps := strings.Split(fmt.Sprintf("%s", perms), ",")
-	for _, v := range ps {
-		*p = append(*p, permission.Permission(v))
-	}
-	return nil
-}
-
-func (p *permissions) String() string {
-	var perms []string
-	for _, v := range *p {
-		perms = append(perms, string(v))
-	}
-	return strings.Join(perms, ",")
-}
-
-func (p permissions) Value() (driver.Value, error) {
-	return p.String(), nil
+	ID              int64           `db:"id" goqu:"skipinsert"`
+	Username        string          `db:"username"`
+	Password        string          `db:"password"`
+	Name            string          `db:"name"`
+	Email           string          `db:"email"`
+	ConnectionGroup string          `db:"connectiongroup"`
+	Permissions     permission.List `db:"permissions"`
+	RegisteredAt    int64           `db:"registeredat"`
+	Suspended       bool            `db:"suspended"`
 }
 
 // Criteria is used to filter users
@@ -61,36 +41,45 @@ type Criteria struct {
 	ConnectionGroup  string
 	From             string
 	PerPage          uint
-	Permissions      permissions
+}
+
+// ValidationError is returned when data validation fails for user
+type ValidationError struct {
+	Errors  map[string]string
+	Message string
+}
+
+// Error implements Error interface
+func (v *ValidationError) Error() string {
+	return v.Message
 }
 
 const (
-	//DefaultConnectionGroup is set for each user who doesn't specifically specify a group
-	DefaultConnectionGroup string = "Default"
+	// DefaultConnectionGroup is set for each user who doesn't specifically specify a group
+	DefaultConnectionGroup = "Default"
 )
 
 // Add adds a user to database and returns its primary key
 func (u *User) Add() (int64, error) {
-	verrors, err := u.Validate()
+	err := u.Validate()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":    err,
-			"errors": verrors,
+			"errors": err.(*ValidationError).Errors,
 		}).Error("Invalid user data supplied to Add.")
 		return 0, err
 	}
 	if Exists(u.Username) {
-		return 0, fmt.Errorf("User already exists.")
+		return 0, fmt.Errorf("user already exists")
 	}
 	u.Password, err = hash(u.Password)
 	if err != nil {
 		log.WithError(err).Error("Couldn't hash.")
-		return 0, fmt.Errorf("Couldn't hash password. %s", err)
+		return 0, fmt.Errorf("couldn't hash password %s", err)
 	}
 	if u.ConnectionGroup == "" {
 		u.ConnectionGroup = DefaultConnectionGroup
 	}
-	_ = driver.Valuer(u.Permissions)
 	w, err := db.Get().From("User").Insert(u).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -98,16 +87,17 @@ func (u *User) Add() (int64, error) {
 		}).Error("Couldn't insert")
 		return 0, err
 	}
-	return w.LastInsertId()
+	u.ID, err = w.LastInsertId()
+	return u.ID, err
 }
 
 // Update updates an existing user
 func (u *User) Update(passwdChanged bool) error {
-	verrors, err := u.Validate()
+	err := u.Validate()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":    err,
-			"errors": verrors,
+			"errors": err.(*ValidationError).Errors,
 		}).Error("Invalid user data supplied to Update.")
 		return err
 	}
@@ -115,7 +105,7 @@ func (u *User) Update(passwdChanged bool) error {
 		u.Password, err = hash(u.Password)
 		if err != nil {
 			log.WithError(err).Error("Couldn't hash.")
-			return fmt.Errorf("Couldn't hash password. %s", err)
+			return fmt.Errorf("couldn't hash password: %s", err)
 		}
 	}
 	_, err = db.Get().From("User").Where(goqu.I("id").Eq(u.ID)).Update(u).Exec()
@@ -135,15 +125,15 @@ func Get(v interface{}) (User, error) {
 	case string:
 		q = q.Where(goqu.I("username").Eq(v))
 	case int64:
-		q = q.Where(goqu.I("userid").Eq(v))
+		q = q.Where(goqu.I("id").Eq(v))
 	default:
-		return u, errors.New("Unsupported argument for user.Get. Expected string or int64")
+		return u, errors.New("unsupported argument for user.Get. Expected string or int64")
 	}
 	found, err := q.ScanStruct(&u)
 	if err != nil || !found {
 		log.WithError(err).WithField("found", found).Error("Couldn't get user.")
 		if !found {
-			err = errors.New("User not found")
+			err = errors.New("user not found")
 		}
 	}
 	return u, err
@@ -154,11 +144,23 @@ func List(c Criteria) ([]User, error) {
 	var users []User
 	log.WithField("Criteria", c).Info("Making query.")
 	t := db.Get().From("User")
+	if c.OrderByKey == "" {
+		c.OrderByKey = "RegisteredAt"
+	}
+	var from interface{}
+	if c.From != "" {
+		if c.OrderByKey == "RegisteredAt" {
+			var err error
+			from, err = strconv.ParseInt(c.From, 10, 64)
+			if err != nil {
+				return users, fmt.Errorf("invalid value for from: %s", from)
+			}
+		} else {
+			from = c.From
+		}
+	}
 	if c.ConnectionGroup != "" {
 		t = t.Where(goqu.I("ConnectionGroup").Eq(c.ConnectionGroup))
-	}
-	if len(c.Permissions) > 0 {
-		t = t.Where(goqu.I("Permissions").Eq(c.Permissions.String()))
 	}
 	if c.RegisteredAfter > 0 {
 		t = t.Where(goqu.I("RegisteredAfter").Gte(c.RegisteredAfter))
@@ -173,16 +175,10 @@ func List(c Criteria) ([]User, error) {
 		t = t.Where(goqu.I("Email").Eq(c.Email))
 	}
 	if c.Name != "" {
-		t = t.Where(goqu.I("Name ").Eq(c.Name))
-	}
-	if c.ConnectionGroup != "" {
-		t = t.Where(goqu.I("ConnectionGroup").Eq(c.ConnectionGroup))
+		t = t.Where(goqu.I("Name").Eq(c.Name))
 	}
 	if c.Suspended == true {
 		t = t.Where(goqu.I("Suspended").Eq(c.Suspended))
-	}
-	if c.OrderByKey == "" {
-		c.OrderByKey = "RegisteredAt"
 	}
 	if c.PerPage == 0 {
 		c.PerPage = 100
@@ -194,9 +190,9 @@ func List(c Criteria) ([]User, error) {
 	}
 	if c.From != "" {
 		if orderDir == "ASC" {
-			t = t.Where(goqu.I(c.OrderByKey).Gt(c.From))
+			t = t.Where(goqu.I(c.OrderByKey).Gt(from))
 		} else {
-			t = t.Where(goqu.I(c.OrderByKey).Lt(c.From))
+			t = t.Where(goqu.I(c.OrderByKey).Lt(from))
 		}
 	}
 	orderExp := goqu.I(c.OrderByKey).Desc()
@@ -235,35 +231,29 @@ func Exists(username string) bool {
 }
 
 // Validate performs sanity checks on User data
-func (u *User) Validate() (map[string]string, error) {
+func (u *User) Validate() error {
 	errs := make(map[string]string)
 	if len(u.Username) < 4 {
-		errs["Username"] = "Username must be 4 characters or more."
+		errs["Username"] = "username must be 4 characters or more"
 	}
 	if len(u.Password) < 6 {
-		errs["Password"] = "Password must be 6 characters or more."
+		errs["Password"] = "password must be 6 characters or more"
 	}
 	_, err := mail.ParseAddress(u.Email)
 	if err != nil {
-		errs["Email"] = "Invalid email address"
+		errs["Email"] = "invalid email address"
 	}
-	for _, x := range u.Permissions {
-		var isValidPerm bool
-		for _, y := range permission.GetList() {
-			if x == y {
-				isValidPerm = true
-				break
-			}
-		}
-		if !isValidPerm {
-			errs["Permissions"] = "Invalid permissions."
-			break
-		}
+	err = u.Permissions.Validate()
+	if err != nil {
+		errs["Permissions"] = err.Error()
 	}
 	if len(errs) > 0 {
-		return errs, fmt.Errorf("Validation failed")
+		return &ValidationError{
+			Message: "validation failed",
+			Errors:  errs,
+		}
 	}
-	return errs, nil
+	return nil
 }
 
 // Auth authenticates given password against user's password hash

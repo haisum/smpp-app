@@ -1,8 +1,11 @@
 package permission
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // Permission represents access of a user to an operation
@@ -66,15 +69,46 @@ func GetList() List {
 func (p *List) Scan(perms interface{}) error {
 	ps := strings.Split(fmt.Sprintf("%s", perms), ",")
 	for _, v := range ps {
-		*p = append(*p, Permission(v))
+		v = strings.TrimSpace(v)
+		if v != "" {
+			*p = append(*p, Permission(v))
+		}
 	}
 	return nil
 }
 
-func (p *List) String() string {
+// String is string representation of permission list
+// It displays comma separated permissions
+func (p List) String() string {
 	var perms []string
-	for _, v := range *p {
+	for _, v := range p {
 		perms = append(perms, string(v))
 	}
 	return strings.Join(perms, ",")
+}
+
+// Value implements driver.Valuer interface
+func (p List) Value() (driver.Value, error) {
+	return p.String(), nil
+}
+
+// Validate makes sure permissions in List are valid
+func (p List) Validate() error {
+	var invalids []string
+	permList := GetList()
+	for _, x := range p {
+		var isValidPerm bool
+		for _, y := range permList {
+			if x == y {
+				isValidPerm = true
+			}
+		}
+		if !isValidPerm {
+			invalids = append(invalids, string(x))
+		}
+	}
+	if len(invalids) > 0 {
+		return errors.New("one or more permissions are invalid:" + strings.Join(invalids, ","))
+	}
+	return nil
 }
