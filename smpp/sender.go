@@ -1,14 +1,15 @@
 package smpp
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+
+	"context"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/logger"
+	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
 	"github.com/fiorix/go-smpp/smpp"
 	"github.com/fiorix/go-smpp/smpp/pdu"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
-	"os"
-	"time"
 )
 
 var (
@@ -20,25 +21,27 @@ func GetSender() Sender {
 	return snd
 }
 
-// Connect connects to smpp server given by addr, user and passwd
+// ConnectFiorix connects to smpp server given by addr, user and passwd
 // This function triggers a go routine that checks for smpp connection status
 // If connection is lost at some point, this retries after 10 seconds.
 // Channel fiorix.Connected is filled if smpp gets connected. Other routines
 // that depend on smpp connection should wait for Connected channel before
 // proceeding.
-func ConnectFiorix(tx *smpp.Transceiver) error {
-	s := &fiorix{}
+func ConnectFiorix(ctx context.Context, tx *smpp.Transceiver) error {
+	s := &fiorix{
+		logger: logger.FromContext(ctx),
+	}
 	s.tx = tx
 	s.conn = s.tx.Bind() // make persistent connection.
 	select {
 	case c := <-s.conn:
 		st := c.Status()
-		log.WithField("st", st).Info("SMPP connection status changed.")
+		s.logger.Info("st", st, "msg", "SMPP connection status changed.")
 		if st != smpp.Connected {
-			return fmt.Errorf("Error in establising connection. Status: %s, Error: %s", c.Status(), c.Error())
+			return fmt.Errorf("error in establising connection. Status: %s, Error: %s", c.Status(), c.Error())
 		}
-	case <-time.After(time.Second * 5):
-		return fmt.Errorf("Timed out waiting for smpp connection.")
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 	snd = s
 	return nil
@@ -52,7 +55,7 @@ type Sender interface {
 	Close() error
 	SetFields(p PduFields)
 	GetFields() PduFields
-	ConnectOrDie()
+	Monitor(status chan<- uint8)
 }
 
 // fiorix holds smpp transmitter and a channel indicating when smpp connection
@@ -61,20 +64,28 @@ type fiorix struct {
 	tx     *smpp.Transceiver
 	fields PduFields
 	conn   <-chan smpp.ConnStatus
+	logger logger.Logger
 }
 
-// ConnectOrDie checks for smpp connection status, if it becomes not connected, it aborts current application
-// This is a blocking function and must be called after a "go" statement in a separate routine
-func (s *fiorix) ConnectOrDie() {
-	log.Info("Listening for connection status change.")
-	for c := range s.conn {
-		st := c.Status()
-		log.WithField("st", st).Info("SMPP connection status changed.")
-		if st != smpp.Connected {
-			log.Errorf("Error in establising connection. Status: %s, Error: %s", c.Status(), c.Error())
-			os.Exit(2)
+// Monitor checks for smpp connection status, if it becomes not connected, it returns error status on channel
+// error status is one of last three of following constants:
+// Connected fiorix.ConnStatusID = iota + 1
+// Disconnected
+// ConnectionFailed
+// BindFailed
+// Caller should listen on provided channel and take appropriate action when error status is returned
+func (s *fiorix) Monitor(status chan<- uint8) {
+	go func(ch chan<- uint8) {
+		s.logger.Info("Listening for connection status change.")
+		for c := range s.conn {
+			st := c.Status()
+			s.logger.Info("st", st, "msg", "SMPP connection status changed.")
+			if st != smpp.Connected {
+				s.logger.Error("msg", "error in establishing connection", "status", c.Status(), "error", c.Error())
+				ch <- uint8(c.Status())
+			}
 		}
-	}
+	}(status)
 }
 
 // Close closes connection with smpp provider
@@ -120,20 +131,20 @@ func (s *fiorix) Send(src, dst, enc, msg string, isFlash bool) (string, error) {
 	})
 	if err != nil {
 		if err == smpp.ErrNotConnected {
-			log.WithFields(log.Fields{
-				"Src":  src,
-				"Dst":  dst,
-				"Enc":  enc,
-				"Text": msg,
-				"sm":   sm,
-			}).Error("Error in processing sms request because smpp is not connected.")
+			s.logger.Error(
+				"Src", src,
+				"Dst", dst,
+				"Enc", enc,
+				"Text", msg,
+				"sm", sm,
+				"msg", "Error in processing sms request because smpp is not connected.")
 		}
 		return "", err
 	}
 	return sm.RespID(), nil
 }
 
-//SplitLong splits a long message in parts and returns pdu.Body which can be sent individually using SendPart method
+// SplitLong splits a long message in parts and returns pdu.Body which can be sent individually using SendPart method
 func (s *fiorix) SplitLong(src, dst, enc, msg string, isFlash bool) (*smpp.ShortMessage, []pdu.Body) {
 	var text pdutext.Codec
 	if enc == smtext.EncUCS {
@@ -167,10 +178,10 @@ func (s *fiorix) SendPart(sm *smpp.ShortMessage, p pdu.Body) (string, error) {
 	sm, err = s.tx.SubmitPart(sm, p)
 	if err != nil {
 		if err == smpp.ErrNotConnected {
-			log.WithFields(log.Fields{
-				"sm": sm,
-				"p":  p,
-			}).Error("Error in processing partial sms send request because smpp is not connected.")
+			s.logger.Error(
+				"sm", sm,
+				"p", p,
+				"msg", "error in processing partial sms send request because smpp is not connected")
 		}
 		return "", err
 	}

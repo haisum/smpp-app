@@ -9,9 +9,12 @@ import (
 	"runtime"
 	"syscall"
 
+	"context"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/influx"
 	"bitbucket.org/codefreak/hsmpp/smpp/license"
+	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/campaign"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/file"
@@ -20,7 +23,6 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
 	"bitbucket.org/codefreak/hsmpp/smpp/supervisor"
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
@@ -42,26 +44,29 @@ func main() {
 		fmt.Println(version)
 		os.Exit(0)
 	}
-	log.Info("Connecting database.")
+	defaultCtx := context.Background()
+	logger.Get().Info("Connecting database.")
 	conn, err := db.Connect(viper.GetString("MYSQL_HOST"), viper.GetInt("MYSQL_PORT"), viper.GetString("MYSQL_DBNAME"), viper.GetString("MYSQL_USER"), viper.GetString("MYSQL_PASSWORD"))
+	queryLoggerCtx := logger.NewContext(defaultCtx, logger.Get().WithField("type", "goqu"))
+	conn.Logger(logger.FromContext(queryLoggerCtx))
 	if err != nil {
-		log.WithError(err).Fatal("Couldn't setup database connection.")
+		logger.Get().WithError(err).Fatal("Couldn't setup database connection.")
 	}
 	defer conn.Db.Close()
 	_, err = db.CheckAndCreateDB()
 	if err != nil {
-		log.WithError(err).Fatal("Couldn't check and create db.")
+		logger.Get().WithError(err).Fatal("Couldn't check and create db.")
 	}
-	log.Info("Connecting with rabbitmq.")
+	logger.Get().Info("Connecting with rabbitmq.")
 	q, err := queue.ConnectRabbitMQ(viper.GetString("RABBITMQ_URL"), viper.GetString("RABBITMQ_EXCHANGE"), 1)
 	if err != nil {
-		log.WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
+		logger.Get().WithField("err", err).Fatalf("Error occured in connecting to rabbitmq.")
 	}
 	defer q.Close()
-	log.Info("Connecting to influxdb.")
+	logger.Get().Info("Connecting to influxdb.")
 	_, err = influx.Connect(viper.GetString("INFLUXDB_ADDR"), viper.GetString("INFLUXDB_USERNAME"), viper.GetString("INFLUXDB_PASSWORD"))
 	if err != nil {
-		log.WithError(err).Fatal("Couldn't connect to influxdb")
+		logger.Get().WithError(err).Fatal("Couldn't connect to influxdb")
 	}
 	r := mux.NewRouter()
 	r.Handle("/api/message", handlers.MethodHandler{"POST": message.MessageHandler})
@@ -88,20 +93,20 @@ func main() {
 	r.Handle("/api/file/filter", file.FilterHandler)
 	static := http.FileServer(http.Dir("./static/"))
 	r.PathPrefix("/").Handler(static)
-	log.Info("Loading message workers.")
+	logger.Get().Info("Loading message workers.")
 	_, err = supervisor.Execute("reload")
 	if err != nil {
 		if runtime.GOOS == "windows" {
-			log.Error("Couldn't executing supervisor to start workers.")
+			logger.Get().Error("Couldn't executing supervisor to start workers.")
 		} else {
-			log.Fatal("Couldn't executing supervisor to start workers.")
+			logger.Get().Fatal("Couldn't executing supervisor to start workers.")
 		}
 	}
 
-	//Listen for termination signals from OS
+	// Listen for termination signals from OS
 	go gracefulShutdown()
-	log.Infof("Listening for requests on port %d", viper.GetInt("HTTP_PORT"))
-	log.Fatal(http.ListenAndServeTLS(fmt.Sprintf("%s:%d", viper.GetString("HTTP_HOST"), viper.GetInt("HTTP_PORT")), viper.GetString("HTTP_CERTFILE"), viper.GetString("HTTP_KEYFILE"), handlers.CombinedLoggingHandler(os.Stdout, r)))
+	logger.Get().Infof("Listening for requests on port %d", viper.GetInt("HTTP_PORT"))
+	logger.Get().Fatal(http.ListenAndServeTLS(fmt.Sprintf("%s:%d", viper.GetString("HTTP_HOST"), viper.GetInt("HTTP_PORT")), viper.GetString("HTTP_CERTFILE"), viper.GetString("HTTP_KEYFILE"), handlers.CombinedLoggingHandler(os.Stdout, r)))
 }
 
 // When SIGTERM or SIGINT is received, this routine will close our workers
@@ -111,7 +116,7 @@ func gracefulShutdown() {
 	signal.Notify(s, syscall.SIGTERM)
 	go func() {
 		<-s
-		log.Print("Sutting down gracefully.")
+		logger.Get().Print("Sutting down gracefully.")
 		supervisor.Execute("stop")
 		os.Exit(0)
 	}()

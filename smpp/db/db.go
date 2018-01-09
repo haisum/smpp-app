@@ -5,29 +5,39 @@ import (
 	"fmt"
 	"testing"
 
+	"context"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/fresh"
-	log "github.com/Sirupsen/logrus"
+	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"gopkg.in/doug-martin/goqu.v3"
 	_ "gopkg.in/doug-martin/goqu.v3/adapters/mysql"
 )
 
-var db *goqu.Database
+// DB type is main connection type that should be passed to
+// wherever database related activity is being performed
+type DB struct {
+	*goqu.Database
+	Logger logger.Logger
+	Ctx    context.Context
+}
 
 // CheckAndCreateDB Checks if db exists, if not, creates one with basic tables, admin user and indexes
-func CheckAndCreateDB() (*goqu.Database, error) {
+func CheckAndCreateDB(db *DB) (*DB, error) {
 	var err error
 	if !fresh.Exists(db) {
 		err = fresh.Create(db)
 		if err != nil {
-			log.WithError(err).Fatal("Couldn't create database.")
+			db.Logger.Error("error", err, "msg", "couldn't create database")
 		}
 	}
 	return db, err
 }
 
-func Connect(host string, port int, dbName, user, password string) (*goqu.Database, error) {
+// Connect connects to a database
+// context can be supplied to give a connection timeout
+func Connect(ctx context.Context, host string, port int, dbName, user, password string) (*DB, error) {
 	config := mysql.Config{
 		Addr:            fmt.Sprintf("%s:%d", host, port),
 		Net:             "tcp",
@@ -36,32 +46,44 @@ func Connect(host string, port int, dbName, user, password string) (*goqu.Databa
 		DBName:          dbName,
 		MultiStatements: true,
 	}
-	log.WithField("dsn", config.FormatDSN()).Info("Connecting")
+	ctxLogger := logger.FromContext(ctx)
+	ctx = logger.NewContext(ctx, ctxLogger.(logger.WithLogger).With("host", host, "dbName", dbName, "user", user, "port", port))
+
+	db := &DB{
+		Ctx:    ctx,
+		Logger: logger.FromContext(ctx),
+	}
+	db.Logger.Info("dsn", config.FormatDSN(), "msg", "Connecting")
 	con, err := sql.Open("mysql", config.FormatDSN())
 	if err != nil {
 		return db, err
 	}
-	err = con.Ping()
+	err = con.PingContext(ctx)
 	if err != nil {
 		return db, err
 	}
-	db = goqu.New("mysql", con)
-	db.Logger(log.StandardLogger())
+	db.Database = goqu.New("mysql", con)
 	return db, nil
 }
 
-func Get() *goqu.Database {
-	// if bad connection, block here unless a connection is available
-	return db
+// ConnectMock makes a mock db connection for testing purposes
+// it uses context.Background for context
+func ConnectMock(t *testing.T) (*DB, sqlmock.Sqlmock, error) {
+	return ConnectMockContext(context.Background(), t)
 }
 
-// ConnectMock makes a mock db connection for testing purposes
-func ConnectMock(t *testing.T) (*goqu.Database, sqlmock.Sqlmock, error) {
+// ConnectMockContext makes a mock db connection for testing purposes
+// You may use ctx to supply custom logger
+func ConnectMockContext(ctx context.Context, t *testing.T) (*DB, sqlmock.Sqlmock, error) {
 	con, mock, err := sqlmock.New()
 	if err != nil {
 		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
 		t.Fail()
 	}
-	db = goqu.New("mysql", con)
+	db := &DB{
+		Ctx:      ctx,
+		Database: goqu.New("mysql", con),
+		Logger:   logger.FromContext(ctx),
+	}
 	return db, mock, err
 }

@@ -1,22 +1,25 @@
 package main
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
-	"bitbucket.org/codefreak/hsmpp/smpp/influx"
-	"bitbucket.org/codefreak/hsmpp/smpp/license"
-	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	"context"
 	"flag"
-	log "github.com/Sirupsen/logrus"
-	fiorix "github.com/fiorix/go-smpp/smpp"
-	"github.com/spf13/viper"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"bitbucket.org/codefreak/hsmpp/smpp"
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/influx"
+	"bitbucket.org/codefreak/hsmpp/smpp/license"
+	"bitbucket.org/codefreak/hsmpp/smpp/logger"
+	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	log "github.com/Sirupsen/logrus"
+	fiorix "github.com/fiorix/go-smpp/smpp"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -223,14 +226,15 @@ func gracefulShutdown() {
 
 // Binds to rabbitmq queue and listens for all numbers starting with supplied prefixes.
 // This function calls handler when a connection is succesfully established
-func bind() {
+func bind(log logger.Logger, con *goqu.Da) {
 	var err error
 	sconn = &smpp.Conn{}
 	*sconn, err = c.GetConn(*group, *connid)
 	if err != nil {
 		log.WithField("connid", connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")
 	}
-	err = smpp.ConnectFiorix(&fiorix.Transceiver{
+	ctx := logger.NewContext(context.Background())
+	err = smpp.ConnectFiorix(ctx, &fiorix.Transceiver{
 		Addr:    sconn.URL,
 		User:    sconn.User,
 		Passwd:  sconn.Passwd,
@@ -292,16 +296,21 @@ func main() {
 		flag.Usage()
 		os.Exit(2)
 	}
-	log.Info("Connecting database.")
+	logger := logger.Get().(logger.WithLogger).With("process", "worker", "group", *group, "connid", *connid)
+	logger.Info("msg", "connecting database")
 	conn, err := db.Connect(viper.GetString("MYSQL_HOST"), viper.GetInt("MYSQL_PORT"), viper.GetString("MYSQL_DBNAME"), viper.GetString("MYSQL_USER"), viper.GetString("MYSQL_PASSWORD"))
 	if err != nil {
-		log.WithError(err).Fatal("Couldn't setup database connection.")
+		logger.Error("error", err, "msg", "couldn't setup database connection")
+		return
 	}
 	defer conn.Db.Close()
 	c = &smpp.Config{}
 	*c, err = smpp.GetConfig()
 	if err != nil {
-		log.Fatal("Can't continue without settings. Exiting.")
+		logger.Error("msg", "can't continue without settings")
+		return
 	}
-	bind()
+	exitCh := make(chan int)
+	bind(logger, conn, exitCh)
+	<-exitCh
 }

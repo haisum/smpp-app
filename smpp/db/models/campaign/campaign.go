@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 
+	"context"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
@@ -28,6 +30,7 @@ type Campaign struct {
 	SubmittedAt int64  `db:"submittedat"`
 	Total       int    `db:"total"`
 	Errors      stringutils.StringList
+	Context     context.Context `db:"-" json:"-"`
 }
 
 const (
