@@ -1,16 +1,17 @@
 package campaign
 
 import (
+	"fmt"
+	"net/http"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
-	"time"
 )
 
 type retryQdRequest struct {
@@ -30,7 +31,7 @@ var RetryQdHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing retry request.")
-		resp := routes.Response{}
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeRequest,
@@ -51,7 +52,7 @@ var RetryQdHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	msgs, err := message.ListQueued(uReq.CampaignID)
 	if err != nil {
 		log.WithError(err).Error("Error getting queued messages.")
-		resp := routes.Response{}
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeDB,
@@ -68,7 +69,7 @@ var RetryQdHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	var group smpp.ConnGroup
 	if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
 		log.WithField("ConnectionGroup", u.ConnectionGroup).Error("User's connection group doesn't exist in configuration.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeConfig,
@@ -89,7 +90,7 @@ var RetryQdHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 				"error": err,
 				"uReq":  uReq,
 			}).Error("Couldn't update messages.")
-			resp := routes.Response{
+			resp := routes.ClientResponse{
 				Errors: []routes.ResponseError{
 					{
 						Type:    routes.ErrorTypeQueue,
@@ -114,7 +115,7 @@ var RetryQdHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 				"error": err,
 				"uReq":  uReq,
 			}).Error("Couldn't publish message.")
-			resp := routes.Response{
+			resp := routes.ClientResponse{
 				Errors: []routes.ResponseError{
 					{
 						Type:    routes.ErrorTypeQueue,
@@ -129,7 +130,7 @@ var RetryQdHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	}
 	log.Infof("%d campaign messages re-queued", len(msgs))
 	uResp.Count = len(msgs)
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Ok:      true,
 		Request: uReq,

@@ -22,7 +22,6 @@ var loggerKey = "defaultLogger"
 // Logger is wrapper on logrus.FieldLogger interface
 type Logger interface {
 	Info(keyvals ...interface{}) error
-	Warn(keyvals ...interface{}) error
 	Error(keyvals ...interface{}) error
 }
 
@@ -42,9 +41,6 @@ func (l *defaultLogger) Info(keyvals ...interface{}) error {
 	return level.Info(l.logger).Log(keyvals...)
 }
 
-func (l *defaultLogger) Warn(keyvals ...interface{}) error {
-	return level.Warn(l.logger).Log(keyvals...)
-}
 func (l *defaultLogger) Error(keyvals ...interface{}) error {
 	return level.Error(l.logger).Log(keyvals...)
 }

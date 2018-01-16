@@ -1,9 +1,10 @@
 package users
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"net/http"
 )
 
 type permissionsRequest struct {
@@ -21,7 +22,7 @@ var PermissionsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Re
 	uReq := permissionsRequest{
 		URL: r.URL.RequestURI(),
 	}
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Request: uReq,
 		Ok:      true,

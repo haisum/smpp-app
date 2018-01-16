@@ -1,11 +1,12 @@
 package campaign
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
 )
 
 type stopRequest struct {
@@ -25,7 +26,7 @@ var StopHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing campaign request.")
-		resp := routes.Response{}
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeRequest,
@@ -42,7 +43,7 @@ var StopHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	count, err := message.StopPending(uReq.CampaignID)
 	if err != nil {
 		log.WithError(err).Error("Error stopping campaign.")
-		resp := routes.Response{}
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeDB,
@@ -53,7 +54,7 @@ var StopHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	uResp.Count = count
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Ok:      true,
 		Request: uReq,

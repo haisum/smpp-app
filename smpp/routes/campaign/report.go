@@ -1,11 +1,12 @@
 package campaign
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
 )
 
 type reportRequest struct {
@@ -25,7 +26,7 @@ var ReportHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing campaign report request.")
-		resp := routes.Response{}
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeRequest,
@@ -46,7 +47,7 @@ var ReportHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	}
 	if err != nil {
 		log.WithError(err).Error("Error getting campaign report.")
-		resp := routes.Response{}
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeDB,
@@ -57,7 +58,7 @@ var ReportHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		return
 	}
 	uResp.Report = cr
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Ok:      true,
 		Request: uReq,

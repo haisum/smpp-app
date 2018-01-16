@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/logger"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/doug-martin/goqu.v3"
@@ -17,20 +19,23 @@ const (
 	tokenSize = 40
 )
 
-// Token represents a token given produced against valid authentication request
-type Token struct {
-	ID           int64  `db:"id" goqu:"skipinsert"`
-	LastAccessed int64  `db:"lastaccessed"`
-	Token        string `db:"token"`
-	Username     string `db:"username"`
-	Validity     int    `db:"validity"`
+type tokenStore struct {
+	db     *db.DB
+	logger logger.Logger
 }
 
-// Get looks for token in Token table and returns it or error if
+// NewStore returns new token store with RDBMS backend
+func NewStore(db *db.DB, logger logger.Logger) *tokenStore {
+	return &tokenStore{
+		db, logger,
+	}
+}
+
+// Get looks for token in token table and returns it or error if
 // it's not found.
-func Get(token string) (Token, error) {
-	var t Token
-	found, err := db.Get().From("Token").Where(goqu.I("Token").Eq(stringutils.ToSHA1(token))).Prepared(true).ScanStruct(&t)
+func (ts *tokenStore) Get(token string) (user.Token, error) {
+	var t user.Token
+	found, err := ts.db.From("token").Where(goqu.I("token").Eq(stringutils.ToSHA1(token))).Prepared(true).ScanStruct(&t)
 	if err != nil || !found {
 		log.WithFields(log.Fields{
 			"err":   err,
@@ -50,7 +55,7 @@ func Get(token string) (Token, error) {
 	}
 	// renew token last accessed
 	t.LastAccessed = now.Unix()
-	_, err = db.Get().From("Token").Where(goqu.I("ID").Eq(t.ID)).Update(t).Exec()
+	_, err = ts.db.From("token").Where(goqu.I("ID").Eq(t.ID)).Update(t).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
@@ -60,18 +65,18 @@ func Get(token string) (Token, error) {
 }
 
 // Create should be called to create a new token for a user
-func Create(username string, validity int) (string, error) {
+func (ts *tokenStore) Create(username string, validity int) (string, error) {
 	token := stringutils.SecureRandomAlphaString(tokenSize)
 	if validity == 0 {
 		validity = defaultTokenValidity
 	}
-	t := Token{
+	t := user.Token{
 		Token:        stringutils.ToSHA1(token),
 		LastAccessed: time.Now().UTC().Unix(),
 		Username:     username,
 		Validity:     validity,
 	}
-	_, err := db.Get().From("Token").Insert(t).Exec()
+	_, err := ts.db.From("token").Insert(t).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
@@ -83,8 +88,8 @@ func Create(username string, validity int) (string, error) {
 
 // Delete deletes a previously created token
 // This may be called when user logs out
-func (t *Token) Delete() error {
-	_, err := db.Get().From("Token").Where(goqu.I("token").Eq(t.Token)).Delete().Exec()
+func (ts *tokenStore) Delete(t *user.Token) error {
+	_, err := ts.db.From("token").Where(goqu.I("token").Eq(t.Token)).Delete().Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,
@@ -96,8 +101,8 @@ func (t *Token) Delete() error {
 // DeleteAll deletes all tokens of which have same username as this token
 // This may be called when user changes password/get suspended or wants
 // to logout from all devices.
-func (t *Token) DeleteAll() error {
-	_, err := db.Get().From("Token").Where(goqu.I("username").Eq(t.Username)).Delete().Exec()
+func (ts *tokenStore) DeleteAll(t *user.Token) error {
+	_, err := ts.db.From("token").Where(goqu.I("username").Eq(t.Username)).Delete().Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,

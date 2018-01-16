@@ -47,7 +47,7 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing messages list request.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -72,7 +72,7 @@ var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	messages, err := message.List(uReq.Criteria)
-	resp := routes.Response{}
+	resp := routes.ClientResponse{}
 	if err != nil {
 		resp.Ok = false
 		log.WithError(err).Error("Couldn't get message.")

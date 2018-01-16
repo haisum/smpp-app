@@ -1,6 +1,13 @@
 package message
 
 import (
+	"fmt"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
@@ -8,13 +15,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type messageReq struct {
@@ -42,7 +43,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing user message request.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -68,7 +69,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	}
 	if errors := validateMsg(uReq); len(errors) != 0 {
 		log.WithField("errors", errors).Error("Validation failed.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors:  errors,
 			Request: uReq,
 		}
@@ -82,7 +83,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	var group smpp.ConnGroup
 	if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
 		log.WithField("ConnectionGroup", u.ConnectionGroup).Error("User's connection group doesn't exist in configuration.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeConfig,
@@ -136,7 +137,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	msgID, err := m.Save()
 	if err != nil {
 		log.WithField("err", err).Error("Couldn't insert in db.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeDB,
@@ -162,7 +163,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 				"error": err,
 				"uReq":  uReq,
 			}).Error("Couldn't publish message.")
-			resp := routes.Response{
+			resp := routes.ClientResponse{
 				Errors: []routes.ResponseError{
 					{
 						Type:    routes.ErrorTypeQueue,
@@ -178,7 +179,7 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		log.WithField("ScheduledAt", time.Unix(m.ScheduledAt, 0).UTC().String()).Info("Scheduling message.")
 	}
 	uResp.ID = msgID
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Request: uReq,
 		Ok:      true,

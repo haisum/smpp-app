@@ -1,12 +1,13 @@
 package users
 
 import (
+	"net/http"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
-	"time"
 )
 
 type addRequest struct {
@@ -32,7 +33,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing user add request.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -58,7 +59,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Suspended:       uReq.Suspended,
 	}
 
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Request: uReq,
 	}
@@ -80,7 +81,7 @@ var AddHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	id, err := u.Add()
 	if err != nil {
 		log.WithError(err).Error("Couldn't add user.")
-		resp = routes.Response{
+		resp = routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeDB,

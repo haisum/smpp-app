@@ -1,11 +1,12 @@
 package campaign
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
 )
 
 type progressRequest struct {
@@ -25,7 +26,7 @@ var ProgressHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing campaign progress request.")
-		resp := routes.Response{}
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeRequest,
@@ -45,7 +46,7 @@ var ProgressHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		p, err = cp[0].GetProgress()
 	} else {
 		log.WithError(err).Error("Error getting campaign progress.")
-		resp := routes.Response{}
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeDB,
@@ -56,7 +57,7 @@ var ProgressHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	uResp.Progress = p
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Ok:      true,
 		Request: uReq,

@@ -1,12 +1,13 @@
 package file
 
 import (
+	"net/http"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
-	"time"
 )
 
 type uploadReq struct {
@@ -24,7 +25,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	maxPostSize := numfile.MaxFileSize + (1024 * 512)
 	if r.ContentLength > maxPostSize {
 		log.Error("Upload request too large.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -41,7 +42,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	err := r.ParseMultipartForm(maxPostSize)
 	if err != nil {
 		log.WithError(err).Error("Error parsing multipart form.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -55,7 +56,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	err = routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing file upload request.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -84,7 +85,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	f, h, err := r.FormFile("File")
 	if err != nil {
 		log.WithError(err).Error("Error getting file form field.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -99,7 +100,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	id, err := nf.Save(h.Filename, f, &numfile.RealNumFileIO{})
 	if err != nil {
 		log.WithError(err).Error("Error saving file.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -112,7 +113,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		return
 	}
 	uResp.ID = id
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Request: uReq,
 		Ok:      true,

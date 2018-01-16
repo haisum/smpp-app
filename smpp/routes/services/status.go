@@ -19,7 +19,7 @@ var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	var uReq getConfigRequest
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -37,7 +37,7 @@ var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	st, err := services.GetStatus()
 	if err != nil {
 		log.WithError(err).Error("Couldn't get status")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeConfig,
@@ -49,7 +49,7 @@ var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		resp.Send(w, *r, http.StatusInternalServerError)
 		return
 	}
-	resp := routes.Response{}
+	resp := routes.ClientResponse{}
 
 	resp.Obj = st
 	resp.Ok = true

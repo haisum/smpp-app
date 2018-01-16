@@ -1,11 +1,12 @@
 package users
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
 )
 
 type editRequest struct {
@@ -31,7 +32,7 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing user edit request.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -49,7 +50,7 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	u, err := user.Get(uReq.Username)
 	if err != nil {
 		log.WithError(err).Error("Error getting user.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -84,7 +85,7 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		u.Suspended = false
 	}
 
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Request: uReq,
 	}
@@ -106,7 +107,7 @@ var EditHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	err = u.Update(len(uReq.Password) > 1)
 	if err != nil {
 		log.WithError(err).Error("Couldn't update user.")
-		resp = routes.Response{
+		resp = routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeDB,

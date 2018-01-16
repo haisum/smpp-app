@@ -10,6 +10,8 @@ import (
 
 // Permission represents access of a user to an operation
 type Permission string
+
+// List is list of permissions
 type List []Permission
 
 const (

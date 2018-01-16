@@ -46,13 +46,13 @@ const (
 )
 
 // Handler allows starting a campaign
-var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+var Handlerx = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	uResp := campaignResponse{}
 	var uReq campaignRequest
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing campaign request.")
-		resp := routes.Response{}
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeRequest,
@@ -82,7 +82,7 @@ var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ID: uReq.FileID,
 		})
 		if err != nil || len(files) == 0 {
-			resp := routes.Response{}
+			resp := routes.ClientResponse{}
 			resp.Errors = []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeForm,
@@ -95,7 +95,7 @@ var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		numbers, err = files[0].ToNumbers(&numfile.RealNumFileIO{})
 		if err != nil {
 			log.WithError(err).Error("Couldn't read numbers from file.")
-			resp := routes.Response{}
+			resp := routes.ClientResponse{}
 			resp.Errors = []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeForm,
@@ -109,7 +109,7 @@ var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		numbers = numfile.RowsFromString(uReq.Numbers)
 	} else {
 		log.WithError(err).Error("No numbers provided.")
-		resp := routes.Response{}
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeRequest,
@@ -133,7 +133,7 @@ var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	if errors := validateCampaign(uReq); len(errors) != 0 {
 		log.WithField("errors", errors).Error("Validation failed.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors:  errors,
 			Request: uReq,
 		}
@@ -154,7 +154,7 @@ var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	campaignID, err := c.Save()
 	if err != nil {
 		log.WithError(err).Error("Couldn't save campaign.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeDB,
@@ -169,7 +169,7 @@ var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	config, err := smpp.GetConfig()
 	if err != nil {
 		log.WithError(err).Error("Couldn't Get config.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeDB,
@@ -184,7 +184,7 @@ var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	var group smpp.ConnGroup
 	if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
 		log.WithField("ConnectionGroup", u.ConnectionGroup).Error("User's connection group doesn't exist in configuration.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeConfig,
@@ -211,7 +211,7 @@ var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("Campaign messages are being queued.")
 	uResp.ID = campaignID
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Request: uReq,
 		Ok:      true,

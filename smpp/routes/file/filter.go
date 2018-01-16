@@ -1,12 +1,13 @@
 package file
 
 import (
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
 )
 
 type filterRequest struct {
@@ -26,7 +27,7 @@ var FilterHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing files list request.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -51,7 +52,7 @@ var FilterHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		}
 	}
 	files, err := numfile.List(uReq.Criteria)
-	resp := routes.Response{}
+	resp := routes.ClientResponse{}
 	if err != nil {
 		resp.Ok = false
 		resp.Errors = []routes.ResponseError{

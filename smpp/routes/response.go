@@ -1,21 +1,60 @@
 package routes
 
 import (
-	"fmt"
-	"net/http"
-
+	"context"
 	"encoding/json"
-	"encoding/xml"
-
-	log "github.com/Sirupsen/logrus"
+	"net/http"
+	"strings"
 )
 
-// Response represents json/xml response we give to requests
 type Response struct {
-	Obj     interface{} `xml:"Obj" json:"Response"`
-	Errors  []ResponseError
-	Ok      bool
 	Request interface{}
+	Ok      bool
+}
+
+// SuccessResponse represents json/xml response we give to requests
+type SuccessResponse struct {
+	Obj interface{} `xml:"Obj" json:"Response"`
+	Response
+}
+
+// ErrorResponse is sent when Error happens in request
+type ErrorResponse struct {
+	Errors []ResponseError
+	Cause  error `xml:"-" json:"-"`
+	Response
+}
+
+func EncodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	r := response.(SuccessResponse)
+	r.Ok = true
+	// @todo check for soap/xml here
+	return json.NewEncoder(w).Encode(response)
+}
+
+func ErrorEncoder(_ context.Context, err error, w http.ResponseWriter) {
+	var error ErrorResponse
+	switch err.(type) {
+	case ErrorResponse:
+		// @todo check for cause here
+		w.WriteHeader(http.StatusBadRequest)
+		error = err.(ErrorResponse)
+	}
+	w.WriteHeader(http.StatusInternalServerError)
+	// @todo this error should be handled by some central error handler
+	// client should see nothing
+	error.Errors = append(error.Errors, ResponseError{Message: err.Error()})
+	error.Ok = false
+	json.NewEncoder(w).Encode(error)
+}
+
+// Error implements error interface
+func (e ErrorResponse) Error() string {
+	var errs []string
+	for _, err := range e.Errors {
+		errs = append(errs, err.Message)
+	}
+	return strings.Join(errs, ",")
 }
 
 // ResponseError is a single error
@@ -36,7 +75,8 @@ const (
 )
 
 // Send sends a given response with status code
-func (resp Response) Send(w http.ResponseWriter, r http.Request, code int) {
+/*
+func (resp ClientResponse) Send(w http.ResponseWriter, r http.Request, code int) {
 	b, cType, err := MakeResponse(r, resp)
 	if err != nil {
 		log.WithError(err).Error("Couldn't make response.")
@@ -49,6 +89,9 @@ func (resp Response) Send(w http.ResponseWriter, r http.Request, code int) {
 	}
 	fmt.Fprint(w, string(b))
 }
+*/
+
+/*
 
 // MakeResponse encodes a struct in []byte according to content-type in request object
 // json is returned for requests by default
@@ -77,3 +120,4 @@ func MakeResponse(r http.Request, v interface{}) ([]byte, string, error) {
 		return b, "application/json", err
 	}
 }
+*/

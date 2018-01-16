@@ -1,19 +1,11 @@
 package routes
 
-import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/token"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
-	log "github.com/Sirupsen/logrus"
-	"net/http"
-)
-
 // Authenticate is helper function that checks if token is valid and user has given permission
 // If auth fails, it returns 401 if token is invalid or 403 if user doesn't have given permission
 // "" in permisssion means this function will only check validity of token
-func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, ts string, p permission.Permission) (user.User, bool) {
+/*func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, ts string, p permission.Permission) (user.User, bool) {
 	var u user.User
-	resp := Response{
+	resp := ClientResponse{
 		Request: req,
 	}
 	t, err := token.Get(ts)
@@ -66,4 +58,4 @@ func Authenticate(w http.ResponseWriter, r http.Request, req interface{}, ts str
 		return u, false
 	}
 	return u, true
-}
+}*/

@@ -16,9 +16,9 @@ func TestGet(t *testing.T) {
 	con, mock, _ := db.ConnectMock(t)
 	defer con.Db.Close()
 	tok1 := "sampletoken1"
-	selectExpected, _, _ := db.Get().From("Token").Where(goqu.I("Token").Eq(stringutils.ToSHA1(tok1))).Prepared(true).Select(&Token{}).ToSql()
+	selectExpected, _, _ := db.Get().From("Token").Where(goqu.I("Token").Eq(stringutils.ToSHA1(tok1))).Prepared(true).Select(&token{}).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(selectExpected)).WithArgs(stringutils.ToSHA1(tok1), 1).WillReturnRows(sqlmock.NewRows([]string{"id", "token", "username", "lastaccessed"}).AddRow(2, "888f45a334f014f763bc3fb7d0afd24daa6c5e0f", "user1", time.Now().Add(-time.Hour*24).UTC().Unix()))
-	token := Token{
+	token := token{
 		ID:           2,
 		Username:     "user1",
 		Token:        "888f45a334f014f763bc3fb7d0afd24daa6c5e0f",
@@ -83,7 +83,7 @@ func TestCreate(t *testing.T) {
 func TestToken_Delete(t *testing.T) {
 	con, mock, _ := db.ConnectMock(t)
 	defer con.Db.Close()
-	tok1 := Token{
+	tok1 := token{
 		ID:    324,
 		Token: "sadfsdf",
 	}
@@ -104,7 +104,7 @@ func TestToken_Delete(t *testing.T) {
 func TestToken_DeleteAll(t *testing.T) {
 	con, mock, _ := db.ConnectMock(t)
 	defer con.Db.Close()
-	tok1 := Token{
+	tok1 := token{
 		ID:       324,
 		Token:    "sadfsdf",
 		Username: "user1",

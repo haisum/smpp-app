@@ -16,19 +16,19 @@ import (
 func TestExists(t *testing.T) {
 	con, mock, _ := db.ConnectMock(t)
 	defer con.Db.Close()
-	expected, _, _ := db.Get().From("User").Where(goqu.I("username").Eq("user1")).Select(goqu.L("COUNT(*)").As("count")).ToSql()
+	expected, _, _ := con.From("User").Where(goqu.I("username").Eq("user1")).Select(goqu.L("COUNT(*)").As("count")).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(10))
 	assert := assert.New(t)
-	exists := Exists("user1")
+	exists := Exists(con, "user1")
 	assert.True(exists)
 
-	expected, _, _ = db.Get().From("User").Where(goqu.I("username").Eq("user2")).Select(goqu.L("COUNT(*)").As("count")).ToSql()
+	expected, _, _ = con.From("User").Where(goqu.I("username").Eq("user2")).Select(goqu.L("COUNT(*)").As("count")).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(0))
-	exists = Exists("user2")
+	exists = Exists(con, "user2")
 	assert.False(exists)
 
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnError(errors.New("error"))
-	exists = Exists("user2")
+	exists = Exists(con, "user2")
 	assert.False(exists)
 
 	assert.Nil(mock.ExpectationsWereMet())
@@ -41,18 +41,18 @@ func TestGet(t *testing.T) {
 	expUser := User{
 		ID: 2,
 	}
-	expected, _, _ := db.Get().From("User").Select(&expUser).Where(goqu.I("username").Eq("user1")).ToSql()
+	expected, _, _ := con.From("User").Select(&expUser).Where(goqu.I("username").Eq("user1")).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(2))
-	user, err := Get("user1")
+	user, err := Get(con, "user1")
 	assert.Nil(err)
 	assert.Equal(expUser, user)
 
-	expected, _, _ = db.Get().From("User").Select(&expUser).Where(goqu.I("id").Eq(2)).ToSql()
+	expected, _, _ = con.From("User").Select(&expUser).Where(goqu.I("id").Eq(2)).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(sqlmock.NewRows([]string{"id"}))
-	_, err = Get(expUser.ID)
+	_, err = Get(con, expUser.ID)
 	assert.EqualError(err, "user not found")
 
-	_, err = Get(2.00)
+	_, err = Get(con, 2.00)
 	assert.EqualError(err, "unsupported argument for user.Get. Expected string or int64")
 
 	assert.Nil(mock.ExpectationsWereMet())
@@ -81,9 +81,9 @@ func TestList(t *testing.T) {
 			ID: 2,
 		},
 	}
-	expected, _, _ := db.Get().From("User").Select(&expUsers[0]).Where(goqu.I("ConnectionGroup").Eq(cr.ConnectionGroup), goqu.I("RegisteredAfter").Gte(cr.RegisteredAfter), goqu.I("RegisteredBefore").Lte(cr.RegisteredBefore), goqu.I("Username").Eq(cr.Username), goqu.I("Email").Eq(cr.Email), goqu.I("Name").Eq(cr.Name), goqu.I("Suspended").Is(true), goqu.I("RegisteredAt").Gt(10)).Order(goqu.I("RegisteredAt").Asc()).ToSql()
+	expected, _, _ := con.From("User").Select(&expUsers[0]).Where(goqu.I("ConnectionGroup").Eq(cr.ConnectionGroup), goqu.I("RegisteredAfter").Gte(cr.RegisteredAfter), goqu.I("RegisteredBefore").Lte(cr.RegisteredBefore), goqu.I("Username").Eq(cr.Username), goqu.I("Email").Eq(cr.Email), goqu.I("Name").Eq(cr.Name), goqu.I("Suspended").Is(true), goqu.I("RegisteredAt").Gt(10)).Order(goqu.I("RegisteredAt").Asc()).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1).AddRow(2))
-	users, err := List(cr)
+	users, err := List(con, cr)
 	assert.Nil(err)
 	assert.Equal(expUsers, users)
 	assert.Nil(mock.ExpectationsWereMet())
@@ -96,7 +96,7 @@ func TestUser_Add(t *testing.T) {
 	user1 := User{
 		ID: 2,
 	}
-	_, err := user1.Add()
+	_, err := user1.Add(con)
 	assert.EqualError(err, "validation failed")
 
 	user1 = User{
@@ -105,14 +105,14 @@ func TestUser_Add(t *testing.T) {
 		Email:       "email@email",
 		Permissions: permission.List{permission.Mask},
 	}
-	expected, _, _ := db.Get().From("User").Where(goqu.I("username").Eq(user1.Username)).Select(goqu.L("COUNT(*)").As("count")).ToSql()
+	expected, _, _ := con.From("User").Where(goqu.I("username").Eq(user1.Username)).Select(goqu.L("COUNT(*)").As("count")).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
-	_, err = user1.Add()
+	_, err = user1.Add(con)
 	assert.EqualError(err, "user already exists")
 
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(0))
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(1, 1))
-	id, err := user1.Add()
+	id, err := user1.Add(con)
 	assert.Nil(err)
 	assert.Equal(int64(1), id)
 	assert.True(hashMatch(user1.Password, "password"))
@@ -139,14 +139,14 @@ func TestUser_Update(t *testing.T) {
 		Email:       "email@email",
 		Permissions: permission.List{permission.Mask},
 	}
-	expected, _, _ := db.Get().From("User").Where(goqu.I("id").Eq(user1.ID)).ToUpdateSql(&user1)
+	expected, _, _ := con.From("User").Where(goqu.I("id").Eq(user1.ID)).ToUpdateSql(&user1)
 	mock.ExpectExec(regexp.QuoteMeta(expected)).WillReturnResult(sqlmock.NewResult(0, 1))
-	err := user1.Update(false)
+	err := user1.Update(con, false)
 	assert.Nil(err)
 	assert.Equal(user1.Password, "password")
 
 	mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 1))
-	err = user1.Update(true)
+	err = user1.Update(con, true)
 	assert.Nil(err)
 	assert.True(hashMatch(user1.Password, "password"))
 	assert.Nil(mock.ExpectationsWereMet())

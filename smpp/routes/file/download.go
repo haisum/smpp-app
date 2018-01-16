@@ -1,14 +1,15 @@
 package file
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"io/ioutil"
-	"net/http"
 )
 
 type downloadRequest struct {
@@ -23,7 +24,7 @@ var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	err := routes.ParseRequest(*r, &uReq)
 	if err != nil {
 		log.WithError(err).Error("Error parsing download request.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeRequest,
@@ -51,7 +52,7 @@ var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
-	resp := routes.Response{}
+	resp := routes.ClientResponse{}
 	if err != nil || len(files) == 0 {
 		log.WithFields(log.Fields{
 			"len(files)": len(files),

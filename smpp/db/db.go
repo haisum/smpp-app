@@ -26,8 +26,8 @@ type DB struct {
 // CheckAndCreateDB Checks if db exists, if not, creates one with basic tables, admin user and indexes
 func CheckAndCreateDB(db *DB) (*DB, error) {
 	var err error
-	if !fresh.Exists(db) {
-		err = fresh.Create(db)
+	if !fresh.Exists(db.Database, db.Logger) {
+		err = fresh.Create(db.Database, db.Logger)
 		if err != nil {
 			db.Logger.Error("error", err, "msg", "couldn't create database")
 		}

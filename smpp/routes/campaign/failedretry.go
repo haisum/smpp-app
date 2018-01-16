@@ -1,16 +1,17 @@
 package campaign
 
 import (
+	"fmt"
+	"net/http"
+	"time"
+
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"net/http"
-	"time"
+	"github.com/pkg/errors"
 )
 
 type retryRequest struct {
@@ -23,43 +24,93 @@ type retryResponse struct {
 	Count int
 }
 
-//RetryHandler accepts post request to restart all messages with status error of a campaign
-var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	uResp := retryResponse{}
-	var uReq retryRequest
-	err := routes.ParseRequest(*r, &uReq)
+// Error represents a handler error. It provides methods for a HTTP status
+// code and embeds the built-in error interface.
+type Error interface {
+	error
+	Status() int
+}
+
+// StatusError represents an error with an associated HTTP status code.
+type StatusError struct {
+	Code int
+	Err  error
+}
+
+// Allows StatusError to satisfy the error interface.
+func (se StatusError) Error() string {
+	return se.Err.Error()
+}
+
+// Returns our HTTP status code.
+func (se StatusError) Status() int {
+	return se.Code
+}
+
+type Handler struct {
+	H   RouteHandler
+	Env *Env
+}
+
+type RouteHandler interface {
+	RequestStruct() interface{}
+	Serve(e *Env, reqObj interface{}) (routes.ClientResponse, error)
+}
+
+type Retry struct {
+	request  *retryRequest
+	response *retryResponse
+}
+
+func (r *Retry) RequestStruct() interface{} {
+	return &r.request
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	err := h.H(h.Env, w, r)
 	if err != nil {
-		log.WithError(err).Error("Error parsing retry request.")
-		resp := routes.Response{}
-		resp.Errors = []routes.ResponseError{
-			{
-				Type:    routes.ErrorTypeRequest,
-				Message: "Couldn't parse request.",
-			},
+		switch e := err.(type) {
+		case Error:
+			// We can retrieve the status here and write out a specific
+			// HTTP status code.
+			log.Printf("HTTP %d - %s", e.Status(), e)
+			http.Error(w, e.Error(), e.Status())
+		default:
+			// Any error types we don't specifically look out for default
+			// to serving a HTTP 500
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
 		}
-		resp.Send(w, *r, http.StatusBadRequest)
-		return
+	} else {
+
 	}
-	uReq.URL = r.URL.RequestURI()
+}
+
+//RetryHandler accepts post request to restart all messages with status error of a campaign
+func (r *Retry) Serve(e *Env, request routes.Request) (routes.Response, error) {
+	uResp := retryResponse{}
+	uReq, ok := request.(*retryRequest)
+	if !ok {
+		return nil, errors.New("invalid request")
+	}
 	var (
 		u  user.User
 		ok bool
 	)
-	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.RetryCampaign); !ok {
-		return
-	}
+	// do in auth handler
+	//if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.RetryCampaign); !ok {
+	//	return
+	//}
 	msgs, err := message.ListWithError(uReq.CampaignID)
 	if err != nil {
-		log.WithError(err).Error("Error getting error messages.")
-		resp := routes.Response{}
+		errors.Wrap(err, "error getting error messages")
+		resp := routes.ClientResponse{}
 		resp.Errors = []routes.ResponseError{
 			{
 				Type:    routes.ErrorTypeDB,
 				Message: "Couldn't restart campaign.",
 			},
 		}
-		resp.Send(w, *r, http.StatusInternalServerError)
-		return
 	}
 	q := queue.Get()
 	config, _ := smpp.GetConfig()
@@ -68,7 +119,7 @@ var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	var group smpp.ConnGroup
 	if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
 		log.WithField("ConnectionGroup", u.ConnectionGroup).Error("User's connection group doesn't exist in configuration.")
-		resp := routes.Response{
+		resp := routes.ClientResponse{
 			Errors: []routes.ResponseError{
 				{
 					Type:    routes.ErrorTypeConfig,
@@ -118,7 +169,7 @@ var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 				"error": err,
 				"uReq":  uReq,
 			}).Error("Couldn't publish message.")
-			resp := routes.Response{
+			resp := routes.ClientResponse{
 				Errors: []routes.ResponseError{
 					{
 						Type:    routes.ErrorTypeQueue,
@@ -134,10 +185,10 @@ var RetryHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	}
 	log.Infof("%d campaign messages queued", len(msgs))
 	uResp.Count = len(msgs)
-	resp := routes.Response{
+	resp := routes.ClientResponse{
 		Obj:     uResp,
 		Ok:      true,
 		Request: uReq,
 	}
 	resp.Send(w, *r, http.StatusOK)
-})
+}
