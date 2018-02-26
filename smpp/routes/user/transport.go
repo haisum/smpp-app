@@ -10,25 +10,26 @@ import (
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 // MakeHandler returns a http handler for the user service.
-func MakeHandler(svc Service) http.Handler {
+func MakeHandler(svc Service, errEncoder kithttp.ErrorEncoder, responseEncoder kithttp.EncodeResponseFunc) http.Handler {
 	opts := []kithttp.ServerOption{
-		kithttp.ServerErrorEncoder(routes.ErrorEncoder),
+		kithttp.ServerErrorEncoder(errEncoder),
 	}
 	tokenHandler := kithttp.NewServer(
 		makeTokenEndpoint(svc),
 		decodeTokenRequest,
-		routes.EncodeResponse, opts...)
+		responseEncoder, opts...)
 	infoHandler := kithttp.NewServer(
 		makeInfoEndpoint(svc),
 		decodeInfoRequest,
-		routes.EncodeResponse, opts...)
+		responseEncoder, opts...)
 	editHandler := kithttp.NewServer(
 		makeEditEndpoint(svc),
 		decodeEditRequest,
-		routes.EncodeResponse, opts...)
+		responseEncoder, opts...)
 	r := mux.NewRouter()
 
 	r.Handle("/user/v1/info", infoHandler).Methods("GET")
@@ -52,13 +53,19 @@ func makeTokenEndpoint(svc Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(tokenRequest)
 		v, err := svc.Token(ctx, req)
+		req.Password = ""
 		if err != nil {
-			if errResponse, ok := err.(routes.ErrorResponse); ok {
+			if errResponse, ok := err.(routes.AuthErrorResponse); ok {
+				errResponse.Response.Request = req
+				return nil, errResponse
+			}
+			if errResponse, ok := err.(routes.ForbiddenErrorResponse); ok {
 				errResponse.Response.Request = req
 				return nil, errResponse
 			}
 			return nil, err
 		}
+		// make sure we aren't sending back password
 		resp := routes.SuccessResponse{Obj: v}
 		resp.Request = req
 		return resp, nil
@@ -69,7 +76,7 @@ func decodeTokenRequest(_ context.Context, r *http.Request) (interface{}, error)
 	var request tokenRequest
 	request.URL = r.URL.RequestURI()
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "decode token error")
 	}
 	return request, nil
 }
@@ -139,6 +146,7 @@ func makeEditEndpoint(svc Service) endpoint.Endpoint {
 			return nil, err
 		}
 		resp := routes.SuccessResponse{Obj: v}
+		req.Password = ""
 		resp.Request = req
 		return resp, nil
 	}

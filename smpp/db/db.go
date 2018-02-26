@@ -54,6 +54,12 @@ func Connect(ctx context.Context, host string, port int, dbName, user, password 
 		Logger: logger.FromContext(ctx),
 	}
 	db.Logger.Info("dsn", config.FormatDSN(), "msg", "Connecting")
+	if myLogger, ok := db.Logger.(logger.PrintLogger); ok {
+		if myWithLogger, okWith := db.Logger.(logger.WithLogger); okWith {
+			myLogger = myWithLogger.With("package", "mysql").(logger.PrintLogger)
+		}
+		mysql.SetLogger(myLogger)
+	}
 	con, err := sql.Open("mysql", config.FormatDSN())
 	if err != nil {
 		return db, err

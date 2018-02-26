@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/logger"
+	"github.com/pkg/errors"
 )
 
 type Response struct {
@@ -25,27 +28,72 @@ type ErrorResponse struct {
 	Response
 }
 
-func EncodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
-	r := response.(SuccessResponse)
-	r.Ok = true
-	// @todo check for soap/xml here
-	return json.NewEncoder(w).Encode(response)
+// AuthErrorResponse is sent when authentication error has happened
+type AuthErrorResponse struct {
+	ErrorResponse
 }
 
-func ErrorEncoder(_ context.Context, err error, w http.ResponseWriter) {
-	var error ErrorResponse
+// ForbiddenErrorResponse is sent when access to a resource is forbidden
+// usually because of permissions
+type ForbiddenErrorResponse struct {
+	ErrorResponse
+}
+
+type responseEncoder struct {
+	log     logger.Logger
+	errFunc func(err error)
+}
+
+// NewResponseEncoder returns new encoder which can log and call a subscriber errFunc whenever error happens in services
+func NewResponseEncoder(log logger.Logger, errFunc func(err error)) *responseEncoder {
+	return &responseEncoder{log, errFunc}
+}
+
+func (r *responseEncoder) EncodeSuccess(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+	resp := response.(SuccessResponse)
+	resp.Ok = true
+	resp.Request = ctx.Value("request")
+	// @todo check for soap/xml here
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	return json.NewEncoder(w).Encode(resp)
+}
+
+func (r *responseEncoder) EncodeError(ctx context.Context, err error, w http.ResponseWriter) {
+	var (
+		errorResponse error
+		errorCode     int
+	)
 	switch err.(type) {
+	case AuthErrorResponse:
+		errorCode = http.StatusUnauthorized
+		resp := err.(AuthErrorResponse)
+		resp.Ok = false
+		errorResponse = resp
+	case ForbiddenErrorResponse:
+		errorCode = http.StatusForbidden
+		resp := err.(ForbiddenErrorResponse)
+		resp.Ok = false
+		errorResponse = resp
 	case ErrorResponse:
-		// @todo check for cause here
-		w.WriteHeader(http.StatusBadRequest)
-		error = err.(ErrorResponse)
+		errorCode = http.StatusBadRequest
+		resp := err.(ErrorResponse)
+		resp.Ok = false
+		errorResponse = resp
+	default:
+		errorCode = http.StatusInternalServerError
+		resp := ErrorResponse{}
+		resp.Errors = append(resp.Errors, ResponseError{Message: "internal server error"})
+		resp.Ok = false
+		errorResponse = resp
 	}
-	w.WriteHeader(http.StatusInternalServerError)
-	// @todo this error should be handled by some central error handler
-	// client should see nothing
-	error.Errors = append(error.Errors, ResponseError{Message: err.Error()})
-	error.Ok = false
-	json.NewEncoder(w).Encode(error)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(errorCode)
+	encErr := json.NewEncoder(w).Encode(errorResponse)
+	if encErr != nil {
+		err = errors.Wrap(err, encErr.Error())
+	}
+	// pass error to handler
+	r.errFunc(err)
 }
 
 // Error implements error interface

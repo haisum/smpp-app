@@ -9,6 +9,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/user/permission"
 	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
 )
@@ -21,6 +22,46 @@ const (
 type userStore struct {
 	db     *db.DB
 	logger logger.Logger
+}
+
+type userAuthenticator struct {
+	us *userStore
+}
+
+func (ua *userAuthenticator) Authenticate(HashMatchFunc func(hash, str string) bool, username, password string) (*userAuthorizer, error) {
+	user, err := ua.us.Get(username)
+	if err != nil {
+		return nil, errors.Wrap(err, "username or password is wrong")
+	}
+	if ok := HashMatchFunc(user.Password, password); ok {
+		return &userAuthorizer{
+			user.Permissions, user.Suspended,
+		}, nil
+	}
+	return nil, errors.New("username or password is wrong")
+}
+
+type userAuthorizer struct {
+	Permissions permission.List
+	Suspended   bool
+}
+
+func (uaz *userAuthorizer) Can(actions ...string) bool {
+	if uaz.Suspended {
+		return false
+	}
+	for _, action := range actions {
+		canDo := false
+		for _, permission := range uaz.Permissions {
+			if string(permission) == action {
+				canDo = true
+			}
+		}
+		if canDo == false {
+			return false
+		}
+	}
+	return true
 }
 
 // NewStore returns new user store with RDBMS backend
@@ -56,13 +97,13 @@ func (us *userStore) Add(user *user.User, hash func(string) (string, error)) (in
 }
 
 // Update updates an existing user
-func (us *userStore) Update(user *user.User, hash func(string) (string, error), passwdChanged bool) error {
+func (us *userStore) Update(user *user.User, hashFunc func(string) (string, error), passwdChanged bool) error {
 	err := user.Validate()
 	if err != nil {
 		return err
 	}
 	if passwdChanged {
-		user.Password, err = hash(user.Password)
+		user.Password, err = hashFunc(user.Password)
 		if err != nil {
 			return errors.Wrap(err, "hash error")
 		}
@@ -86,13 +127,9 @@ func (us *userStore) Get(v interface{}) (*user.User, error) {
 	default:
 		return u, errors.New("unsupported argument for user.Get. Expected string or int64")
 	}
-	found, err := q.ScanStruct(u)
-	if err != nil || !found {
-		if !found {
-			err = errors.New("user not found")
-		} else {
-			err = errors.Wrap(err, "user select error")
-		}
+	_, err := q.ScanStruct(u)
+	if err != nil {
+		return u, errors.Wrap(err, "user select error")
 	}
 	return u, err
 }

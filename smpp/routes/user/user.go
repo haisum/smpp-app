@@ -6,7 +6,6 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user/permission"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // User contains data for a single user
@@ -80,11 +79,6 @@ func (u *User) Validate() error {
 	return nil
 }
 
-// Auth authenticates given password against user's password hash
-func (u *User) Auth(pass string) bool {
-	return hashMatch(u.Password, pass)
-}
-
 // context
 var contextKey = "user"
 
@@ -102,22 +96,4 @@ func fromContext(ctx context.Context) (*User, error) {
 // @todo write tests
 func NewContext(ctx context.Context, user *User) context.Context {
 	return context.WithValue(ctx, contextKey, user)
-}
-
-func hash(pass string) (string, error) {
-	password := []byte(pass)
-	// Hashing the password with the default cost of 10
-	hashedPassword, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
-	if err != nil {
-		return "", errors.Wrap(err, "hash error")
-	}
-	return string(hashedPassword[:]), nil
-}
-
-func hashMatch(hash, pass string) bool {
-	hashedPassword := []byte(hash)
-	password := []byte(pass)
-	// Comparing the password with the hash
-	err := bcrypt.CompareHashAndPassword(hashedPassword, password)
-	return err == nil
 }

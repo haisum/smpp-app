@@ -31,21 +31,34 @@ type WithLogger interface {
 	With(keyvals ...interface{}) WithLogger
 }
 
+// PrintLogger has Print method for use in mysql driver
+type PrintLogger interface {
+	Print(keyvals ...interface{})
+}
+
 type defaultLogger struct {
 	logger log.Logger
 }
 
 var dl Logger
 
-func (l *defaultLogger) Info(keyvals ...interface{}) error {
+// Info logs info level logs. This is default method for logging in our app
+func (l defaultLogger) Info(keyvals ...interface{}) error {
 	return level.Info(l.logger).Log(keyvals...)
 }
 
-func (l *defaultLogger) Error(keyvals ...interface{}) error {
+// Print is used for mysql driver's logger
+func (l defaultLogger) Print(keyvals ...interface{}) {
+	keyvals = append([]interface{}{"msg"}, keyvals...)
+	level.Info(l.logger).Log(keyvals...)
+}
+
+// Error is used when logging error level logs.
+func (l defaultLogger) Error(keyvals ...interface{}) error {
 	return level.Error(l.logger).Log(keyvals...)
 }
 
-func (l *defaultLogger) With(keyvals ...interface{}) WithLogger {
+func (l defaultLogger) With(keyvals ...interface{}) WithLogger {
 	l.logger = log.With(l.logger, keyvals...)
 	return l
 }
@@ -62,7 +75,7 @@ func newLogger(w io.Writer) WithLogger {
 	logger := log.NewLogfmtLogger(log.NewSyncWriter(w))
 	logger = level.NewFilter(logger, level.AllowAll())
 	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-	return &defaultLogger{logger}
+	return defaultLogger{logger}
 }
 
 // FromContext returns a defaultLogger with context

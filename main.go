@@ -17,7 +17,9 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/token"
 	usermodel "bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -34,8 +36,8 @@ func main() {
 	)
 	flag.Parse()
 
-	log := logger.FromContext(ctx)
-	httpLogger := log.(logger.WithLogger).With(log, "component", "http")
+	log := logger.Get()
+	httpLogger := log.(logger.WithLogger).With(log, "", "component", "http")
 	db := getDB(ctx, log)
 	// user service is...
 	{
@@ -47,7 +49,9 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/user/v1/", user.MakeHandler(userSvc))
+	respEncoder := routes.NewResponseEncoder(httpLogger, errHandler)
+
+	mux.Handle("/user/v1/", user.MakeHandler(userSvc, respEncoder.EncodeError, respEncoder.EncodeSuccess))
 	http.Handle("/", accessControl(mux))
 
 	errs := make(chan error, 2)
@@ -95,4 +99,11 @@ func accessControl(h http.Handler) http.Handler {
 
 		h.ServeHTTP(w, r)
 	})
+}
+
+func errHandler(err error) {
+	go func() {
+		cause := errors.Cause(err)
+		logger.Get().Error("type", fmt.Sprintf("%T", cause), "cause", cause, "error", fmt.Sprintf("%s", err), "stackTrace", fmt.Sprintf("%+v", err))
+	}()
 }
