@@ -6,6 +6,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/middleware"
 )
 
 // Service is user service's interface
@@ -15,17 +16,17 @@ type Service interface {
 }
 
 type service struct {
-	db         *db.DB
-	logger     logger.Logger
-	tokenStore tokenStorer
-	userStore  userStorer
-	hashFunc   func(string) (string, error)
+	db            *db.DB
+	logger        logger.Logger
+	userStore     userStorer
+	hashFunc      func(string) (string, error)
+	authenticator middleware.Authenticator
 }
 
 // NewService returns a new user service
-func NewService(db *db.DB, logger logger.Logger, tokenStore tokenStorer, userStore userStorer, hashFunc func(string) (string, error)) Service {
+func NewService(db *db.DB, logger logger.Logger, userStore userStorer, hashFunc func(string) (string, error), authenticator middleware.Authenticator) Service {
 	return &service{
-		db, logger, tokenStore, userStore,hashFunc
+		db, logger, userStore, hashFunc, authenticator,
 	}
 }
 
@@ -50,7 +51,7 @@ func (s *service) Edit(ctx context.Context, request editRequest) (editResponse, 
 	response := editResponse{}
 	u, err := fromContext(ctx)
 	if err != nil {
-		return response, err
+		return response, routes.BadRequestError(err)
 	}
 	if request.Name != "" {
 		u.Name = request.Name

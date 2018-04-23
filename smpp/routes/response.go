@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/middleware"
 	"github.com/pkg/errors"
 )
 
@@ -27,6 +28,9 @@ type ErrorResponse struct {
 	Cause  error `xml:"-" json:"-"`
 	Response
 }
+
+// BadRequestError is sent when user sends invalid request
+type BadRequestError error
 
 // AuthErrorResponse is sent when authentication error has happened
 type AuthErrorResponse struct {
@@ -52,8 +56,6 @@ func NewResponseEncoder(log logger.Logger, errFunc func(err error)) *responseEnc
 func (r *responseEncoder) EncodeSuccess(ctx context.Context, w http.ResponseWriter, response interface{}) error {
 	resp := response.(SuccessResponse)
 	resp.Ok = true
-	resp.Request = ctx.Value("request")
-	// @todo check for soap/xml here
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	return json.NewEncoder(w).Encode(resp)
 }
@@ -63,20 +65,30 @@ func (r *responseEncoder) EncodeError(ctx context.Context, err error, w http.Res
 		errorResponse error
 		errorCode     int
 	)
+	err = errors.Cause(err)
 	switch err.(type) {
-	case AuthErrorResponse:
+	case middleware.AuthError:
 		errorCode = http.StatusUnauthorized
-		resp := err.(AuthErrorResponse)
+		resp := ErrorResponse{}
+		resp.Errors = append(resp.Errors, ResponseError{Message: err.Error()})
 		resp.Ok = false
 		errorResponse = resp
-	case ForbiddenErrorResponse:
+		w.Header().Set("WWW-Authenticate", "Basic")
+	case middleware.ForbiddenError:
 		errorCode = http.StatusForbidden
-		resp := err.(ForbiddenErrorResponse)
+		resp := ErrorResponse{}
+		resp.Errors = append(resp.Errors, ResponseError{Message: err.Error()})
 		resp.Ok = false
 		errorResponse = resp
 	case ErrorResponse:
 		errorCode = http.StatusBadRequest
 		resp := err.(ErrorResponse)
+		resp.Ok = false
+		errorResponse = resp
+	case BadRequestError:
+		errorCode = http.StatusBadRequest
+		resp := ErrorResponse{}
+		resp.Errors = append(resp.Errors, ResponseError{Message: err.Error()})
 		resp.Ok = false
 		errorResponse = resp
 	default:

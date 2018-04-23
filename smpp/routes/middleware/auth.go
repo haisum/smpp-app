@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"strings"
 
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/pkg/errors"
@@ -30,6 +31,21 @@ func (AuthError) Error() string {
 	return http.StatusText(http.StatusUnauthorized)
 }
 
+// ForbiddenError represents an authorization error.
+type ForbiddenError struct {
+	Realm string
+}
+
+// StatusCode is an implementation of the StatusCoder interface in go-kit/http.
+func (ForbiddenError) StatusCode() int {
+	return http.StatusForbidden
+}
+
+// Error is an implementation of the Error interface.
+func (ForbiddenError) Error() string {
+	return http.StatusText(http.StatusForbidden)
+}
+
 // Headers is an implementation of the Headerer interface in go-kit/http.
 func (e AuthError) Headers() http.Header {
 	return http.Header{
@@ -45,16 +61,16 @@ func toHashSlice(s []byte) []byte {
 	return hash[:]
 }
 
-type authorizer interface {
+type Authorizer interface {
 	Can(actions ...string) bool
 }
 
-type authenticator interface {
-	Authenticate(HashMatchFunc func(hash, str string) bool, username, password []byte) (authorizer, error)
+type Authenticator interface {
+	Authenticate(ctx context.Context, HashMatchFunc func(hash, str string) bool, username, password string) (context.Context, Authorizer, error)
 }
 
 // AuthMiddleware returns a Basic Authentication middleware for a particular user and password.
-func AuthMiddleware(authority authenticator, HashMatchFunc func(hash, str string) bool, realm string, actions ...string) endpoint.Middleware {
+func AuthMiddleware(authority Authenticator, HashMatchFunc func(hash, str string) bool, realm string, actions ...string) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
 			auth, ok := ctx.Value(httptransport.ContextKeyRequestAuthorization).(string)
@@ -67,13 +83,13 @@ func AuthMiddleware(authority authenticator, HashMatchFunc func(hash, str string
 				return nil, AuthError{realm}
 			}
 
-			authorizer, err := authority.Authenticate(HashMatchFunc, givenUser, givenPassword)
+			ctx, authzr, err := authority.Authenticate(ctx, HashMatchFunc, stringutils.ByteToString(givenUser), stringutils.ByteToString(givenPassword))
 			if err != nil {
 				return nil, errors.Wrap(AuthError{realm}, err.Error())
 			}
-			ok = authorizer.Can(actions...)
+			ok = authzr.Can(actions...)
 			if !ok {
-				return nil, errors.Wrap(AuthError{realm}, err.Error())
+				return nil, errors.Wrap(ForbiddenError{realm}, "permission denied")
 			}
 
 			/*

@@ -10,7 +10,6 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	log "github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
 )
 

@@ -3,22 +3,20 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
-
-	"time"
-
-	"net/http"
-
 	"fmt"
+	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/token"
 	usermodel "bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
+	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/pkg/errors"
 )
 
@@ -41,17 +39,21 @@ func main() {
 	db := getDB(ctx, log)
 	// user service is...
 	{
-		tokenStore := token.NewStore(db, log)
 		userStore := usermodel.NewStore(db, log)
 		userLogger := httpLogger.With("service", "user")
-		userSvc = user.NewService(db, userLogger, tokenStore, userStore)
+		authenticator := usermodel.NewAuthenticator(userStore.Get)
+		userSvc = user.NewService(db, userLogger, userStore, stringutils.Hash, authenticator)
 	}
 
 	mux := http.NewServeMux()
 
 	respEncoder := routes.NewResponseEncoder(httpLogger, errHandler)
 
-	mux.Handle("/user/v1/", user.MakeHandler(userSvc, respEncoder.EncodeError, respEncoder.EncodeSuccess))
+	opts := []kithttp.ServerOption{
+		kithttp.ServerErrorEncoder(respEncoder.EncodeError),
+		kithttp.ServerBefore(kithttp.PopulateRequestContext),
+	}
+	mux.Handle("/user/v1/", user.MakeHandler(userSvc, opts, respEncoder.EncodeSuccess))
 	http.Handle("/", accessControl(mux))
 
 	errs := make(chan error, 2)

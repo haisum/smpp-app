@@ -6,8 +6,11 @@ import (
 
 	"strconv"
 
+	"context"
+
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/middleware"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user/permission"
 	"github.com/pkg/errors"
@@ -25,20 +28,20 @@ type userStore struct {
 }
 
 type userAuthenticator struct {
-	us *userStore
+	GetUser func(v interface{}) (*user.User, error)
 }
 
-func (ua *userAuthenticator) Authenticate(HashMatchFunc func(hash, str string) bool, username, password string) (*userAuthorizer, error) {
-	user, err := ua.us.Get(username)
+func (ua *userAuthenticator) Authenticate(ctx context.Context, HashMatchFunc func(hash, str string) bool, username, password string) (context.Context, middleware.Authorizer, error) {
+	u, err := ua.GetUser(username)
 	if err != nil {
-		return nil, errors.Wrap(err, "username or password is wrong")
+		return ctx, nil, errors.Wrap(err, "username or password is wrong")
 	}
-	if ok := HashMatchFunc(user.Password, password); ok {
-		return &userAuthorizer{
-			user.Permissions, user.Suspended,
+	if ok := HashMatchFunc(u.Password, password); ok {
+		return user.NewContext(ctx, u), &userAuthorizer{
+			u.Permissions, u.Suspended,
 		}, nil
 	}
-	return nil, errors.New("username or password is wrong")
+	return ctx, nil, errors.New("username or password is wrong")
 }
 
 type userAuthorizer struct {
@@ -49,6 +52,9 @@ type userAuthorizer struct {
 func (uaz *userAuthorizer) Can(actions ...string) bool {
 	if uaz.Suspended {
 		return false
+	}
+	if len(actions) == 1 && actions[0] == "" {
+		return true
 	}
 	for _, action := range actions {
 		canDo := false
@@ -62,6 +68,12 @@ func (uaz *userAuthorizer) Can(actions ...string) bool {
 		}
 	}
 	return true
+}
+
+func NewAuthenticator(getUser func(v interface{}) (*user.User, error)) middleware.Authenticator {
+	return &userAuthenticator{
+		GetUser: getUser,
+	}
 }
 
 // NewStore returns new user store with RDBMS backend
