@@ -128,7 +128,6 @@ type ResponseError struct {
 const (
 	ErrorTypeForm    string = "form"
 	ErrorTypeDB      string = "db"
-	ErrorTypeAuth    string = "auth"
 	ErrorTypeQueue   string = "queue"
 	ErrorTypeRequest string = "request"
 	ErrorTypeConfig  string = "config"
