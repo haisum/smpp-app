@@ -16,6 +16,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	kithttp "github.com/go-kit/kit/transport/http"
 )
@@ -31,18 +32,25 @@ func main() {
 		httpAddr = flag.String("http.addr", ":"+addr, "HTTP listen address")
 		ctx      = context.Background()
 		userSvc  user.Service
+		usersSvc users.Service
 	)
 	flag.Parse()
 
 	log := logger.Get()
 	httpLogger := log.(logger.WithLogger).With(log, "", "component", "http")
 	db := getDB(ctx, log)
+	userStore := usermodel.NewStore(db, log, stringutils.Hash)
 	// user service is...
 	{
-		userStore := usermodel.NewStore(db, log, stringutils.Hash)
 		userLogger := httpLogger.With("service", "user")
 		authenticator := usermodel.NewAuthenticator(userStore.Get, stringutils.HashMatch)
-		userSvc = user.NewService(db, userLogger, userStore, authenticator)
+		userSvc = user.NewService(userLogger, userStore, authenticator)
+	}
+	// users service is...
+	{
+		usersLogger := httpLogger.With("service", "users")
+		authenticator := usermodel.NewAuthenticator(userStore.Get, stringutils.HashMatch)
+		usersSvc = users.NewService(usersLogger, userStore, authenticator)
 	}
 
 	mux := http.NewServeMux()
@@ -54,6 +62,7 @@ func main() {
 		kithttp.ServerBefore(kithttp.PopulateRequestContext),
 	}
 	mux.Handle("/user/v1/", user.MakeHandler(userSvc, opts, respEncoder.EncodeSuccess))
+	mux.Handle("/users/v1/", users.MakeHandler(usersSvc, opts, respEncoder.EncodeSuccess))
 	http.Handle("/", accessControl(mux))
 
 	errs := make(chan error, 2)

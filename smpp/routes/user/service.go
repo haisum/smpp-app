@@ -3,7 +3,6 @@ package user
 import (
 	"context"
 
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/entities/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/errs"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
@@ -16,16 +15,15 @@ type Service interface {
 }
 
 type service struct {
-	db            *db.DB
 	logger        logger.Logger
 	userStore     user.UserStorer
 	authenticator user.Authenticator
 }
 
 // NewService returns a new user service
-func NewService(db *db.DB, logger logger.Logger, userStore user.UserStorer, authenticator user.Authenticator) Service {
+func NewService(logger logger.Logger, userStore user.UserStorer, authenticator user.Authenticator) Service {
 	return &service{
-		db, logger, userStore, authenticator,
+		logger, userStore, authenticator,
 	}
 }
 

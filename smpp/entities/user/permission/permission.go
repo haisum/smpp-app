@@ -16,7 +16,7 @@ type List []Permission
 
 const (
 	// AddUsers permission to add users
-	AddUsers Permission = "Add users"
+	AddUsers = "Add users"
 	// EditUsers permission to edit users
 	EditUsers = "Edit users"
 	// ListUsers permission to list/filter users

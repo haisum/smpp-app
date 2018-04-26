@@ -26,6 +26,7 @@ type UserStorer interface {
 	Add(user *User) (int64, error)
 	Update(user *User, passwdChanged bool) error
 	Get(v interface{}) (*User, error)
+	List(c Criteria) ([]User, error)
 }
 
 type Authorizer interface {
