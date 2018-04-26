@@ -9,10 +9,9 @@ import (
 	"context"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/entities/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/entities/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/middleware"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/user/permission"
 	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
 )
@@ -25,18 +24,20 @@ const (
 type userStore struct {
 	db     *db.DB
 	logger logger.Logger
+	hash   func(string) (string, error)
 }
 
 type userAuthenticator struct {
-	GetUser func(v interface{}) (*user.User, error)
+	GetUser       func(v interface{}) (*user.User, error)
+	HashMatchFunc func(hash, str string) bool
 }
 
-func (ua *userAuthenticator) Authenticate(ctx context.Context, HashMatchFunc func(hash, str string) bool, username, password string) (context.Context, middleware.Authorizer, error) {
+func (ua *userAuthenticator) Authenticate(ctx context.Context, username, password string) (context.Context, user.Authorizer, error) {
 	u, err := ua.GetUser(username)
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "username or password is wrong")
 	}
-	if ok := HashMatchFunc(u.Password, password); ok {
+	if ok := ua.HashMatchFunc(u.Password, password); ok {
 		return user.NewContext(ctx, u), &userAuthorizer{
 			u.Permissions, u.Suspended,
 		}, nil
@@ -70,21 +71,22 @@ func (uaz *userAuthorizer) Can(actions ...string) bool {
 	return true
 }
 
-func NewAuthenticator(getUser func(v interface{}) (*user.User, error)) middleware.Authenticator {
+func NewAuthenticator(getUser func(v interface{}) (*user.User, error), hashMatchFunc func(hash, str string) bool) user.Authenticator {
 	return &userAuthenticator{
-		GetUser: getUser,
+		GetUser:       getUser,
+		HashMatchFunc: hashMatchFunc,
 	}
 }
 
 // NewStore returns new user store with RDBMS backend
-func NewStore(db *db.DB, logger logger.Logger) *userStore {
+func NewStore(db *db.DB, logger logger.Logger, hash func(string) (string, error)) *userStore {
 	return &userStore{
-		db, logger,
+		db, logger, hash,
 	}
 }
 
 // Add adds a user to database and returns its primary key
-func (us *userStore) Add(user *user.User, hash func(string) (string, error)) (int64, error) {
+func (us *userStore) Add(user *user.User) (int64, error) {
 	err := user.Validate()
 	if err != nil {
 		return 0, err
@@ -92,7 +94,7 @@ func (us *userStore) Add(user *user.User, hash func(string) (string, error)) (in
 	if us.Exists(user.Username) {
 		return 0, fmt.Errorf("user already exists")
 	}
-	user.Password, err = hash(user.Password)
+	user.Password, err = us.hash(user.Password)
 	if err != nil {
 		us.logger.Error("error", err, "msg", "couldn't hash")
 		return 0, fmt.Errorf("couldn't hash password %s", err)
@@ -109,13 +111,13 @@ func (us *userStore) Add(user *user.User, hash func(string) (string, error)) (in
 }
 
 // Update updates an existing user
-func (us *userStore) Update(user *user.User, hashFunc func(string) (string, error), passwdChanged bool) error {
+func (us *userStore) Update(user *user.User, passwdChanged bool) error {
 	err := user.Validate()
 	if err != nil {
 		return err
 	}
 	if passwdChanged {
-		user.Password, err = hashFunc(user.Password)
+		user.Password, err = us.hash(user.Password)
 		if err != nil {
 			return errors.Wrap(err, "hash error")
 		}

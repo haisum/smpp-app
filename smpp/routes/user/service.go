@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/entities/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/errs"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/middleware"
 )
 
 // Service is user service's interface
@@ -18,22 +18,21 @@ type Service interface {
 type service struct {
 	db            *db.DB
 	logger        logger.Logger
-	userStore     userStorer
-	hashFunc      func(string) (string, error)
-	authenticator middleware.Authenticator
+	userStore     user.UserStorer
+	authenticator user.Authenticator
 }
 
 // NewService returns a new user service
-func NewService(db *db.DB, logger logger.Logger, userStore userStorer, hashFunc func(string) (string, error), authenticator middleware.Authenticator) Service {
+func NewService(db *db.DB, logger logger.Logger, userStore user.UserStorer, authenticator user.Authenticator) Service {
 	return &service{
-		db, logger, userStore, hashFunc, authenticator,
+		db, logger, userStore, authenticator,
 	}
 }
 
 // Info endpoint returns info of user in current context
 func (s *service) Info(ctx context.Context, request infoRequest) (infoResponse, error) {
 	response := infoResponse{}
-	u, err := fromContext(ctx)
+	u, err := user.FromContext(ctx)
 	if err != nil {
 		return response, err
 	}
@@ -49,9 +48,9 @@ func (s *service) Info(ctx context.Context, request infoRequest) (infoResponse, 
 // Edit endpoint edits user in current context
 func (s *service) Edit(ctx context.Context, request editRequest) (editResponse, error) {
 	response := editResponse{}
-	u, err := fromContext(ctx)
+	u, err := user.FromContext(ctx)
 	if err != nil {
-		return response, routes.BadRequestError(err)
+		return response, errs.BadRequestError(err)
 	}
 	if request.Name != "" {
 		u.Name = request.Name
@@ -64,18 +63,18 @@ func (s *service) Edit(ctx context.Context, request editRequest) (editResponse, 
 	}
 	err = u.Validate()
 	if err != nil {
-		vErr := err.(*validationError)
-		errResp := routes.ErrorResponse{}
+		vErr := err.(*errs.ValidationError)
+		errResp := errs.ErrorResponse{}
 		for k, v := range vErr.Errors {
-			errResp.Errors = append(errResp.Errors, routes.ResponseError{
-				Type:    routes.ErrorTypeForm,
+			errResp.Errors = append(errResp.Errors, errs.ResponseError{
+				Type:    errs.ErrorTypeForm,
 				Message: v,
 				Field:   k,
 			})
 		}
 		return response, errResp
 	}
-	err = s.userStore.Update(u, s.hashFunc, len(request.Password) > 1)
+	err = s.userStore.Update(u, len(request.Password) > 1)
 	if err != nil {
 		s.logger.Error("msg", "couldn't update user", "error", err)
 		return response, err

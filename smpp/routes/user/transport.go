@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"bitbucket.org/codefreak/hsmpp/smpp/entities/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/entities/user/permission"
+	"bitbucket.org/codefreak/hsmpp/smpp/errs"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/middleware"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/user/permission"
-	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
@@ -17,7 +18,7 @@ import (
 // MakeHandler returns a http handler for the user service.
 func MakeHandler(svc Service, opts []kithttp.ServerOption, responseEncoder kithttp.EncodeResponseFunc) http.Handler {
 
-	authMid := middleware.AuthMiddleware(svc.(*service).authenticator, stringutils.HashMatch, "", "")
+	authMid := middleware.AuthMiddleware(svc.(*service).authenticator, "", "")
 	infoHandler := kithttp.NewServer(
 		authMid(makeInfoEndpoint(svc)),
 		decodeInfoRequest,
@@ -52,7 +53,7 @@ func makeInfoEndpoint(svc Service) endpoint.Endpoint {
 		req := request.(infoRequest)
 		v, err := svc.Info(ctx, req)
 		if err != nil {
-			if errResponse, ok := err.(routes.ErrorResponse); ok {
+			if errResponse, ok := err.(errs.ErrorResponse); ok {
 				errResponse.Response.Request = req
 				return nil, errResponse
 			}
@@ -79,7 +80,7 @@ type editRequest struct {
 }
 
 type editResponse struct {
-	User *User
+	User *user.User
 }
 
 func makeEditEndpoint(svc Service) endpoint.Endpoint {
@@ -87,7 +88,7 @@ func makeEditEndpoint(svc Service) endpoint.Endpoint {
 		req := request.(editRequest)
 		v, err := svc.Edit(ctx, req)
 		if err != nil {
-			if errResponse, ok := err.(routes.ErrorResponse); ok {
+			if errResponse, ok := err.(errs.ErrorResponse); ok {
 				errResponse.Response.Request = req
 				return nil, errResponse
 			}

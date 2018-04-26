@@ -12,12 +12,12 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	usermodel "bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/errs"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	kithttp "github.com/go-kit/kit/transport/http"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -39,15 +39,15 @@ func main() {
 	db := getDB(ctx, log)
 	// user service is...
 	{
-		userStore := usermodel.NewStore(db, log)
+		userStore := usermodel.NewStore(db, log, stringutils.Hash)
 		userLogger := httpLogger.With("service", "user")
-		authenticator := usermodel.NewAuthenticator(userStore.Get)
-		userSvc = user.NewService(db, userLogger, userStore, stringutils.Hash, authenticator)
+		authenticator := usermodel.NewAuthenticator(userStore.Get, stringutils.HashMatch)
+		userSvc = user.NewService(db, userLogger, userStore, authenticator)
 	}
 
 	mux := http.NewServeMux()
 
-	respEncoder := routes.NewResponseEncoder(httpLogger, errHandler)
+	respEncoder := routes.NewResponseEncoder(httpLogger, errs.ErrHandler, errs.ErrResponseHandler)
 
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(respEncoder.EncodeError),
@@ -101,11 +101,4 @@ func accessControl(h http.Handler) http.Handler {
 
 		h.ServeHTTP(w, r)
 	})
-}
-
-func errHandler(err error) {
-	go func() {
-		cause := errors.Cause(err)
-		logger.Get().Error("type", fmt.Sprintf("%T", cause), "cause", cause, "error", fmt.Sprintf("%s", err), "stackTrace", fmt.Sprintf("%+v", err))
-	}()
 }

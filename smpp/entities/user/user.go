@@ -4,7 +4,8 @@ import (
 	"context"
 	"net/mail"
 
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/user/permission"
+	"bitbucket.org/codefreak/hsmpp/smpp/entities/user/permission"
+	"bitbucket.org/codefreak/hsmpp/smpp/errs"
 	"github.com/pkg/errors"
 )
 
@@ -21,10 +22,18 @@ type User struct {
 	Suspended       bool            `db:"suspended"`
 }
 
-type userStorer interface {
-	Add(user *User, hash func(string) (string, error)) (int64, error)
-	Update(user *User, hash func(string) (string, error), passwdChanged bool) error
+type UserStorer interface {
+	Add(user *User) (int64, error)
+	Update(user *User, passwdChanged bool) error
 	Get(v interface{}) (*User, error)
+}
+
+type Authorizer interface {
+	Can(actions ...string) bool
+}
+
+type Authenticator interface {
+	Authenticate(ctx context.Context, username, password string) (context.Context, Authorizer, error)
 }
 
 // Criteria is used to filter users
@@ -42,38 +51,27 @@ type Criteria struct {
 	PerPage          uint
 }
 
-// validationError is returned when data validation fails for user
-type validationError struct {
-	Errors  map[string]string
-	Message string
-}
-
-// Error implements Error interface
-func (v *validationError) Error() string {
-	return v.Message
-}
-
 // Validate performs sanity checks on User data
 func (u *User) Validate() error {
-	errs := make(map[string]string)
+	errMap := make(map[string]string)
 	if len(u.Username) < 4 {
-		errs["Username"] = "username must be 4 characters or more"
+		errMap["Username"] = "username must be 4 characters or more"
 	}
 	if len(u.Password) < 6 {
-		errs["Password"] = "password must be 6 characters or more"
+		errMap["Password"] = "password must be 6 characters or more"
 	}
 	_, err := mail.ParseAddress(u.Email)
 	if err != nil {
-		errs["Email"] = "invalid email address"
+		errMap["Email"] = "invalid email address"
 	}
 	err = u.Permissions.Validate()
 	if err != nil {
-		errs["Permissions"] = err.Error()
+		errMap["Permissions"] = err.Error()
 	}
-	if len(errs) > 0 {
-		return &validationError{
+	if len(errMap) > 0 {
+		return &errs.ValidationError{
 			Message: "validation failed",
-			Errors:  errs,
+			Errors:  errMap,
 		}
 	}
 	return nil
@@ -84,7 +82,7 @@ var contextKey = "user"
 
 // FromContext returns a defaultLogger with context
 // @todo write tests
-func fromContext(ctx context.Context) (*User, error) {
+func FromContext(ctx context.Context) (*User, error) {
 	user, ok := ctx.Value(contextKey).(*User)
 	if !ok {
 		return nil, errors.New("user not found in context")
