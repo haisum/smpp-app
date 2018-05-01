@@ -23,21 +23,20 @@ func AuthMiddleware(authority user.Authenticator, realm string, actions ...strin
 			if !ok {
 				return nil, errs.AuthError{}
 			}
-
 			givenUser, givenPassword, ok := parseBasicAuth(auth)
 			if !ok {
 				return nil, errs.AuthError{}
 			}
-
-			ctx, authzr, err := authority.Authenticate(ctx, stringutils.ByteToString(givenUser), stringutils.ByteToString(givenPassword))
+			u, err := authority.Authenticate(stringutils.ByteToString(givenUser), stringutils.ByteToString(givenPassword))
 			if err != nil {
 				return nil, errors.Wrap(errs.AuthError{}, err.Error())
 			}
-			ok = authzr.Can(actions...)
+			ok = u.Can(actions...)
 			if !ok {
-				return nil, errors.Wrap(errs.ForbiddenError{}, "permission denied")
+				return nil, &errs.ForbiddenError{Message: "permission denied"}
 			}
-
+			// add user to context
+			ctx = user.NewContext(ctx, u)
 			return next(ctx, request)
 		}
 	}

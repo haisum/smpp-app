@@ -22,6 +22,7 @@ type User struct {
 	Suspended       bool            `db:"suspended"`
 }
 
+// UserStorer is interface for user store
 type UserStorer interface {
 	Add(user *User) (int64, error)
 	Update(user *User, passwdChanged bool) error
@@ -29,12 +30,8 @@ type UserStorer interface {
 	List(c Criteria) ([]User, error)
 }
 
-type Authorizer interface {
-	Can(actions ...string) bool
-}
-
 type Authenticator interface {
-	Authenticate(ctx context.Context, username, password string) (context.Context, Authorizer, error)
+	Authenticate(username, password string) (*User, error)
 }
 
 // Criteria is used to filter users
@@ -50,6 +47,28 @@ type Criteria struct {
 	ConnectionGroup  string
 	From             string
 	PerPage          uint
+}
+
+// Can checks if user has permission to perform given actions
+func (u *User) Can(actions ...string) bool {
+	if u.Suspended {
+		return false
+	}
+	if len(actions) == 1 && actions[0] == "" {
+		return true
+	}
+	for _, action := range actions {
+		canDo := false
+		for _, permission := range u.Permissions {
+			if string(permission) == action {
+				canDo = true
+			}
+		}
+		if canDo == false {
+			return false
+		}
+	}
+	return true
 }
 
 // Validate performs sanity checks on User data

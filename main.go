@@ -89,7 +89,7 @@ func envString(env, fallback string) string {
 }
 
 func getDB(ctx context.Context, logger logger.Logger) *db.DB {
-	db, err := db.Connect(ctx, "localhost", 3306, "hsmppdb", "root", "")
+	db, err := db.Connect(ctx, "localhost", 3306, "hsmppdb", "root", "str0ng")
 	if err != nil {
 		logger.Error("error", err, "retryInSeconds", 5)
 		time.Sleep(time.Second * 5)

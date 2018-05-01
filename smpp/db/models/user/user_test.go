@@ -81,7 +81,7 @@ func TestList(t *testing.T) {
 			ID: 2,
 		},
 	}
-	expected, _, _ := con.From("User").Select(&expUsers[0]).Where(goqu.I("ConnectionGroup").Eq(cr.ConnectionGroup), goqu.I("RegisteredAfter").Gte(cr.RegisteredAfter), goqu.I("RegisteredBefore").Lte(cr.RegisteredBefore), goqu.I("Username").Eq(cr.Username), goqu.I("Email").Eq(cr.Email), goqu.I("Name").Eq(cr.Name), goqu.I("Suspended").Is(true), goqu.I("RegisteredAt").Gt(10)).Order(goqu.I("RegisteredAt").Asc()).ToSql()
+	expected, _, _ := con.From("User").Select(&expUsers[0]).Where(goqu.I("ConnectionGroup").Eq(cr.ConnectionGroup), goqu.I("RegisteredAfter").Gte(cr.RegisteredAfter), goqu.I("RegisteredBefore").Lte(cr.RegisteredBefore), goqu.I("Username").Eq(cr.Username), goqu.I("Email").Eq(cr.Email), goqu.I("Name").Eq(cr.Name), goqu.I("suspended").Is(true), goqu.I("RegisteredAt").Gt(10)).Order(goqu.I("RegisteredAt").Asc()).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1).AddRow(2))
 	users, err := List(con, cr)
 	assert.Nil(err)
@@ -169,7 +169,7 @@ func TestUser_Validate(t *testing.T) {
 		Errors: map[string]string{
 			"Username":    "username must be 4 characters or more",
 			"Password":    "password must be 6 characters or more",
-			"Permissions": "one or more permissions are invalid:Perm1",
+			"permissions": "one or more permissions are invalid:Perm1",
 			"Email":       "invalid email address",
 		},
 	})

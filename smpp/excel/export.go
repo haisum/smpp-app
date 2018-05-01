@@ -1,30 +1,14 @@
-package message
+package excel
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp/entities/message"
 	"fmt"
-	"net/http"
+	"github.com/tealeg/xlsx"
+	"io"
 	"strconv"
 	"strings"
 	"time"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	log "github.com/Sirupsen/logrus"
-	"github.com/tealeg/xlsx"
 )
-
-type messagesRequest struct {
-	message.Criteria
-	URL   string
-	Token string
-	XLSX  bool
-	//commma separated list of columns to populate
-	ReportCols string
-	Stats      bool
-	TZ         string
-}
 
 var (
 	labels = map[string]string{
@@ -35,86 +19,10 @@ var (
 	}
 )
 
-type messagesResponse struct {
-	Messages []message.Message
-	Stats    message.Stats
-}
-
-// MessagesHandler allows adding a user to database
-var MessagesHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	uResp := messagesResponse{}
-	var uReq messagesRequest
-	err := routes.ParseRequest(*r, &uReq)
-	if err != nil {
-		log.WithError(err).Error("Error parsing messages list request.")
-		resp := routes.ClientResponse{
-			Errors: []routes.ResponseError{
-				{
-					Type:    routes.ErrorTypeRequest,
-					Message: "Couldn't parse request.",
-				},
-			},
-		}
-		resp.Send(w, *r, http.StatusBadRequest)
-		return
-	}
-	uReq.URL = r.URL.RequestURI()
-	var (
-		u  user.User
-		ok bool
-	)
-	if u, ok = routes.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
-		return
-	}
-	if u.Username != uReq.Username {
-		if _, ok = routes.Authenticate(w, *r, uReq, uReq.Token, permission.ListMessages); !ok {
-			return
-		}
-	}
-	messages, err := message.List(uReq.Criteria)
-	resp := routes.ClientResponse{}
-	if err != nil {
-		resp.Ok = false
-		log.WithError(err).Error("Couldn't get message.")
-		resp.Errors = []routes.ResponseError{
-			{
-				Type:    routes.ErrorTypeDB,
-				Message: "Couldn't get messages.",
-			},
-		}
-		resp.Request = uReq
-		resp.Send(w, *r, http.StatusBadRequest)
-		return
-	}
-	if uReq.Stats == true {
-		stats, err := message.GetStats(uReq.Criteria)
-		if err != nil {
-			resp.Ok = false
-			log.WithError(err).Error("Couldn't get message stats.")
-			resp.Errors = []routes.ResponseError{
-				{
-					Type:    routes.ErrorTypeDB,
-					Message: "Couldn't get message stats.",
-				},
-			}
-			resp.Request = uReq
-			resp.Send(w, *r, http.StatusInternalServerError)
-			return
-		}
-		uResp.Stats = stats
-	}
-	if uReq.XLSX == true {
-		toXLS(w, r, messages, uReq.TZ, strings.Split(uReq.ReportCols, ","))
-	} else {
-		uResp.Messages = messages
-		resp.Obj = uResp
-		resp.Ok = true
-		resp.Request = uReq
-		resp.Send(w, *r, http.StatusOK)
-	}
-})
-
-func toXLS(w http.ResponseWriter, r *http.Request, m []message.Message, TZ string, cols []string) {
+// ExportMessages exports given messages in a excel file. You can select timezone to export dates in.
+// cols []string can be used to determine what columns should be included in exported excel file.
+// returned function can be used to write file to any io.Writer
+func ExportMessages(m []message.Message, TZ string, cols []string) (func(io.Writer) error, error) {
 	availableCols := []string{
 		"ID",
 		"Connection",
@@ -175,7 +83,6 @@ func toXLS(w http.ResponseWriter, r *http.Request, m []message.Message, TZ strin
 		)
 		loc, err = time.LoadLocation(TZ)
 		if err != nil {
-			log.WithFields(log.Fields{"Error": err, "TZ": TZ}).Error("Couldn't load location. Loading UTC")
 			loc, _ = time.LoadLocation("UTC")
 		}
 		if v.QueuedAt > 0 {
@@ -222,13 +129,7 @@ func toXLS(w http.ResponseWriter, r *http.Request, m []message.Message, TZ strin
 			}
 		}
 	}
-
-	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	w.Header().Set("Content-Disposition", "attachment;filename=SMSReport.xlsx")
-	err = file.Write(w)
-	if err != nil {
-		log.WithError(err).Error("Excel file writing failed.")
-	}
+	return file.Write, err
 }
 
 func contains(s []string, e string) bool {

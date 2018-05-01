@@ -18,24 +18,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-type messageReq struct {
-	Priority    int
-	Src         string
-	Dst         string
-	Msg         string
-	URL         string
-	Token       string
-	ScheduledAt int64
-	IsFlash     bool
-	SendBefore  string
-	SendAfter   string
-	Mask        bool
-}
-
-type messageResponse struct {
-	ID int64
-}
-
 // MessageHandler allows sending one sms
 var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	uResp := messageResponse{}
@@ -186,85 +168,6 @@ var MessageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 	}
 	resp.Send(w, *r, http.StatusOK)
 })
-
-func validateMsg(msg messageReq) []routes.ResponseError {
-	var errors []routes.ResponseError
-	if msg.Dst == "" {
-		errors = append(errors, routes.ResponseError{
-			Type:    routes.ErrorTypeForm,
-			Field:   "Dst",
-			Message: "Destination can't be empty.",
-		})
-	}
-	if msg.Msg == "" {
-		errors = append(errors, routes.ResponseError{
-			Type:    routes.ErrorTypeForm,
-			Field:   "Msg",
-			Message: "Can't send empty message",
-		})
-	}
-	if msg.Src == "" {
-		errors = append(errors, routes.ResponseError{
-			Type:    routes.ErrorTypeForm,
-			Field:   "Src",
-			Message: "Source address can't be empty.",
-		})
-	}
-	if (msg.SendAfter == "" && msg.SendBefore != "") || (msg.SendBefore == "" && msg.SendAfter != "") {
-		errors = append(errors, routes.ResponseError{
-			Type:    routes.ErrorTypeRequest,
-			Message: "Send before time and Send after time, both should be provided at a time.",
-		})
-	}
-	parts := strings.Split(msg.SendAfter, ":")
-	if msg.SendAfter != "" {
-		if len(parts) != 2 {
-			errors = append(errors, routes.ResponseError{
-				Type:    routes.ErrorTypeForm,
-				Field:   "SendAfter",
-				Message: "Send after must be of 24 hour format such as \"09:00\".",
-			})
-		} else {
-			hour, errH := strconv.ParseInt(parts[0], 10, 32)
-			minute, errM := strconv.ParseInt(parts[1], 10, 32)
-			if errH != nil || errM != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
-				errors = append(errors, routes.ResponseError{
-					Type:    routes.ErrorTypeForm,
-					Field:   "SendAfter",
-					Message: "Send after must be of 24 hour format such as \"09:00\".",
-				})
-			}
-		}
-	}
-	parts = strings.Split(msg.SendBefore, ":")
-	if msg.SendBefore != "" {
-		if len(parts) != 2 {
-			errors = append(errors, routes.ResponseError{
-				Type:    routes.ErrorTypeForm,
-				Field:   "SendBefore",
-				Message: "Send before must be of 24 hour format such as \"09:00\".",
-			})
-		} else {
-			hour, errH := strconv.ParseInt(parts[0], 10, 32)
-			minute, errM := strconv.ParseInt(parts[1], 10, 32)
-			if errH != nil || errM != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
-				errors = append(errors, routes.ResponseError{
-					Type:    routes.ErrorTypeForm,
-					Field:   "SendBefore",
-					Message: "Send before must be of 24 hour format such as \"09:00\".",
-				})
-			}
-		}
-	}
-	if msg.ScheduledAt != 0 && msg.ScheduledAt < time.Now().UTC().Unix() {
-		errors = append(errors, routes.ResponseError{
-			Type:    routes.ErrorTypeForm,
-			Field:   "ScheduledAt",
-			Message: "Schedule time must be in future.",
-		})
-	}
-	return errors
-}
 
 // Given a list of strings and a string,
 // this function returns a list item if large string starts with list item.

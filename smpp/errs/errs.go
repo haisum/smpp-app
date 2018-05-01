@@ -124,6 +124,7 @@ func (AuthError) Error() string {
 
 // ForbiddenError represents an authorization error.
 type ForbiddenError struct {
+	Message string
 }
 
 // StatusCode is an implementation of the StatusCoder interface in go-kit/http.
@@ -132,6 +133,9 @@ func (ForbiddenError) StatusCode() int {
 }
 
 // Error is an implementation of the Error interface.
-func (ForbiddenError) Error() string {
+func (f *ForbiddenError) Error() string {
+	if f.Message != "" {
+		return f.Message
+	}
 	return http.StatusText(http.StatusForbidden)
 }

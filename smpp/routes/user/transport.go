@@ -73,7 +73,6 @@ func decodeInfoRequest(ctx context.Context, r *http.Request) (interface{}, error
 
 type editRequest struct {
 	URL      string
-	Token    string
 	Password string
 	Name     string
 	Email    string

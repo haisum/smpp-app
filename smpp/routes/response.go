@@ -7,6 +7,7 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"github.com/pkg/errors"
+	"io"
 )
 
 type Response struct {
@@ -18,6 +19,13 @@ type Response struct {
 type SuccessResponse struct {
 	Obj interface{} `xml:"Obj" json:"Response"`
 	Response
+}
+
+// AttachmentResponse is returned when we want to return a file for user to download
+type AttachmentResponse struct {
+	Write       func(io.Writer) error
+	Filename    string
+	ContentType string
 }
 
 type responseEncoder struct {
@@ -32,10 +40,19 @@ func NewResponseEncoder(log logger.Logger, errFunc func(err error), errResponseH
 }
 
 func (r *responseEncoder) EncodeSuccess(ctx context.Context, w http.ResponseWriter, response interface{}) error {
-	resp := response.(SuccessResponse)
-	resp.Ok = true
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	return json.NewEncoder(w).Encode(resp)
+	switch response.(type) {
+	case SuccessResponse:
+		resp := response.(SuccessResponse)
+		resp.Ok = true
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		return json.NewEncoder(w).Encode(resp)
+	case AttachmentResponse:
+		resp := response.(AttachmentResponse)
+		w.Header().Set("Content-Type", resp.ContentType)
+		w.Header().Set("Content-Disposition", "attachment;filename="+resp.Filename)
+		return resp.Write(w)
+	}
+	return errors.New("couldn't understand given success response")
 }
 
 func (r *responseEncoder) EncodeError(ctx context.Context, err error, w http.ResponseWriter) {

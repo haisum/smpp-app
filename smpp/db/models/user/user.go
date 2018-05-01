@@ -6,11 +6,8 @@ import (
 
 	"strconv"
 
-	"context"
-
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/entities/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/entities/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
@@ -32,46 +29,18 @@ type userAuthenticator struct {
 	HashMatchFunc func(hash, str string) bool
 }
 
-func (ua *userAuthenticator) Authenticate(ctx context.Context, username, password string) (context.Context, user.Authorizer, error) {
+func (ua *userAuthenticator) Authenticate(username, password string) (*user.User, error) {
 	u, err := ua.GetUser(username)
 	if err != nil {
-		return ctx, nil, errors.Wrap(err, "username or password is wrong")
+		return nil, errors.Wrap(err, "username or password is wrong")
 	}
 	if ok := ua.HashMatchFunc(u.Password, password); ok {
-		return user.NewContext(ctx, u), &userAuthorizer{
-			u.Permissions, u.Suspended,
-		}, nil
+		return u, nil
 	}
-	return ctx, nil, errors.New("username or password is wrong")
+	return nil, errors.New("username or password is wrong")
 }
 
-type userAuthorizer struct {
-	Permissions permission.List
-	Suspended   bool
-}
-
-func (uaz *userAuthorizer) Can(actions ...string) bool {
-	if uaz.Suspended {
-		return false
-	}
-	if len(actions) == 1 && actions[0] == "" {
-		return true
-	}
-	for _, action := range actions {
-		canDo := false
-		for _, permission := range uaz.Permissions {
-			if string(permission) == action {
-				canDo = true
-			}
-		}
-		if canDo == false {
-			return false
-		}
-	}
-	return true
-}
-
-func NewAuthenticator(getUser func(v interface{}) (*user.User, error), hashMatchFunc func(hash, str string) bool) user.Authenticator {
+func NewAuthenticator(getUser func(v interface{}) (*user.User, error), hashMatchFunc func(hash, str string) bool) *userAuthenticator {
 	return &userAuthenticator{
 		GetUser:       getUser,
 		HashMatchFunc: hashMatchFunc,
@@ -186,7 +155,7 @@ func (us *userStore) List(c user.Criteria) ([]user.User, error) {
 		t = t.Where(goqu.I("Name").Eq(c.Name))
 	}
 	if c.Suspended == true {
-		t = t.Where(goqu.I("Suspended").Eq(c.Suspended))
+		t = t.Where(goqu.I("suspended").Eq(c.Suspended))
 	}
 	if c.PerPage == 0 {
 		c.PerPage = 100
