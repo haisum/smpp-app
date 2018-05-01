@@ -11,10 +11,13 @@ import (
 	"time"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	msgmodel "bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	usermodel "bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/errs"
+	"bitbucket.org/codefreak/hsmpp/smpp/excel"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/message"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
@@ -33,6 +36,7 @@ func main() {
 		ctx      = context.Background()
 		userSvc  user.Service
 		usersSvc users.Service
+		msgSvc   message.Service
 	)
 	flag.Parse()
 
@@ -40,17 +44,22 @@ func main() {
 	httpLogger := log.(logger.WithLogger).With(log, "", "component", "http")
 	db := getDB(ctx, log)
 	userStore := usermodel.NewStore(db, log, stringutils.Hash)
-	// user service is...
+	authenticator := usermodel.NewAuthenticator(userStore.Get, stringutils.HashMatch)
+	msgStore := msgmodel.NewStore(db, log)
+	// user service is used for logged in user to change/access their information
 	{
 		userLogger := httpLogger.With("service", "user")
-		authenticator := usermodel.NewAuthenticator(userStore.Get, stringutils.HashMatch)
 		userSvc = user.NewService(userLogger, userStore, authenticator)
 	}
-	// users service is...
+	// users service is used by privileged users to edit/add or access all the system users
 	{
 		usersLogger := httpLogger.With("service", "users")
-		authenticator := usermodel.NewAuthenticator(userStore.Get, stringutils.HashMatch)
 		usersSvc = users.NewService(usersLogger, userStore, authenticator)
+	}
+	// message service is used to get reports about sent messages and sending single messages
+	{
+		messageLogger := httpLogger.With("service", "message")
+		msgSvc = message.NewService(messageLogger, msgStore, excel.ExportMessages, authenticator)
 	}
 
 	mux := http.NewServeMux()
@@ -63,6 +72,7 @@ func main() {
 	}
 	mux.Handle("/user/v1/", user.MakeHandler(userSvc, opts, respEncoder.EncodeSuccess))
 	mux.Handle("/users/v1/", users.MakeHandler(usersSvc, opts, respEncoder.EncodeSuccess))
+	mux.Handle("/message/v1/", message.MakeHandler(msgSvc, opts, respEncoder.EncodeSuccess))
 	http.Handle("/", accessControl(mux))
 
 	errs := make(chan error, 2)

@@ -1,18 +1,18 @@
 package message
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/entities/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
+	"gopkg.in/doug-martin/goqu.v3"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
-
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	log "github.com/Sirupsen/logrus"
-	"gopkg.in/doug-martin/goqu.v3"
 )
 
 type deliverySM map[string]string
@@ -28,17 +28,6 @@ func (dsm *deliverySM) Value() (driver.Value, error) {
 	return json.Marshal(dsm)
 }
 
-
-// Status represents current state of message in
-// a lifecycle from submitted to getting delivered
-type Status string
-
-// Scan implements scanner interface for Status
-func (st *Status) Scan(src interface{}) error {
-	*st = Status(fmt.Sprintf("%s", src))
-	return nil
-}
-
 const (
 	// QueuedAt field is time at which message was put in rabbitmq queue
 	QueuedAt string = "QueuedAt"
@@ -52,27 +41,43 @@ const (
 	defaultPerPageListing = 100
 )
 
-
 var bulkInsertLock sync.Mutex
 
+type msgStore struct {
+	db  *db.DB
+	log logger.Logger
+}
+
+func NewStore(db *db.DB, log logger.Logger) *msgStore {
+	return &msgStore{db, log}
+}
+
 // Save saves a message in db
-func (m *Message) Save() (int64, error) {
-	con := db.Get()
-	result, err := con.From("Message").Insert(m).Exec()
+func (store *msgStore) Save(m *message.Message) (int64, error) {
+	result, err := store.db.From("Message").Insert(m).Exec()
 	if err != nil {
-		log.WithError(err).Error("couldn't insert message")
-		return 0, err
+		return 0, errors.Wrap(err, "couldn't insert message")
 	}
 	return result.LastInsertId()
 }
 
+// Get finds a message by primary key
+func (store *msgStore) Get(id int64) (*message.Message, error) {
+	m := &message.Message{}
+	found, err := store.db.From("Message").Where(goqu.I("id").Eq(id)).ScanStruct(m)
+	if err != nil || !found {
+		log.WithFields(log.Fields{"error": err, "id": id}).Error("Couldn't get msg.")
+		return m, errors.New("couldn't get message")
+	}
+	return m, nil
+}
+
 // SaveBulk saves a list of messages in Message table
-func SaveBulk(m []Message) ([]int64, error) {
+func (store *msgStore) SaveBulk(m []message.Message) ([]int64, error) {
 	bulkInsertLock.Lock()
 	defer bulkInsertLock.Unlock()
-	con := db.Get()
 	var ids []int64
-	result, err := con.From("Message").Insert(interface{}(m)).Exec()
+	result, err := store.db.From("Message").Insert(interface{}(m)).Exec()
 	if err != nil {
 		log.WithError(err).Error("Couldn't insert message.")
 		return ids, err
@@ -81,7 +86,7 @@ func SaveBulk(m []Message) ([]int64, error) {
 	if err != nil || affected != int64(len(m)) {
 		log.WithError(err).WithField("affected", affected).Error("Couldn't get affected rows or unexpected affected rows number")
 	}
-	err = con.From("Message").Select("id").Order(goqu.I("id").Desc()).Limit(uint(affected)).ScanVals(&ids)
+	err = store.db.From("Message").Select("id").Order(goqu.I("id").Desc()).Limit(uint(affected)).ScanVals(&ids)
 	if err != nil {
 		log.WithError(err).WithField("affected", affected).Error("Couldn't load last inserted ids")
 		return ids, err
@@ -93,86 +98,14 @@ func SaveBulk(m []Message) ([]int64, error) {
 }
 
 // Update updates an existing message in Message table
-func (m *Message) Update() error {
-	_, err := db.Get().From("Message").Where(goqu.I("id").Eq(m.ID)).Update(m).Exec()
+func (store *msgStore) Update(m *message.Message) error {
+	_, err := store.db.From("Message").Where(goqu.I("id").Eq(m.ID)).Update(m).Exec()
 	return err
 }
 
-// SaveDelivery updates an existing message in Message table and adds delivery status
-func SaveDelivery(respID, status string) error {
-	res, err := db.Get().From("Message").Where(goqu.I("RespID").Eq(respID)).Update(goqu.Record{
-		"Status":      status,
-		"DeliveredAt": time.Now().UTC().Unix(),
-	}).Exec()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Error in updating message.")
-		return err
-	}
-	if affected, _ := res.RowsAffected(); affected == 0 {
-		log.WithField("RespID", respID).Error("couldn't update delivery sm. No such response id found")
-		return errors.New("couldn't update delivery sm. No such response id found")
-	}
-	return nil
-}
-
-// Get finds a message by primary key
-func Get(id int64) (Message, error) {
-	var m Message
-	found, err := db.Get().From("Message").Where(goqu.I("id").Eq(id)).ScanStruct(&m)
-	if err != nil || !found {
-		log.WithFields(log.Fields{"error": err, "id": id}).Error("Couldn't get msg.")
-		return m, errors.New("couldn't get message")
-	}
-	return m, nil
-}
-
-// StopPending marks stopped as true in all messages which are queued or scheduled in a campaign
-func StopPending(campID int64) (int64, error) {
-	res, err := db.Get().From("Message").Where(goqu.I("CampaignID").Eq(campID),
-		goqu.Or(
-			goqu.I("Status").Eq(Queued),
-			goqu.I("Status").Eq(Scheduled),
-		),
-	).Update(goqu.Record{"Status": Stopped}).Exec()
-	if err != nil {
-		log.WithError(err).Error("Couldn't run query")
-		return 0, err
-	}
-	affected, _ := res.RowsAffected()
-	return affected, nil
-}
-
-// ListWithError returns all messages with status error in a campaign
-func ListWithError(campID int64) ([]Message, error) {
-	m, err := List(Criteria{
-		CampaignID: campID,
-		Status:     Error,
-		PerPage:    maxPerPageListing,
-	})
-	if err != nil {
-		log.WithError(err).Error("Couldn't load messages")
-	}
-	return m, err
-}
-
-// ListQueued returns all messages with status queued in a campaign
-func ListQueued(campID int64) ([]Message, error) {
-	m, err := List(Criteria{
-		CampaignID: campID,
-		Status:     Queued,
-		PerPage:    maxPerPageListing,
-	})
-	if err != nil {
-		log.WithError(err).Error("Couldn't load messages")
-	}
-	return m, err
-}
-
 // List filters messages based on criteria
-func List(c Criteria) ([]Message, error) {
-	var m []Message
+func (store *msgStore) List(c *message.Criteria) ([]message.Message, error) {
+	var m []message.Message
 	var (
 		from interface{}
 		err  error
@@ -190,7 +123,7 @@ func List(c Criteria) ([]Message, error) {
 			from = c.From
 		}
 	}
-	ds := prepareQuery(c, from)
+	ds := store.prepareQuery(c, from)
 	if c.PerPage == 0 {
 		c.PerPage = defaultPerPageListing
 	}
@@ -204,9 +137,9 @@ func List(c Criteria) ([]Message, error) {
 	return m, err
 }
 
-// GetStats filters messages based on criteria and finds total number of messages in different statuses
-func GetStats(c Criteria) (Stats, error) {
-	var m Stats
+// Stats filters messages based on criteria and finds total number of messages in different statuses
+func (store *msgStore) Stats(c *message.Criteria) (*message.Stats, error) {
+	m := &message.Stats{}
 	var from interface{}
 	if c.OrderByKey == "" {
 		c.OrderByKey = QueuedAt
@@ -222,7 +155,7 @@ func GetStats(c Criteria) (Stats, error) {
 			from = c.From
 		}
 	}
-	ds := prepareQuery(c, from)
+	ds := store.prepareQuery(c, from)
 	ds = ds.GroupBy("Status").Select(goqu.L("status, count(*) as total"))
 	q, _, _ := ds.ToSql()
 	log.WithFields(log.Fields{"query": q, "crtieria": c}).Info("Running query.")
@@ -231,10 +164,9 @@ func GetStats(c Criteria) (Stats, error) {
 	if err != nil {
 		return m, err
 	}
-	rows, err := db.Get().Db.Query(query, args...)
+	rows, err := store.db.Db.Query(query, args...)
 	if err != nil {
-		log.WithError(err).Error("Couldn't run query.")
-		return m, err
+		return m, errors.Wrap(err, "couldn't run query: "+query)
 	}
 	for rows.Next() {
 		var (
@@ -246,20 +178,20 @@ func GetStats(c Criteria) (Stats, error) {
 	}
 	rows.Close()
 	for k, v := range stats {
-		switch Status(k) {
-		case Delivered:
+		switch message.Status(k) {
+		case message.Delivered:
 			m.Delivered = v
-		case Error:
+		case message.Error:
 			m.Error = v
-		case Sent:
+		case message.Sent:
 			m.Sent = v
-		case Queued:
+		case message.Queued:
 			m.Queued = v
-		case NotDelivered:
+		case message.NotDelivered:
 			m.NotDelivered = v
-		case Scheduled:
+		case message.Scheduled:
 			m.Scheduled = v
-		case Stopped:
+		case message.Stopped:
 			m.Stopped = v
 		}
 	}
@@ -267,8 +199,8 @@ func GetStats(c Criteria) (Stats, error) {
 	return m, err
 }
 
-func prepareQuery(c Criteria, from interface{}) *goqu.Dataset {
-	t := db.Get().From("Message")
+func (store *msgStore) prepareQuery(c *message.Criteria, from interface{}) *goqu.Dataset {
+	t := store.db.From("Message")
 	if c.OrderByKey == "" {
 		c.OrderByKey = QueuedAt
 	}
@@ -363,3 +295,65 @@ func prepareQuery(c Criteria, from interface{}) *goqu.Dataset {
 	return t
 }
 
+/*
+// SaveDelivery updates an existing message in Message table and adds delivery status
+func SaveDelivery(respID, status string) error {
+	res, err := db.Get().From("Message").Where(goqu.I("RespID").Eq(respID)).Update(goqu.Record{
+		"Status":      status,
+		"DeliveredAt": time.Now().UTC().Unix(),
+	}).Exec()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+		}).Error("Error in updating message.")
+		return err
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		log.WithField("RespID", respID).Error("couldn't update delivery sm. No such response id found")
+		return errors.New("couldn't update delivery sm. No such response id found")
+	}
+	return nil
+}
+
+// StopPending marks stopped as true in all messages which are queued or scheduled in a campaign
+func StopPending(campID int64) (int64, error) {
+	res, err := db.Get().From("Message").Where(goqu.I("CampaignID").Eq(campID),
+		goqu.Or(
+			goqu.I("Status").Eq(Queued),
+			goqu.I("Status").Eq(Scheduled),
+		),
+	).Update(goqu.Record{"Status": Stopped}).Exec()
+	if err != nil {
+		log.WithError(err).Error("Couldn't run query")
+		return 0, err
+	}
+	affected, _ := res.RowsAffected()
+	return affected, nil
+}
+
+// ListWithError returns all messages with status error in a campaign
+func ListWithError(campID int64) ([]Message, error) {
+	m, err := List(Criteria{
+		CampaignID: campID,
+		Status:     Error,
+		PerPage:    maxPerPageListing,
+	})
+	if err != nil {
+		log.WithError(err).Error("Couldn't load messages")
+	}
+	return m, err
+}
+
+// ListQueued returns all messages with status queued in a campaign
+func ListQueued(campID int64) ([]Message, error) {
+	m, err := List(Criteria{
+		CampaignID: campID,
+		Status:     Queued,
+		PerPage:    maxPerPageListing,
+	})
+	if err != nil {
+		log.WithError(err).Error("Couldn't load messages")
+	}
+	return m, err
+}
+*/

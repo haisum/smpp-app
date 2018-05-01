@@ -6,13 +6,13 @@ import (
 	"strings"
 )
 
-type MessageStorer interface{
+type MessageStorer interface {
 	Save(m *Message) (int64, error)
 	SaveBulk(m []Message) ([]int64, error)
 	Update(m *Message) error
-	Get(id int64) (Message, error)
-	List(c Criteria) ([]Message, error)
-	GetStats(c Criteria) (Stats, error)
+	Get(id int64) (*Message, error)
+	List(c *Criteria) ([]Message, error)
+	Stats(c *Criteria) (*Stats, error)
 }
 
 // Message represents a smpp message inside db
@@ -90,6 +90,7 @@ func (m *Message) Validate() []string {
 	}
 	return errs
 }
+
 // Criteria represents filters we can give to List method.
 type Criteria struct {
 	ID              int64
@@ -132,7 +133,6 @@ type Stats struct {
 	Stopped      int64
 	Total        int64
 }
-
 
 // Status represents current state of message in
 // a lifecycle from submitted to getting delivered

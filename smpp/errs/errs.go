@@ -133,7 +133,7 @@ func (ForbiddenError) StatusCode() int {
 }
 
 // Error is an implementation of the Error interface.
-func (f *ForbiddenError) Error() string {
+func (f ForbiddenError) Error() string {
 	if f.Message != "" {
 		return f.Message
 	}

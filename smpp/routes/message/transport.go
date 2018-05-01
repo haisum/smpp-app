@@ -4,14 +4,45 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/entities/message"
 	"bitbucket.org/codefreak/hsmpp/smpp/errs"
 	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/routes/middleware"
 	"context"
 	"encoding/json"
 	"github.com/go-kit/kit/endpoint"
+	kithttp "github.com/go-kit/kit/transport/http"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// MakeHandler returns a http handler for the message service.
+func MakeHandler(svc Service, opts []kithttp.ServerOption, responseEncoder kithttp.EncodeResponseFunc) http.Handler {
+	authMid := middleware.AuthMiddleware(svc.(*service).authenticator, "", "")
+	listHandler := kithttp.NewServer(
+		authMid(makeListEndpoint(svc)),
+		decodeListRequest,
+		responseEncoder, opts...)
+	listDownloadHandler := kithttp.NewServer(
+		authMid(makeListDownloadEndpoint(svc)),
+		decodeListDownloadRequest,
+		responseEncoder, opts...)
+	statsHandler := kithttp.NewServer(
+		authMid(makeStatsEndpoint(svc)),
+		decodeStatsRequest,
+		responseEncoder, opts...)
+	sendHandler := kithttp.NewServer(
+		authMid(makeSendEndpoint(svc)),
+		decodeSendRequest,
+		responseEncoder, opts...)
+	r := mux.NewRouter()
+
+	r.Handle("/message/v1/list", listHandler).Methods("GET", "POST")
+	r.Handle("/message/v1/list/download", listDownloadHandler).Methods("GET")
+	r.Handle("/message/v1/stats", statsHandler).Methods("GET", "POST")
+	r.Handle("/message/v1/send", sendHandler).Methods("POST")
+	return r
+}
 
 type listRequest struct {
 	message.Criteria
@@ -84,7 +115,7 @@ type statsRequest struct {
 }
 
 type statsResponse struct {
-	Stats message.Stats
+	Stats *message.Stats
 }
 
 func makeStatsEndpoint(svc Service) endpoint.Endpoint {
@@ -207,4 +238,30 @@ func (request *sendRequest) validate() []errs.ResponseError {
 
 type sendResponse struct {
 	ID int64
+}
+
+func makeSendEndpoint(svc Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(sendRequest)
+		v, err := svc.Send(ctx, req)
+		if err != nil {
+			if errResponse, ok := err.(errs.ErrorResponse); ok {
+				errResponse.Response.Request = req
+				return nil, errResponse
+			}
+			return nil, err
+		}
+		resp := routes.SuccessResponse{Obj: v}
+		resp.Request = req
+		return resp, nil
+	}
+}
+
+func decodeSendRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request sendRequest
+	request.URL = r.URL.RequestURI()
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
 }
