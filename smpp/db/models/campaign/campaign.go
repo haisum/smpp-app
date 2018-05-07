@@ -5,81 +5,31 @@ import (
 	"strconv"
 	"strings"
 
-	"context"
-
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
-	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
-	log "github.com/Sirupsen/logrus"
+	"bitbucket.org/codefreak/hsmpp/smpp/entities/campaign"
+	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
 )
-
-// Campaign represents a message campaign
-type Campaign struct {
-	ID          int64  `db:"id" goqu:"skipinsert"`
-	Description string `db:"description"`
-	Src         string `db:"src"`
-	Msg         string `db:"msg"`
-	Priority    int    `db:"priority"`
-	FileID      int64  `db:"numfileid"`
-	Username    string `db:"username"`
-	SendBefore  string `db:"sendbefore"`
-	SendAfter   string `db:"sendafter"`
-	ScheduledAt int64  `db:"scheduledat"`
-	SubmittedAt int64  `db:"submittedat"`
-	Total       int    `db:"total"`
-	Errors      stringutils.StringList
-	Context     context.Context `db:"-" json:"-"`
-}
 
 const (
 	// submittedAt is time at which campaign was put in system
 	submittedAt string = "submittedat"
 )
 
-// Criteria represents filters we can give to Select method.
-type Criteria struct {
-	ID              int64
-	Username        string
-	FileID          int64
-	SubmittedAfter  int64
-	SubmittedBefore int64
-	OrderByKey      string
-	OrderByDir      string
-	From            string
-	PerPage         uint
+type store struct {
+	db  *db.DB
+	log logger.Logger
 }
 
-// Report is report of campaign performance
-type Report struct {
-	ID            int64
-	Total         int
-	MsgSize       int
-	TotalMsgs     int
-	FirstQueued   int64
-	LastSent      int64
-	TotalTime     int
-	Throughput    string
-	PerConnection string
-	Connections   []groupCount
+// NewStore returns a campaign store
+func NewStore(db *db.DB, log logger.Logger) *store {
+	return &store{db, log}
 }
-
-// Progress shows status of messages in a campaign
-// Current map of progress is like this:
-// "Total":        int,
-// "Queued":       int,
-// "Delivered":    int,
-// "NotDelivered": int,
-// "Sent":         int,
-// "Error":        int,
-// "Scheduled":    int,
-// "Stopped":      int,
-// "Pending":      int,
-type Progress map[string]int
 
 // Save saves a campaign in db
-func (c *Campaign) Save() (int64, error) {
+func (st *store) Save(c *campaign.Campaign) (int64, error) {
 	if c.FileID != 0 {
 		f, err := numfile.List(numfile.Criteria{
 			ID: c.FileID,
@@ -88,19 +38,16 @@ func (c *Campaign) Save() (int64, error) {
 			return 0, fmt.Errorf("couldn't find file")
 		}
 	}
-	resp, err := db.Get().From("Campaign").Insert(c).Exec()
+	resp, err := st.db.From("Campaign").Insert(c).Exec()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Error in adding campaign in db.")
 		return 0, err
 	}
 	return resp.LastInsertId()
 }
 
-// GetProgress returns count for a campaign in progress
-func (c *Campaign) GetProgress() (Progress, error) {
-	cp := Progress{
+// Progress returns count for a campaign in progress
+func (st *store) Progress(ID int64) (campaign.Progress, error) {
+	cp := campaign.Progress{
 		"Total":        0,
 		"Queued":       0,
 		"Delivered":    0,
@@ -115,17 +62,15 @@ func (c *Campaign) GetProgress() (Progress, error) {
 		Status string `db:"status"`
 		Total  int    `db:"total"`
 	}
-	err := db.Get().From("Message").Select(goqu.L("status, count(*) as total")).Where(goqu.I("campaignid").Eq(c.ID)).GroupBy("status").ScanStructs(&vals)
+	err := st.db.From("Message").Select(goqu.L("status, count(*) as total")).Where(goqu.I("campaignid").Eq(ID)).GroupBy("status").ScanStructs(&vals)
 	if err != nil {
-		log.WithError(err).Error("Couldn't get campaign stats")
 		return cp, err
 	}
 	for _, val := range vals {
 		cp[val.Status] = val.Total
 	}
-	camps, err := List(Criteria{ID: c.ID})
+	camps, err := st.List(&campaign.Criteria{ID: ID})
 	if err != nil || len(camps) != 1 {
-		log.Error("Couldn't load campaign")
 		return cp, err
 	}
 
@@ -138,12 +83,12 @@ func (c *Campaign) GetProgress() (Progress, error) {
 	return cp, err
 }
 
-// GetReport returns Report struct filled with stats from campaign with given id
-func (c *Campaign) GetReport() (Report, error) {
-	cr := Report{
-		ID: c.ID,
+// Report returns Report struct filled with stats from campaign with given id
+func (st *store) Report(ID int64) (campaign.Report, error) {
+	cr := campaign.Report{
+		ID: ID,
 	}
-	ds := db.Get().From("Message").Where(goqu.I("CampaignID").Eq(c.ID))
+	ds := st.db.From("Message").Where(goqu.I("campaign.CampaignID").Eq(c.ID))
 	var errs []string
 	// get total in campaign
 	_, err := ds.Select(goqu.L("count(*) as Total")).ScanVal(&cr.Total)
@@ -183,11 +128,11 @@ func (c *Campaign) GetReport() (Report, error) {
 }
 
 // List fetches list of campaigns based on criteria
-func List(c Criteria) ([]Campaign, error) {
+func (st *store) List(c *campaign.Criteria) ([]campaign.Campaign, error) {
 	var (
-		camps []Campaign
+		camps []campaign.Campaign
 	)
-	t := db.Get().From("Campaign")
+	t := st.db.From("Campaign")
 
 	if c.OrderByKey == "" {
 		c.OrderByKey = submittedAt
@@ -237,10 +182,9 @@ func List(c Criteria) ([]Campaign, error) {
 	}
 	t = t.Limit(c.PerPage)
 	queryStr, _, _ := t.ToSql()
-	log.WithFields(log.Fields{"query": queryStr, "crtieria": c}).Info("Running query.")
 	err := t.ScanStructs(&camps)
 	if err != nil {
-		log.WithError(err).Error("Couldn't run query.")
+		st.log.Error("query", queryStr)
 	}
 	return camps, err
 }

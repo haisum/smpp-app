@@ -18,17 +18,19 @@ const (
 	defaultConnectionGroup = "Default"
 )
 
-type userStore struct {
+type store struct {
 	db     *db.DB
 	logger logger.Logger
 	hash   func(string) (string, error)
 }
 
+// userAuthenticator is RDBMS implementation of user.Authenticator interface
 type userAuthenticator struct {
 	GetUser       func(v interface{}) (*user.User, error)
 	HashMatchFunc func(hash, str string) bool
 }
 
+// Authenticate authenticates username, password in User table of RDBMS database
 func (ua *userAuthenticator) Authenticate(username, password string) (*user.User, error) {
 	u, err := ua.GetUser(username)
 	if err != nil {
@@ -40,6 +42,7 @@ func (ua *userAuthenticator) Authenticate(username, password string) (*user.User
 	return nil, errors.New("username or password is wrong")
 }
 
+// NewAuthenticator returns implementation of user.Authenticator
 func NewAuthenticator(getUser func(v interface{}) (*user.User, error), hashMatchFunc func(hash, str string) bool) *userAuthenticator {
 	return &userAuthenticator{
 		GetUser:       getUser,
@@ -48,14 +51,14 @@ func NewAuthenticator(getUser func(v interface{}) (*user.User, error), hashMatch
 }
 
 // NewStore returns new user store with RDBMS backend
-func NewStore(db *db.DB, logger logger.Logger, hash func(string) (string, error)) *userStore {
-	return &userStore{
+func NewStore(db *db.DB, logger logger.Logger, hash func(string) (string, error)) *store {
+	return &store{
 		db, logger, hash,
 	}
 }
 
 // Add adds a user to database and returns its primary key
-func (us *userStore) Add(user *user.User) (int64, error) {
+func (us *store) Add(user *user.User) (int64, error) {
 	err := user.Validate()
 	if err != nil {
 		return 0, err
@@ -80,7 +83,7 @@ func (us *userStore) Add(user *user.User) (int64, error) {
 }
 
 // Update updates an existing user
-func (us *userStore) Update(user *user.User, passwdChanged bool) error {
+func (us *store) Update(user *user.User, passwdChanged bool) error {
 	err := user.Validate()
 	if err != nil {
 		return err
@@ -99,7 +102,7 @@ func (us *userStore) Update(user *user.User, passwdChanged bool) error {
 }
 
 // Get gets a single user identified by username (if provided string parameter) or user id (if parameter is int64).
-func (us *userStore) Get(v interface{}) (*user.User, error) {
+func (us *store) Get(v interface{}) (*user.User, error) {
 	u := &user.User{}
 	q := us.db.From("User")
 	switch v.(type) {
@@ -118,7 +121,7 @@ func (us *userStore) Get(v interface{}) (*user.User, error) {
 }
 
 // List filters users by a criteria and returns filtered users
-func (us *userStore) List(c user.Criteria) ([]user.User, error) {
+func (us *store) List(c user.Criteria) ([]user.User, error) {
 	var users []user.User
 	t := us.db.From("User")
 	if c.OrderByKey == "" {
@@ -192,7 +195,7 @@ func (us *userStore) List(c user.Criteria) ([]user.User, error) {
 }
 
 // Exists checks if another user with same username exists
-func (us *userStore) Exists(username string) bool {
+func (us *store) Exists(username string) bool {
 	count, err := us.db.From("User").Where(goqu.I("username").Eq(username)).Count()
 	if err != nil {
 		us.logger.Error("error", err, "msg", "error in count query")

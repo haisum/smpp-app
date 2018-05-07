@@ -6,7 +6,7 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/services/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/doug-martin/goqu.v3"

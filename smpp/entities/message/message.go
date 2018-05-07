@@ -6,7 +6,8 @@ import (
 	"strings"
 )
 
-type MessageStorer interface {
+// Store is interface for message store implementations
+type Store interface {
 	Save(m *Message) (int64, error)
 	SaveBulk(m []Message) ([]int64, error)
 	Update(m *Message) error

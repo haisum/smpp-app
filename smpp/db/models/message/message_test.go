@@ -78,7 +78,7 @@ func TestPrepareQuery(t *testing.T) {
 	defer con.Db.Close()
 	qb := prepareQuery(Criteria{}, nil)
 	assert := assert.New(t)
-	expected, _, err := db.Get().From("Message").Order(goqu.I("QueuedAt").Desc()).ToSql()
+	expected, _, err := db.Get().From("Message").Order(goqu.I("queuedAt").Desc()).ToSql()
 	assert.Nil(err)
 	actual, _, err := qb.ToSql()
 	assert.Nil(err)
@@ -90,7 +90,7 @@ func TestPrepareQuery(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(expected, actual)
 	qb = prepareQuery(Criteria{Username: "(re)hello world"}, nil)
-	expected, _, err = db.Get().From("Message").Where(goqu.L(userTextSearchLiteral, "hello world")).Order(goqu.I("QueuedAt").Desc()).ToSql()
+	expected, _, err = db.Get().From("Message").Where(goqu.L(userTextSearchLiteral, "hello world")).Order(goqu.I("queuedAt").Desc()).ToSql()
 	assert.Nil(err)
 	actual, _, err = qb.ToSql()
 	assert.Nil(err)
@@ -122,7 +122,7 @@ func TestPrepareQuery(t *testing.T) {
 		OrderByKey:      "SentAt",
 	}
 	expected, _, err = db.Get().From("Message").Where(goqu.I("Username").Eq("haisum"), goqu.L(msgTextSearchLiteral, "hello world"),
-		goqu.I("QueuedAt").Gte(23), goqu.I("QueuedAt").Lte(435),
+		goqu.I("queuedAt").Gte(23), goqu.I("queuedAt").Lte(435),
 		goqu.I("DeliveredAt").Gte(234), goqu.I("DeliveredAt").Lte(3232), goqu.I("SentAt").Gte(23),
 		goqu.I("SentAt").Lte(34), goqu.I("ScheduledAt").Gte(32),
 		goqu.I("ScheduledAt").Lte(3245), goqu.I("RespID").Eq("ASdfsdf"), goqu.I("Connection").Eq("asdf"), goqu.I("ConnectionGroup").Eq("Asdfsdf"), goqu.I("Src").Eq("sadfsdf"), goqu.I("Dst").Eq("asdf"), goqu.I("Enc").Eq("latin"),
@@ -132,10 +132,10 @@ func TestPrepareQuery(t *testing.T) {
 	actual, _, err = qb.ToSql()
 	assert.Nil(err)
 	assert.Equal(expected, actual)
-	expected = "SELECT * FROM Message WHERE User = 'haisum' AND match('@Msg hello world') AND QueuedAt >= 23 AND QueuedAt <= 435 AND DeliveredAt >= 234 AND DeliveredAt <= 3232 AND SentAt >= 23 AND SentAt <= 34 AND ScheduledAt >= 32 AND ScheduledAt <= 3245 AND RespID = 'ASdfsdf' AND Connection = 'asdf' AND ConnectionGroup = 'Asdfsdf' AND Src = 'sadfsdf' AND Dst = 'asdf' AND Enc = 'latin' AND Status = 'ASdfsfd' AND CampaignID = 12 AND Error = 'error' AND Total = 32 AND Priority = 3 AND SentAt > '234' ORDER BY SentAt ASC"
+	expected = "SELECT * FROM Message WHERE User = 'haisum' AND match('@Msg hello world') AND queuedAt >= 23 AND queuedAt <= 435 AND DeliveredAt >= 234 AND DeliveredAt <= 3232 AND SentAt >= 23 AND SentAt <= 34 AND ScheduledAt >= 32 AND ScheduledAt <= 3245 AND RespID = 'ASdfsdf' AND Connection = 'asdf' AND ConnectionGroup = 'Asdfsdf' AND Src = 'sadfsdf' AND Dst = 'asdf' AND Enc = 'latin' AND Status = 'ASdfsfd' AND CampaignID = 12 AND Error = 'error' AND Total = 32 AND Priority = 3 AND SentAt > '234' ORDER BY SentAt ASC"
 	cr.OrderByDir = "ASC"
 	expected, _, err = db.Get().From("Message").Where(goqu.I("Username").Eq("haisum"), goqu.L(msgTextSearchLiteral, "hello world"),
-		goqu.I("QueuedAt").Gte(23), goqu.I("QueuedAt").Lte(435),
+		goqu.I("queuedAt").Gte(23), goqu.I("queuedAt").Lte(435),
 		goqu.I("DeliveredAt").Gte(234), goqu.I("DeliveredAt").Lte(3232), goqu.I("SentAt").Gte(23),
 		goqu.I("SentAt").Lte(34), goqu.I("ScheduledAt").Gte(32),
 		goqu.I("ScheduledAt").Lte(3245), goqu.I("RespID").Eq("ASdfsdf"), goqu.I("Connection").Eq("asdf"), goqu.I("ConnectionGroup").Eq("Asdfsdf"), goqu.I("Src").Eq("sadfsdf"), goqu.I("Dst").Eq("asdf"), goqu.I("Enc").Eq("latin"),
@@ -176,7 +176,7 @@ func TestStatus_Scan(t *testing.T) {
 func TestListWithError(t *testing.T) {
 	con, mock, _ := db.ConnectMock(t)
 	defer con.Db.Close()
-	expected, _, _ := db.Get().From("Message").Select(&Message{}).Where(goqu.I("Status").Eq(Error), goqu.I("CampaignID").Eq(1)).Order(goqu.I("QueuedAt").Desc()).Limit(maxPerPageListing).ToSql()
+	expected, _, _ := db.Get().From("Message").Select(&Message{}).Where(goqu.I("Status").Eq(Error), goqu.I("CampaignID").Eq(1)).Order(goqu.I("queuedAt").Desc()).Limit(maxPerPageListing).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(
 		sqlmock.NewRows([]string{"id", "status", "campaignid"}).AddRow(
 			1, string(Error), 1).AddRow(
@@ -227,7 +227,7 @@ func TestGet(t *testing.T) {
 func TestGetStats(t *testing.T) {
 	con, mock, _ := db.ConnectMock(t)
 	defer con.Db.Close()
-	expected, _, _ := db.Get().From("Message").Where(goqu.I("QueuedAt").Lt(3245)).GroupBy("Status").Select(goqu.L("status, count(*) as total")).Order(goqu.I("QueuedAt").Desc()).ToSql()
+	expected, _, _ := db.Get().From("Message").Where(goqu.I("queuedAt").Lt(3245)).GroupBy("Status").Select(goqu.L("status, count(*) as total")).Order(goqu.I("queuedAt").Desc()).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(
 		sqlmock.NewRows([]string{"status", "total"}).AddRow(
 			string(Queued), 1).AddRow(
@@ -258,7 +258,7 @@ func TestGetStats(t *testing.T) {
 func TestListQueued(t *testing.T) {
 	con, mock, _ := db.ConnectMock(t)
 	defer con.Db.Close()
-	expected, _, err := db.Get().From("Message").Select(&Message{}).Where(goqu.I("Status").Eq("Queued"), goqu.I("CampaignID").Eq(33)).Order(goqu.I("QueuedAt").Desc()).Limit(maxPerPageListing).ToSql()
+	expected, _, err := db.Get().From("Message").Select(&Message{}).Where(goqu.I("Status").Eq("Queued"), goqu.I("CampaignID").Eq(33)).Order(goqu.I("queuedAt").Desc()).Limit(maxPerPageListing).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(
 		sqlmock.NewRows([]string{"id"}).AddRow(
 			1).AddRow(
@@ -287,7 +287,7 @@ func TestListQueued(t *testing.T) {
 func TestList(t *testing.T) {
 	con, mock, _ := db.ConnectMock(t)
 	defer con.Db.Close()
-	expected, _, err := db.Get().From("Message").Select(&Message{}).Where(goqu.I("QueuedAt").Lt(344)).Order(goqu.I("QueuedAt").Desc()).Limit(defaultPerPageListing).ToSql()
+	expected, _, err := db.Get().From("Message").Select(&Message{}).Where(goqu.I("queuedAt").Lt(344)).Order(goqu.I("queuedAt").Desc()).Limit(defaultPerPageListing).ToSql()
 	assert.Nil(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta(expected)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1).AddRow(2))
 	ms, err := List(Criteria{

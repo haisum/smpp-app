@@ -14,12 +14,12 @@ import (
 	msgmodel "bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	usermodel "bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/errs"
-	"bitbucket.org/codefreak/hsmpp/smpp/excel"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/message"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes/users"
+	"bitbucket.org/codefreak/hsmpp/smpp/services"
+	"bitbucket.org/codefreak/hsmpp/smpp/services/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/services/message/excel"
+	"bitbucket.org/codefreak/hsmpp/smpp/services/user"
+	"bitbucket.org/codefreak/hsmpp/smpp/services/users"
 	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	kithttp "github.com/go-kit/kit/transport/http"
 )
@@ -64,7 +64,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	respEncoder := routes.NewResponseEncoder(httpLogger, errs.ErrHandler, errs.ErrResponseHandler)
+	respEncoder := services.NewResponseEncoder(httpLogger, errs.ErrHandler, errs.ErrResponseHandler)
 
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(respEncoder.EncodeError),

@@ -1,18 +1,18 @@
 package message
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/entities/message"
-	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/pkg/errors"
-	"gopkg.in/doug-martin/goqu.v3"
 	"strconv"
 	"strings"
 	"sync"
+
+	"bitbucket.org/codefreak/hsmpp/smpp/db"
+	"bitbucket.org/codefreak/hsmpp/smpp/entities/message"
+	"bitbucket.org/codefreak/hsmpp/smpp/logger"
+	"github.com/pkg/errors"
+	"gopkg.in/doug-martin/goqu.v3"
 )
 
 type deliverySM map[string]string
@@ -29,8 +29,8 @@ func (dsm *deliverySM) Value() (driver.Value, error) {
 }
 
 const (
-	// QueuedAt field is time at which message was put in rabbitmq queue
-	QueuedAt string = "QueuedAt"
+	// queuedAt field is time at which message was put in queue
+	queuedAt = "queuedAt"
 	// userTextSearchLiteral is used to do full text query for user
 	userTextSearchLiteral = "match(Username) against('?*' IN BOOLEAN MODE)"
 	// msgTextSearchLiteral is used to do full text query for message
@@ -43,17 +43,18 @@ const (
 
 var bulkInsertLock sync.Mutex
 
-type msgStore struct {
+type store struct {
 	db  *db.DB
 	log logger.Logger
 }
 
-func NewStore(db *db.DB, log logger.Logger) *msgStore {
-	return &msgStore{db, log}
+// NewStore returns a message store
+func NewStore(db *db.DB, log logger.Logger) *store {
+	return &store{db, log}
 }
 
 // Save saves a message in db
-func (store *msgStore) Save(m *message.Message) (int64, error) {
+func (store *store) Save(m *message.Message) (int64, error) {
 	result, err := store.db.From("Message").Insert(m).Exec()
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't insert message")
@@ -62,33 +63,30 @@ func (store *msgStore) Save(m *message.Message) (int64, error) {
 }
 
 // Get finds a message by primary key
-func (store *msgStore) Get(id int64) (*message.Message, error) {
+func (store *store) Get(id int64) (*message.Message, error) {
 	m := &message.Message{}
 	found, err := store.db.From("Message").Where(goqu.I("id").Eq(id)).ScanStruct(m)
 	if err != nil || !found {
-		log.WithFields(log.Fields{"error": err, "id": id}).Error("Couldn't get msg.")
 		return m, errors.New("couldn't get message")
 	}
 	return m, nil
 }
 
 // SaveBulk saves a list of messages in Message table
-func (store *msgStore) SaveBulk(m []message.Message) ([]int64, error) {
+func (store *store) SaveBulk(m []message.Message) ([]int64, error) {
 	bulkInsertLock.Lock()
 	defer bulkInsertLock.Unlock()
 	var ids []int64
 	result, err := store.db.From("Message").Insert(interface{}(m)).Exec()
 	if err != nil {
-		log.WithError(err).Error("Couldn't insert message.")
 		return ids, err
 	}
 	affected, err := result.RowsAffected()
 	if err != nil || affected != int64(len(m)) {
-		log.WithError(err).WithField("affected", affected).Error("Couldn't get affected rows or unexpected affected rows number")
+		return ids, errors.Wrap(err, "couldn't get affected rows or unexpected affected rows number")
 	}
 	err = store.db.From("Message").Select("id").Order(goqu.I("id").Desc()).Limit(uint(affected)).ScanVals(&ids)
 	if err != nil {
-		log.WithError(err).WithField("affected", affected).Error("Couldn't load last inserted ids")
 		return ids, err
 	}
 	for k := affected - 1; k >= 0; k-- {
@@ -98,23 +96,23 @@ func (store *msgStore) SaveBulk(m []message.Message) ([]int64, error) {
 }
 
 // Update updates an existing message in Message table
-func (store *msgStore) Update(m *message.Message) error {
+func (store *store) Update(m *message.Message) error {
 	_, err := store.db.From("Message").Where(goqu.I("id").Eq(m.ID)).Update(m).Exec()
 	return err
 }
 
 // List filters messages based on criteria
-func (store *msgStore) List(c *message.Criteria) ([]message.Message, error) {
+func (store *store) List(c *message.Criteria) ([]message.Message, error) {
 	var m []message.Message
 	var (
 		from interface{}
 		err  error
 	)
 	if c.OrderByKey == "" {
-		c.OrderByKey = QueuedAt
+		c.OrderByKey = queuedAt
 	}
 	if c.From != "" && !c.DisableOrder {
-		if c.OrderByKey == QueuedAt || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" || c.OrderByKey == "ScheduledAt" {
+		if c.OrderByKey == queuedAt || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" || c.OrderByKey == "ScheduledAt" {
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
 				return m, fmt.Errorf("invalid value for from: %s", from)
@@ -129,23 +127,19 @@ func (store *msgStore) List(c *message.Criteria) ([]message.Message, error) {
 	}
 	ds = ds.Limit(c.PerPage)
 	q, _, _ := ds.ToSql()
-	log.WithFields(log.Fields{"query": q, "crtieria": c}).Info("Running query.")
 	err = ds.ScanStructs(&m)
-	if err != nil {
-		log.WithError(err).Error("Couldn't run query.")
-	}
 	return m, err
 }
 
 // Stats filters messages based on criteria and finds total number of messages in different statuses
-func (store *msgStore) Stats(c *message.Criteria) (*message.Stats, error) {
+func (store *store) Stats(c *message.Criteria) (*message.Stats, error) {
 	m := &message.Stats{}
 	var from interface{}
 	if c.OrderByKey == "" {
-		c.OrderByKey = QueuedAt
+		c.OrderByKey = queuedAt
 	}
 	if c.From != "" {
-		if c.OrderByKey == QueuedAt || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" {
+		if c.OrderByKey == queuedAt || c.OrderByKey == "DeliveredAt" || c.OrderByKey == "SentAt" {
 			var err error
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
@@ -158,7 +152,6 @@ func (store *msgStore) Stats(c *message.Criteria) (*message.Stats, error) {
 	ds := store.prepareQuery(c, from)
 	ds = ds.GroupBy("Status").Select(goqu.L("status, count(*) as total"))
 	q, _, _ := ds.ToSql()
-	log.WithFields(log.Fields{"query": q, "crtieria": c}).Info("Running query.")
 	stats := make(map[string]int64, 8)
 	query, args, err := ds.ToSql()
 	if err != nil {
@@ -199,10 +192,10 @@ func (store *msgStore) Stats(c *message.Criteria) (*message.Stats, error) {
 	return m, err
 }
 
-func (store *msgStore) prepareQuery(c *message.Criteria, from interface{}) *goqu.Dataset {
+func (store *store) prepareQuery(c *message.Criteria, from interface{}) *goqu.Dataset {
 	t := store.db.From("Message")
 	if c.OrderByKey == "" {
-		c.OrderByKey = QueuedAt
+		c.OrderByKey = queuedAt
 	}
 	if c.Username != "" {
 		if strings.HasPrefix(c.Username, "(re)") {
@@ -216,10 +209,10 @@ func (store *msgStore) prepareQuery(c *message.Criteria, from interface{}) *goqu
 		t = t.Where(goqu.L(msgTextSearchLiteral, c.Msg))
 	}
 	if c.QueuedAfter != 0 {
-		t = t.Where(goqu.I("QueuedAt").Gte(c.QueuedAfter))
+		t = t.Where(goqu.I("queuedAt").Gte(c.QueuedAfter))
 	}
 	if c.QueuedBefore != 0 {
-		t = t.Where(goqu.I("QueuedAt").Lte(c.QueuedBefore))
+		t = t.Where(goqu.I("queuedAt").Lte(c.QueuedBefore))
 	}
 	if c.DeliveredAfter != 0 {
 		t = t.Where(goqu.I("DeliveredAt").Gte(c.DeliveredAfter))

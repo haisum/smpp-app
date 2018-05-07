@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
-	"bitbucket.org/codefreak/hsmpp/smpp/routes"
+	"bitbucket.org/codefreak/hsmpp/smpp/response"
 	"github.com/pkg/errors"
 )
 
@@ -74,7 +74,7 @@ func ErrResponseHandler(err error) (errorResponse error, errorCode int) {
 type ErrorResponse struct {
 	Errors []ResponseError
 	Cause  error `xml:"-" json:"-"`
-	routes.Response
+	response.Response
 }
 
 // AuthErrorResponse is sent when authentication error has happened

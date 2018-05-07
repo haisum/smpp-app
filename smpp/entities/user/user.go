@@ -22,14 +22,15 @@ type User struct {
 	Suspended       bool            `db:"suspended"`
 }
 
-// UserStorer is interface for user store
-type UserStorer interface {
+// Store is interface for user store
+type Store interface {
 	Add(user *User) (int64, error)
 	Update(user *User, passwdChanged bool) error
 	Get(v interface{}) (*User, error)
 	List(c Criteria) ([]User, error)
 }
 
+// Authenticator validates username and password of a user and returns user if found and error otherwise
 type Authenticator interface {
 	Authenticate(username, password string) (*User, error)
 }
