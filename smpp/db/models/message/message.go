@@ -54,6 +54,12 @@ func NewStore(db *db.DB, log logger.Logger) *store {
 }
 
 // Save saves a message in db
+// @todo
+/*INSERT INTO MESSAGE (id, message_hash, ....) index message_hash
+INSERT INTO MESSAGE_HASH(message, hash) where hash is unique
+ignore unqiue constraint error
+SELECT m.* FROM MESSAGE m JOIN message_hash h ON h.hash=m.message_hash WHERE ...
+*/
 func (store *store) Save(m *message.Message) (int64, error) {
 	result, err := store.db.From("Message").Insert(m).Exec()
 	if err != nil {

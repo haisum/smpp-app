@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/services"
@@ -18,7 +18,7 @@ type downloadRequest struct {
 	URL   string
 }
 
-// DownloadHandler downloads uploaded numfile
+// DownloadHandler downloads uploaded file
 var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	var uReq downloadRequest
 	err := services.ParseRequest(*r, &uReq)
@@ -43,7 +43,7 @@ var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	if u, ok = services.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
 		return
 	}
-	files, err := numfile.List(numfile.Criteria{
+	files, err := file.List(file.Criteria{
 		ID: uReq.ID,
 	})
 
@@ -70,7 +70,7 @@ var DownloadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	filepath := fmt.Sprintf("%s/%s/%s", numfile.Path, files[0].Username, files[0].LocalName)
+	filepath := fmt.Sprintf("%s/%s/%s", file.Path, files[0].Username, files[0].LocalName)
 	b, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		log.WithFields(log.Fields{

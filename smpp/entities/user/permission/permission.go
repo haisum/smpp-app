@@ -31,7 +31,7 @@ const (
 	ListMessages = "List messages"
 	// ListNumFiles permission to list number files
 	ListNumFiles = "List number files"
-	// DeleteNumFile permission to mark a numfile deleted.
+	// DeleteNumFile permission to mark a file deleted.
 	DeleteNumFile = "Delete a number file"
 	// ListCampaigns permission to list campaigns
 	ListCampaigns = "List campaigns"

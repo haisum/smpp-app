@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/services"
 	log "github.com/Sirupsen/logrus"
@@ -22,7 +22,7 @@ type uploadResponse struct {
 
 // UploadHandler handles uploading of files
 var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	maxPostSize := numfile.MaxFileSize + (1024 * 512)
+	maxPostSize := file.MaxFileSize + (1024 * 512)
 	if r.ContentLength > maxPostSize {
 		log.Error("Upload request too large.")
 		resp := services.ClientResponse{
@@ -77,7 +77,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	nf := numfile.NumFile{
+	nf := file.NumFile{
 		Description: uReq.Description,
 		Username:    u.Username,
 		SubmittedAt: time.Now().UTC().Unix(),
@@ -97,7 +97,7 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		resp.Send(w, *r, http.StatusBadRequest)
 		return
 	}
-	id, err := nf.Save(h.Filename, f, &numfile.RealNumFileIO{})
+	id, err := nf.Save(h.Filename, f, &file.RealNumFileIO{})
 	if err != nil {
 		log.WithError(err).Error("Error saving file.")
 		resp := services.ClientResponse{

@@ -9,8 +9,9 @@ import (
 	"bitbucket.org/codefreak/hsmpp/smpp/errs"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"bitbucket.org/codefreak/hsmpp/smpp/services"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign/file"
 	"github.com/pkg/errors"
+	"net/http"
 )
 
 // Service is interface for campaign service
@@ -59,10 +60,10 @@ func (svc *service) Start(ctx context.Context, request startRequest) (startRespo
 			return response, errs.ForbiddenError{"user doesn't have mask permissions"}
 		}
 	}
-	var numbers []numfile.Row
+	var numbers []file.Row
 	if request.FileID != 0 {
-		var files []numfile.NumFile
-		files, err := numfile.List(numfile.Criteria{
+		var files []file.NumFile
+		files, err := file.List(file.Criteria{
 			ID: request.FileID,
 		})
 		if err != nil || len(files) == 0 {
@@ -76,7 +77,7 @@ func (svc *service) Start(ctx context.Context, request startRequest) (startRespo
 			}
 			return response, errors.Wrap(resp, err.Error())
 		}
-		numbers, err = files[0].ToNumbers(&numfile.RealNumFileIO{})
+		numbers, err = files[0].ToNumbers(&file.RealNumFileIO{})
 		if err != nil {
 			log.WithError(err).Error("Couldn't read numbers from file.")
 			resp := services.ClientResponse{}
@@ -90,7 +91,7 @@ func (svc *service) Start(ctx context.Context, request startRequest) (startRespo
 			resp.Send(w, *r, http.StatusInternalServerError)
 		}
 	} else if uReq.Numbers != "" {
-		numbers = numfile.RowsFromString(uReq.Numbers)
+		numbers = file.RowsFromString(uReq.Numbers)
 	} else {
 		log.WithError(err).Error("No numbers provided.")
 		resp := services.ClientResponse{}

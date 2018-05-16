@@ -10,8 +10,8 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/smpp"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/queue"
@@ -55,10 +55,10 @@ var Handlerx = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	var numbers []numfile.Row
+	var numbers []file.Row
 	if uReq.FileID != 0 {
-		var files []numfile.NumFile
-		files, err = numfile.List(numfile.Criteria{
+		var files []file.NumFile
+		files, err = file.List(file.Criteria{
 			ID: uReq.FileID,
 		})
 		if err != nil || len(files) == 0 {
@@ -72,7 +72,7 @@ var Handlerx = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 			resp.Send(w, *r, http.StatusBadRequest)
 		}
-		numbers, err = files[0].ToNumbers(&numfile.RealNumFileIO{})
+		numbers, err = files[0].ToNumbers(&file.RealNumFileIO{})
 		if err != nil {
 			log.WithError(err).Error("Couldn't read numbers from file.")
 			resp := services.ClientResponse{}
@@ -86,7 +86,7 @@ var Handlerx = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			resp.Send(w, *r, http.StatusInternalServerError)
 		}
 	} else if uReq.Numbers != "" {
-		numbers = numfile.RowsFromString(uReq.Numbers)
+		numbers = file.RowsFromString(uReq.Numbers)
 	} else {
 		log.WithError(err).Error("No numbers provided.")
 		resp := services.ClientResponse{}

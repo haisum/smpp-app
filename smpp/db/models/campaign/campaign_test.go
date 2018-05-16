@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign/file"
 	"github.com/pkg/errors"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"gopkg.in/doug-martin/goqu.v3"
@@ -20,7 +20,7 @@ func TestCampaign_Save(t *testing.T) {
 		FileID:      2,
 		ScheduledAt: 3223,
 	}
-	numExpected, _, _ := db.Get().From("NumFile").Select(&numfile.NumFile{}).Where(goqu.I("ID").Eq(2), goqu.I("deleted").Is(false)).Order(goqu.I("SubmittedAt").Desc()).ToSql()
+	numExpected, _, _ := db.Get().From("NumFile").Select(&file.NumFile{}).Where(goqu.I("ID").Eq(2), goqu.I("deleted").Is(false)).Order(goqu.I("SubmittedAt").Desc()).ToSql()
 	mock.ExpectQuery(regexp.QuoteMeta(numExpected)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 	expected, _, _ := db.Get().From("Campaign").ToInsertSql(&c)
 	mock.ExpectExec(regexp.QuoteMeta(expected)).WillReturnResult(sqlmock.NewResult(11, 1))

@@ -3,7 +3,7 @@ package file
 import (
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/services"
@@ -45,7 +45,7 @@ var DeleteHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	if u, ok = services.Authenticate(w, *r, uReq, uReq.Token, ""); !ok {
 		return
 	}
-	files, err := numfile.List(numfile.Criteria{
+	files, err := file.List(file.Criteria{
 		ID: uReq.ID,
 	})
 	resp := services.ClientResponse{}

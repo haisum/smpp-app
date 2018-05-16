@@ -1,4 +1,4 @@
-package numfile
+package file
 
 import (
 	"bytes"

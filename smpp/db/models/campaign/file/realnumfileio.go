@@ -1,6 +1,7 @@
-package numfile
+package file
 
 import (
+	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 	"errors"
 	"fmt"
 	"io"
@@ -8,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
 )
 
 type RealNumFileIO struct {

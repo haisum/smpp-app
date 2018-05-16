@@ -3,7 +3,7 @@ package file
 import (
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user/permission"
 	"bitbucket.org/codefreak/hsmpp/smpp/services"
@@ -11,13 +11,13 @@ import (
 )
 
 type filterRequest struct {
-	numfile.Criteria
+	file.Criteria
 	URL   string
 	Token string
 }
 
 type filterResponse struct {
-	NumFiles []numfile.NumFile
+	NumFiles []file.NumFile
 }
 
 // FilterHandler searches files in NumFiles table
@@ -51,7 +51,7 @@ var FilterHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
-	files, err := numfile.List(uReq.Criteria)
+	files, err := file.List(uReq.Criteria)
 	resp := services.ClientResponse{}
 	if err != nil {
 		resp.Ok = false

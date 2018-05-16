@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/numfile"
+	"bitbucket.org/codefreak/hsmpp/smpp/db/models/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/smpp/entities/campaign"
 	"bitbucket.org/codefreak/hsmpp/smpp/logger"
 	"github.com/pkg/errors"
@@ -31,7 +31,7 @@ func NewStore(db *db.DB, log logger.Logger) *store {
 // Save saves a campaign in db
 func (st *store) Save(c *campaign.Campaign) (int64, error) {
 	if c.FileID != 0 {
-		f, err := numfile.List(numfile.Criteria{
+		f, err := file.List(file.Criteria{
 			ID: c.FileID,
 		})
 		if len(f) != 1 || err != nil {
