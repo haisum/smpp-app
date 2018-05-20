@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/pkg/db/models/message"
 	log "github.com/Sirupsen/logrus"
 )
 

@@ -1,14 +1,15 @@
 package main
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
 	"bytes"
 	"fmt"
+	"os/exec"
+	"strings"
+
+	"bitbucket.org/codefreak/hsmpp/pkg/db/models/message"
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiorix/go-smpp/smpp/pdu"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
-	"os/exec"
-	"strings"
 )
 
 func receiver(p pdu.Body) {

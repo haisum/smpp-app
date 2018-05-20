@@ -1,22 +1,22 @@
 package main
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/license"
-	"bitbucket.org/codefreak/hsmpp/smpp/queue"
-	"bitbucket.org/codefreak/hsmpp/smpp/smtext"
-	"bitbucket.org/codefreak/hsmpp/smpp/soap"
 	"encoding/xml"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/spf13/viper"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"bitbucket.org/codefreak/hsmpp/pkg/db"
+	"bitbucket.org/codefreak/hsmpp/pkg/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/pkg/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/pkg/license"
+	"bitbucket.org/codefreak/hsmpp/pkg/queue"
+	"bitbucket.org/codefreak/hsmpp/pkg/smtext"
+	"bitbucket.org/codefreak/hsmpp/pkg/soap"
+	log "github.com/Sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -55,10 +55,10 @@ func main() {
 			http.Error(w, fmt.Sprintf(soap.Response, "Username/password is wrong.", ""), http.StatusUnauthorized)
 			return
 		}
-		config, err := smpp.GetConfig()
+		config, err := pkg.GetConfig()
 		keys := config.GetKeys(u.ConnectionGroup)
 		var noKey string
-		var group smpp.ConnGroup
+		var group pkg.ConnGroup
 		if group, err = config.GetGroup(u.ConnectionGroup); err != nil {
 			http.Error(w, fmt.Sprintf(soap.Response, "User's connection group doesn't exist in configuration.", ""), http.StatusUnauthorized)
 			return

@@ -10,17 +10,17 @@ import (
 	"syscall"
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	msgmodel "bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
-	usermodel "bitbucket.org/codefreak/hsmpp/smpp/db/models/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/errs"
-	"bitbucket.org/codefreak/hsmpp/smpp/excel"
-	"bitbucket.org/codefreak/hsmpp/smpp/logger"
-	"bitbucket.org/codefreak/hsmpp/smpp/services"
-	"bitbucket.org/codefreak/hsmpp/smpp/services/message"
-	"bitbucket.org/codefreak/hsmpp/smpp/services/user"
-	"bitbucket.org/codefreak/hsmpp/smpp/services/users"
-	"bitbucket.org/codefreak/hsmpp/smpp/stringutils"
+	"bitbucket.org/codefreak/hsmpp/pkg/db"
+	msgmodel "bitbucket.org/codefreak/hsmpp/pkg/db/models/message"
+	usermodel "bitbucket.org/codefreak/hsmpp/pkg/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/pkg/errs"
+	"bitbucket.org/codefreak/hsmpp/pkg/logger"
+	"bitbucket.org/codefreak/hsmpp/pkg/response"
+	"bitbucket.org/codefreak/hsmpp/pkg/services/message"
+	"bitbucket.org/codefreak/hsmpp/pkg/services/message/excel"
+	"bitbucket.org/codefreak/hsmpp/pkg/services/user"
+	"bitbucket.org/codefreak/hsmpp/pkg/services/users"
+	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
 	kithttp "github.com/go-kit/kit/transport/http"
 )
 
@@ -64,7 +64,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	respEncoder := services.NewResponseEncoder(httpLogger, errs.ErrHandler, errs.ErrResponseHandler)
+	respEncoder := response.NewEncoder(httpLogger, errs.ErrHandler, errs.ErrResponseHandler)
 
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(respEncoder.EncodeError),

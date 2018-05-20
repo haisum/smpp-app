@@ -1,15 +1,16 @@
 package main
 
 import (
-	_ "bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/license"
-	"bitbucket.org/codefreak/hsmpp/smpp/queue"
-	"bitbucket.org/codefreak/hsmpp/smpp/scheduler"
-	log "github.com/Sirupsen/logrus"
-	"github.com/spf13/viper"
 	"os"
 	"time"
+
+	_ "bitbucket.org/codefreak/hsmpp/pkg"
+	"bitbucket.org/codefreak/hsmpp/pkg/db"
+	"bitbucket.org/codefreak/hsmpp/pkg/license"
+	"bitbucket.org/codefreak/hsmpp/pkg/queue"
+	"bitbucket.org/codefreak/hsmpp/pkg/scheduler"
+	log "github.com/Sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 func main() {

@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/smpp/influx"
+	"bitbucket.org/codefreak/hsmpp/pkg/influx"
 	log "github.com/Sirupsen/logrus"
 )
 

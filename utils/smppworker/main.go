@@ -10,24 +10,24 @@ import (
 	"syscall"
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/smpp"
-	"bitbucket.org/codefreak/hsmpp/smpp/db"
-	"bitbucket.org/codefreak/hsmpp/smpp/db/models/message"
-	"bitbucket.org/codefreak/hsmpp/smpp/influx"
-	"bitbucket.org/codefreak/hsmpp/smpp/license"
-	"bitbucket.org/codefreak/hsmpp/smpp/logger"
-	"bitbucket.org/codefreak/hsmpp/smpp/queue"
+	"bitbucket.org/codefreak/hsmpp/pkg"
+	"bitbucket.org/codefreak/hsmpp/pkg/db"
+	"bitbucket.org/codefreak/hsmpp/pkg/db/models/message"
+	"bitbucket.org/codefreak/hsmpp/pkg/influx"
+	"bitbucket.org/codefreak/hsmpp/pkg/license"
+	"bitbucket.org/codefreak/hsmpp/pkg/logger"
+	"bitbucket.org/codefreak/hsmpp/pkg/queue"
 	log "github.com/Sirupsen/logrus"
 	fiorix "github.com/fiorix/go-smpp/smpp"
 	"github.com/spf13/viper"
 )
 
 var (
-	c        *smpp.Config
-	s        smpp.Sender
+	c        *pkg.Config
+	s        pkg.Sender
 	r        queue.MQ
-	sconn    *smpp.Conn
-	connid   = flag.String("cid", "", "Pass smpp connection id of connection this worker is going to send sms to.")
+	sconn    *pkg.Conn
+	connid   = flag.String("cid", "", "Pass pkg connection id of connection this worker is going to send sms to.")
 	group    = flag.String("group", "", "Group name of connection.")
 	dlvTick  *time.Ticker
 	sendTick *time.Ticker
@@ -228,13 +228,13 @@ func gracefulShutdown() {
 // This function calls handler when a connection is succesfully established
 func bind(log logger.Logger, con *goqu.Da) {
 	var err error
-	sconn = &smpp.Conn{}
+	sconn = &pkg.Conn{}
 	*sconn, err = c.GetConn(*group, *connid)
 	if err != nil {
 		log.WithField("connid", connid).Fatalf("Couldn't get connection from settings. Check your settings and passed connection id parameter.")
 	}
 	ctx := logger.NewContext(context.Background())
-	err = smpp.ConnectFiorix(ctx, &fiorix.Transceiver{
+	err = pkg.ConnectFiorix(ctx, &fiorix.Transceiver{
 		Addr:    sconn.URL,
 		User:    sconn.User,
 		Passwd:  sconn.Passwd,
@@ -249,7 +249,7 @@ func bind(log logger.Logger, con *goqu.Da) {
 		}).Error("Aborting due to connection error.")
 		os.Exit(2)
 	}
-	s = smpp.GetSender()
+	s = pkg.GetSender()
 	go s.ConnectOrDie()
 	defer s.Close()
 	s.SetFields(sconn.Fields)
@@ -304,8 +304,8 @@ func main() {
 		return
 	}
 	defer conn.Db.Close()
-	c = &smpp.Config{}
-	*c, err = smpp.GetConfig()
+	c = &pkg.Config{}
+	*c, err = pkg.GetConfig()
 	if err != nil {
 		logger.Error("msg", "can't continue without settings")
 		return
