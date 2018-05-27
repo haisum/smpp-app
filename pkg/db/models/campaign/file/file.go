@@ -6,12 +6,13 @@ import (
 	"strconv"
 	"strings"
 
+	"io"
+
 	"bitbucket.org/codefreak/hsmpp/pkg/db"
 	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign/file"
 	log "github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
-	"io"
 )
 
 type store struct {

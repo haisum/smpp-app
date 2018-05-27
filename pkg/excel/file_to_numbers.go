@@ -1,13 +1,14 @@
 package excel
 
 import (
-	"bitbucket.org/codefreak/hsmpp/smpp/entities/campaign/file"
 	"errors"
 	"fmt"
-	"github.com/tealeg/xlsx"
 	"io"
 	"io/ioutil"
 	"strings"
+
+	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign/file"
+	"github.com/tealeg/xlsx"
 )
 
 func ToNumbers(reader io.Reader) (map[string]file.Row, error) {

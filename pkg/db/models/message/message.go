@@ -17,6 +17,10 @@ import (
 
 type deliverySM map[string]string
 
+const (
+	maxInsertCount = 1000
+)
+
 // Scan implements scanner interface for deliverySM
 func (dsm *deliverySM) Scan(src interface{}) error {
 	err := json.Unmarshal(src.([]byte), dsm)
@@ -53,6 +57,11 @@ func NewStore(db *db.DB, log logger.Logger) *store {
 	return &store{db, log}
 }
 
+// MaxInsertCount returns maximum number of messages to insert in one query
+func (store *store) MaxInsertCount() int {
+	return maxInsertCount
+}
+
 // Save saves a message in db
 // @todo
 /*INSERT INTO MESSAGE (id, message_hash, ....) index message_hash
@@ -79,10 +88,14 @@ func (store *store) Get(id int64) (*message.Message, error) {
 }
 
 // SaveBulk saves a list of messages in Message table
+// Number of records provided may not exceed maxInsertCount const
 func (store *store) SaveBulk(m []message.Message) ([]int64, error) {
+	var ids []int64
+	if len(m) > maxInsertCount {
+		return ids, fmt.Errorf("can't insert more than %d messages at a time", maxInsertCount)
+	}
 	bulkInsertLock.Lock()
 	defer bulkInsertLock.Unlock()
-	var ids []int64
 	result, err := store.db.From("Message").Insert(interface{}(m)).Exec()
 	if err != nil {
 		return ids, err
@@ -294,6 +307,20 @@ func (store *store) prepareQuery(c *message.Criteria, from interface{}) *goqu.Da
 	return t
 }
 
+// StopPending marks stopped as true in all messages which are queued or scheduled in a campaign
+func (store *store) StopPending(campID int64) (int64, error) {
+	res, err := store.db.From("Message").Where(goqu.I("CampaignID").Eq(campID),
+		goqu.Or(
+			goqu.I("Status").Eq(message.Queued),
+			goqu.I("Status").Eq(message.Scheduled),
+		),
+	).Update(goqu.Record{"Status": message.Stopped}).Exec()
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 /*
 // SaveDelivery updates an existing message in Message table and adds delivery status
 func SaveDelivery(respID, status string) error {
@@ -312,22 +339,6 @@ func SaveDelivery(respID, status string) error {
 		return errors.New("couldn't update delivery sm. No such response id found")
 	}
 	return nil
-}
-
-// StopPending marks stopped as true in all messages which are queued or scheduled in a campaign
-func StopPending(campID int64) (int64, error) {
-	res, err := db.Get().From("Message").Where(goqu.I("CampaignID").Eq(campID),
-		goqu.Or(
-			goqu.I("Status").Eq(Queued),
-			goqu.I("Status").Eq(Scheduled),
-		),
-	).Update(goqu.Record{"Status": Stopped}).Exec()
-	if err != nil {
-		log.WithError(err).Error("Couldn't run query")
-		return 0, err
-	}
-	affected, _ := res.RowsAffected()
-	return affected, nil
 }
 
 // ListWithError returns all messages with status error in a campaign

@@ -20,7 +20,7 @@ type opener struct {
 	readFile  *os.File
 }
 
-func NewOpener(path string) Opener {
+func NewOpener(path string) *opener {
 	return &opener{
 		path: path,
 	}

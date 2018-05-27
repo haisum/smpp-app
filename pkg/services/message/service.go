@@ -13,8 +13,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/pkg/errs"
 	"bitbucket.org/codefreak/hsmpp/pkg/logger"
 	"bitbucket.org/codefreak/hsmpp/pkg/response"
-	"bitbucket.org/codefreak/hsmpp/pkg/services"
-	"bitbucket.org/codefreak/hsmpp/pkg/smtext"
+	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
 )
 
 // Service is message service's interface
@@ -60,7 +59,7 @@ func (s *service) List(ctx context.Context, request listRequest) (listResponse, 
 }
 
 // ListDownload endpoint returns io.Reader to download csv file generated for list
-func (s *service) ListDownload(ctx context.Context, request listDownloadRequest) (services.AttachmentResponse, error) {
+func (s *service) ListDownload(ctx context.Context, request listDownloadRequest) (response.Attachment, error) {
 	response := response.Attachment{}
 	listResp, err := s.List(ctx, request.listRequest)
 	if err != nil {
@@ -116,9 +115,9 @@ func (s *service) Send(ctx context.Context, request sendRequest) (sendResponse, 
 	if request.ScheduledAt > 0 {
 		status = message.Scheduled
 	}
-	enc := smtext.EncLatin
-	if !smtext.IsASCII(request.Msg) {
-		enc = smtext.EncUCS
+	enc := message.EncLatin
+	if !stringutils.IsASCII(request.Msg) {
+		enc = message.EncUCS
 	}
 	m := &message.Message{
 		ConnectionGroup: u.ConnectionGroup,
@@ -146,7 +145,7 @@ func (s *service) Send(ctx context.Context, request sendRequest) (sendResponse, 
 		}
 	}
 	m.RealMsg = msg
-	m.Total = smtext.Total(msg, m.Enc)
+	m.Total = message.Total(msg, m.Enc)
 	response.ID, err = s.msgStore.Save(m)
 	return response, err
 }

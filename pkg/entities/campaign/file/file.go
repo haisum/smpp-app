@@ -1,15 +1,17 @@
 package file
 
 import (
-	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
+
+	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
 )
 
 // Store represents a numbers file store
 type Store interface {
+	List(c *Criteria) ([]File, error)
 }
 
 type ProcessExcelFunc func(reader io.Reader) (map[string]Row, error)
@@ -51,7 +53,9 @@ const (
 	// Rest of cells will be replacement values in message. A message with text "{{Param1}} {{Param2}} how are you" will become "hello World how are you"
 	XLSX = ".xlsx"
 	// MaxFileSize is maximum file size in bytes
-	MaxFileSize int64 = 5 * 1024 * 1024
+	MaxFileSize = 5 * 1024 * 1024
+	// DefaultPath is location where files are supposed to be stored
+	DefaultPath = "./files"
 )
 
 // Row represents one single Row in excel or csv file
@@ -59,11 +63,6 @@ type Row struct {
 	Destination string
 	Params      map[string]string
 }
-
-var (
-	// Path is folder relative to path where httpserver binary is, we'll save all files here
-	Path = "./files"
-)
 
 // Criteria represents filters we can give to GetFiles method.
 type Criteria struct {
@@ -117,49 +116,6 @@ func ToNumbers(f *File, processExcel ProcessExcelFunc, reader io.Reader) ([]Row,
 		if err != nil {
 			return nums, err
 		}
-		/*xlsx.OpenBinary(b)
-		if err != nil {
-			return nums, err
-		}
-		if len(xlFile.Sheets) != 1 {
-			return nums, fmt.Errorf("xslx file should contain exactly one sheet")
-		}
-		if len(xlFile.Sheets[0].Rows) < 2 {
-			return nums, fmt.Errorf("xslx file is empty")
-		}
-		if len(xlFile.Sheets[0].Rows[0].Cells) == 0 || xlFile.Sheets[0].Rows[0].Cells[0].Value != "Destination" {
-			return nums, fmt.Errorf("First cell of excel sheet must be Destination header")
-		}
-		var keys []string
-		for _, cell := range xlFile.Sheets[0].Rows[0].Cells {
-			keys = append(keys, cell.Value)
-		}
-		for i := 1; i < len(xlFile.Sheets[0].Rows); i++ {
-			if len(xlFile.Sheets[0].Rows[i].Cells) < 1 {
-				return nums, fmt.Errorf("Row number %d doesn't have any value.", i+1)
-			}
-			num := xlFile.Sheets[0].Rows[i].Cells[0].Value
-			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
-			if len(num) > 15 || len(num) < 5 {
-				return nums, fmt.Errorf("Row number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
-			}
-			nr := Row{
-				Destination: num,
-				Params:      map[string]string{},
-			}
-			if len(xlFile.Sheets[0].Rows[i].Cells) < len(keys) {
-				return nums, fmt.Errorf("Row number %d has blank values for some parameters.", i)
-			}
-			for j := 1; j < len(keys) && j < len(xlFile.Sheets[0].Rows[i].Cells); j++ {
-				val := xlFile.Sheets[0].Rows[i].Cells[j].Value
-				val = strings.Trim(val, "\t\n\v\f\r \u0085\u00a0")
-				if val == "" {
-					return nums, fmt.Errorf("Row number %d contains no value at cell number %d.", i, j)
-				}
-				nr.Params[keys[j]] = val
-			}
-			nummap[nr.Destination] = nr
-		}*/
 	} else {
 		return nums, fmt.Errorf("this file type isn't supported yet")
 	}

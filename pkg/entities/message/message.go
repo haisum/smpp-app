@@ -16,6 +16,8 @@ type Store interface {
 	Get(id int64) (*Message, error)
 	List(c *Criteria) ([]Message, error)
 	Stats(c *Criteria) (*Stats, error)
+	StopPending(campID int64) (int64, error)
+	MaxInsertCount() int
 }
 
 // Message represents a pkg message inside db

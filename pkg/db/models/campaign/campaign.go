@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"bitbucket.org/codefreak/hsmpp/pkg/db"
-	"bitbucket.org/codefreak/hsmpp/pkg/db/models/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign"
+	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/pkg/logger"
 	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
@@ -19,19 +19,20 @@ const (
 )
 
 type store struct {
-	db  *db.DB
-	log logger.Logger
+	db        *db.DB
+	fileStore file.Store
+	log       logger.Logger
 }
 
 // NewStore returns a campaign store
-func NewStore(db *db.DB, log logger.Logger) *store {
-	return &store{db, log}
+func NewStore(db *db.DB, fileStore file.Store, log logger.Logger) *store {
+	return &store{db, fileStore, log}
 }
 
 // Save saves a campaign in db
 func (st *store) Save(c *campaign.Campaign) (int64, error) {
 	if c.FileID != 0 {
-		f, err := file.List(file.Criteria{
+		f, err := st.fileStore.List(&file.Criteria{
 			ID: c.FileID,
 		})
 		if len(f) != 1 || err != nil {

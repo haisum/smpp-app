@@ -11,13 +11,17 @@ import (
 	"time"
 
 	"bitbucket.org/codefreak/hsmpp/pkg/db"
+	campaignmodel "bitbucket.org/codefreak/hsmpp/pkg/db/models/campaign"
+	filemodel "bitbucket.org/codefreak/hsmpp/pkg/db/models/campaign/file"
 	msgmodel "bitbucket.org/codefreak/hsmpp/pkg/db/models/message"
 	usermodel "bitbucket.org/codefreak/hsmpp/pkg/db/models/user"
+	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/pkg/errs"
+	"bitbucket.org/codefreak/hsmpp/pkg/excel"
 	"bitbucket.org/codefreak/hsmpp/pkg/logger"
 	"bitbucket.org/codefreak/hsmpp/pkg/response"
+	"bitbucket.org/codefreak/hsmpp/pkg/services/campaign"
 	"bitbucket.org/codefreak/hsmpp/pkg/services/message"
-	"bitbucket.org/codefreak/hsmpp/pkg/services/message/excel"
 	"bitbucket.org/codefreak/hsmpp/pkg/services/user"
 	"bitbucket.org/codefreak/hsmpp/pkg/services/users"
 	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
@@ -32,11 +36,12 @@ func main() {
 	var (
 		addr = envString("PORT", defaultPort)
 
-		httpAddr = flag.String("http.addr", ":"+addr, "HTTP listen address")
-		ctx      = context.Background()
-		userSvc  user.Service
-		usersSvc users.Service
-		msgSvc   message.Service
+		httpAddr    = flag.String("http.addr", ":"+addr, "HTTP listen address")
+		ctx         = context.Background()
+		userSvc     user.Service
+		usersSvc    users.Service
+		msgSvc      message.Service
+		campaignSvc campaign.Service
 	)
 	flag.Parse()
 
@@ -46,6 +51,9 @@ func main() {
 	userStore := usermodel.NewStore(db, log, stringutils.Hash)
 	authenticator := usermodel.NewAuthenticator(userStore.Get, stringutils.HashMatch)
 	msgStore := msgmodel.NewStore(db, log)
+	fileStore := filemodel.NewStore(db)
+	fileOpener := file.NewOpener(envString("FILES_PATH", file.DefaultPath))
+	campaignStore := campaignmodel.NewStore(db, fileStore, log)
 	// user service is used for logged in user to change/access their information
 	{
 		userLogger := httpLogger.With("service", "user")
@@ -61,6 +69,11 @@ func main() {
 		messageLogger := httpLogger.With("service", "message")
 		msgSvc = message.NewService(messageLogger, msgStore, excel.ExportMessages, authenticator)
 	}
+	// campaign service is used to get reports about campaigns in progress, stop campaigns and starting new campaigns
+	{
+		campaignLogger := httpLogger.With("service", "campaign")
+		campaignSvc = campaign.NewService(campaignLogger, campaignStore, msgStore, fileStore, fileOpener, excel.ToNumbers, authenticator)
+	}
 
 	mux := http.NewServeMux()
 
@@ -73,6 +86,7 @@ func main() {
 	mux.Handle("/user/v1/", user.MakeHandler(userSvc, opts, respEncoder.EncodeSuccess))
 	mux.Handle("/users/v1/", users.MakeHandler(usersSvc, opts, respEncoder.EncodeSuccess))
 	mux.Handle("/message/v1/", message.MakeHandler(msgSvc, opts, respEncoder.EncodeSuccess))
+	mux.Handle("/campaign/v1/", campaign.MakeHandler(campaignSvc, opts, respEncoder.EncodeSuccess))
 	http.Handle("/", accessControl(mux))
 
 	errs := make(chan error, 2)

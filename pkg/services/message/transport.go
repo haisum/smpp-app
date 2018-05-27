@@ -11,7 +11,6 @@ import (
 	"bitbucket.org/codefreak/hsmpp/pkg/entities/message"
 	"bitbucket.org/codefreak/hsmpp/pkg/errs"
 	"bitbucket.org/codefreak/hsmpp/pkg/response"
-	"bitbucket.org/codefreak/hsmpp/pkg/services"
 	"bitbucket.org/codefreak/hsmpp/pkg/services/middleware"
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -131,7 +130,7 @@ func makeStatsEndpoint(svc Service) endpoint.Endpoint {
 			}
 			return nil, err
 		}
-		resp := services.SuccessResponse{Obj: v}
+		resp := response.Success{Obj: v}
 		resp.Request = req
 		return resp, nil
 	}
@@ -253,7 +252,7 @@ func makeSendEndpoint(svc Service) endpoint.Endpoint {
 			}
 			return nil, err
 		}
-		resp := services.SuccessResponse{Obj: v}
+		resp := response.Success{Obj: v}
 		resp.Request = req
 		return resp, nil
 	}
