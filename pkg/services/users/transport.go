@@ -9,7 +9,7 @@ import (
 	"bitbucket.org/codefreak/hsmpp/pkg/entities/user"
 	"bitbucket.org/codefreak/hsmpp/pkg/entities/user/permission"
 	"bitbucket.org/codefreak/hsmpp/pkg/errs"
-	"bitbucket.org/codefreak/hsmpp/pkg/services"
+	"bitbucket.org/codefreak/hsmpp/pkg/response"
 	"bitbucket.org/codefreak/hsmpp/pkg/services/middleware"
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -67,7 +67,7 @@ func makePermissionsEndpoint(svc Service) endpoint.Endpoint {
 			}
 			return nil, err
 		}
-		resp := services.SuccessResponse{Obj: v}
+		resp := response.Success{Obj: v}
 		resp.Request = req
 		return resp, nil
 	}
@@ -108,7 +108,7 @@ func makeListEndpoint(svc Service) endpoint.Endpoint {
 			}
 			return nil, err
 		}
-		resp := services.SuccessResponse{Obj: v}
+		resp := response.Success{Obj: v}
 		resp.Request = req
 		return resp, nil
 	}
@@ -149,7 +149,7 @@ func makeEditEndpoint(svc Service) endpoint.Endpoint {
 			}
 			return nil, err
 		}
-		resp := services.SuccessResponse{Obj: v}
+		resp := response.Success{Obj: v}
 		resp.Request = req
 		return resp, nil
 	}
@@ -190,7 +190,7 @@ func makeAddEndpoint(svc Service) endpoint.Endpoint {
 			}
 			return nil, err
 		}
-		resp := services.SuccessResponse{Obj: v}
+		resp := response.Success{Obj: v}
 		resp.Request = req
 		return resp, nil
 	}

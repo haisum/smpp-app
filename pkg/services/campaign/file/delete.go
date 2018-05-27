@@ -6,7 +6,6 @@ import (
 	"bitbucket.org/codefreak/hsmpp/pkg/db/models/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/pkg/db/models/user"
 	"bitbucket.org/codefreak/hsmpp/pkg/db/models/user/permission"
-	"bitbucket.org/codefreak/hsmpp/pkg/services"
 	log "github.com/Sirupsen/logrus"
 )
 

@@ -145,7 +145,6 @@ func (store *store) List(c *message.Criteria) ([]message.Message, error) {
 		c.PerPage = defaultPerPageListing
 	}
 	ds = ds.Limit(c.PerPage)
-	q, _, _ := ds.ToSql()
 	err = ds.ScanStructs(&m)
 	return m, err
 }
@@ -170,7 +169,6 @@ func (store *store) Stats(c *message.Criteria) (*message.Stats, error) {
 	}
 	ds := store.prepareQuery(c, from)
 	ds = ds.GroupBy("Status").Select(goqu.L("status, count(*) as total"))
-	q, _, _ := ds.ToSql()
 	stats := make(map[string]int64, 8)
 	query, args, err := ds.ToSql()
 	if err != nil {

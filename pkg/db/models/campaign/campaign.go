@@ -89,7 +89,7 @@ func (st *store) Report(ID int64) (campaign.Report, error) {
 	cr := campaign.Report{
 		ID: ID,
 	}
-	ds := st.db.From("Message").Where(goqu.I("campaign.CampaignID").Eq(c.ID))
+	ds := st.db.From("Message").Where(goqu.I("campaign.CampaignID").Eq(ID))
 	var errs []string
 	// get total in campaign
 	_, err := ds.Select(goqu.L("count(*) as Total")).ScanVal(&cr.Total)
