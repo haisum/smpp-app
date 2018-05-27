@@ -2,40 +2,47 @@ package file
 
 import (
 	"fmt"
-	"mime/multipart"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"bitbucket.org/codefreak/hsmpp/pkg/db"
-	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
+	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign/file"
 	log "github.com/Sirupsen/logrus"
-	"github.com/tealeg/xlsx"
+	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
+	"io"
 )
 
+type store struct {
+	db *db.DB
+}
+
+func NewStore(db *db.DB) *store {
+	return &store{
+		db,
+	}
+}
+
 // Delete marks Deleted=true for a NumFile
-func (nf *NumFile) Delete() error {
-	nf.Deleted = true
-	return nf.Update()
+func (s *store) Delete(f *file.File) error {
+	f.Deleted = true
+	return s.Update(f)
 
 }
 
 // Update updates values of a given num file. ID field must be populated in nf object before calling update.
-func (nf *NumFile) Update() error {
-	_, err := db.Get().From("NumFile").Where(goqu.I("id").Eq(nf.ID)).Update(nf).Exec()
-	if err != nil {
-		log.WithError(err).Errorf("Couldn't update file. %+v", nf)
-	}
+func (s *store) Update(f *file.File) error {
+	_, err := s.db.From("File").Where(goqu.I("id").Eq(f.ID)).Update(f).Exec()
 	return err
 }
 
 // List filters files based on criteria
-func List(c Criteria) ([]NumFile, error) {
+func (s *store) List(c *file.Criteria) ([]file.File, error) {
 	var (
-		f []NumFile
+		f []file.File
 	)
-	query := db.Get().From("NumFile")
+	query := s.db.From("File")
 	if c.ID != 0 {
 		query = query.Where(goqu.I("ID").Eq(c.ID))
 	}
@@ -103,28 +110,25 @@ func List(c Criteria) ([]NumFile, error) {
 }
 
 // Save saves a message struct in Message table
-func (nf *NumFile) Save(name string, f multipart.File, fileIO NumFileIO) (int64, error) {
-	fileType := Type(filepath.Ext(strings.ToLower(name)))
-	if fileType != CSV && fileType != TXT && fileType != XLSX {
-		return 0, fmt.Errorf("Only csv, txt and xlsx extensions are allowed Given file %s has extension %s.", name, fileType)
+func (s *store) Save(f *file.File, name string, processExcelFunc file.ProcessExcelFunc, reader io.ReadCloser, writer io.WriteCloser) (int64, error) {
+	fileType := file.Type(filepath.Ext(strings.ToLower(name)))
+	if fileType != file.CSV && fileType != file.TXT && fileType != file.XLSX {
+		return 0, fmt.Errorf("only csv, txt and xlsx extensions are allowed; given file %s has extension %s", name, fileType)
 	}
-	nf.Type = fileType
-	nf.Name = name
-	_, err := fileIO.Load(f)
-	if err != nil {
-		log.WithError(err).Error("Couldn't load file.")
-		return 0, err
-	}
-	err = fileIO.Write(nf)
-	if err != nil {
-		return 0, fmt.Errorf("Couldn't write file to disk. Error: %s", err)
-	}
-	_, err = nf.ToNumbers(fileIO)
+	f.Type = fileType
+	f.Name = name
+	_, err := file.ToNumbers(f, processExcelFunc, reader)
+	defer reader.Close()
 	if err != nil {
 		log.WithError(err).Error("Couldn't read numbers from file.")
 		return 0, err
 	}
-	resp, err := db.Get().From("NumFile").Insert(nf).Exec()
+	_, err = io.Copy(writer, reader)
+	defer writer.Close()
+	if err != nil {
+		return 0, errors.Wrap(err, "couldn't write file to disk")
+	}
+	resp, err := s.db.From("File").Insert(f).Exec()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
@@ -132,92 +136,4 @@ func (nf *NumFile) Save(name string, f multipart.File, fileIO NumFileIO) (int64,
 		return 0, err
 	}
 	return resp.LastInsertId()
-}
-
-// RowsFromString makes a Row list from comma separated numbers
-func RowsFromString(numbers string) []Row {
-	var nums []Row
-	if numbers == "" {
-		return nums
-	}
-	parts := strings.Split(numbers, ",")
-	for _, num := range parts {
-		nums = append(nums, Row{
-			Destination: num,
-		})
-	}
-	return nums
-}
-
-// ToNumbers reads a csv or xlsx file and returns array of Row with Destination and Params map
-func (nf *NumFile) ToNumbers(nio NumFileIO) ([]Row, error) {
-	var nums []Row
-	nummap := make(map[string]Row) // used for unique numbers
-	numfilePath := fmt.Sprintf("%s/%s/%s", Path, nf.Username, nf.LocalName)
-	b, err := nio.LoadFile(numfilePath)
-	if err != nil {
-		return nums, err
-	}
-	if nf.Type == CSV || nf.Type == TXT {
-		for i, num := range strings.Split(stringutils.ByteToString(b), ",") {
-			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
-			if len(num) > 15 || len(num) < 5 {
-				return nums, fmt.Errorf("Entry number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
-			}
-			nummap[num] = Row{Destination: num}
-		}
-	} else if nf.Type == XLSX {
-		xlFile, err := xlsx.OpenBinary(b)
-		if err != nil {
-			return nums, err
-		}
-		if len(xlFile.Sheets) != 1 {
-			return nums, fmt.Errorf("xslx file should contain exactly one sheet")
-		}
-		if len(xlFile.Sheets[0].Rows) < 2 {
-			return nums, fmt.Errorf("xslx file is empty")
-		}
-		if len(xlFile.Sheets[0].Rows[0].Cells) == 0 || xlFile.Sheets[0].Rows[0].Cells[0].Value != "Destination" {
-			return nums, fmt.Errorf("First cell of excel sheet must be Destination header")
-		}
-		var keys []string
-		for _, cell := range xlFile.Sheets[0].Rows[0].Cells {
-			keys = append(keys, cell.Value)
-		}
-		for i := 1; i < len(xlFile.Sheets[0].Rows); i++ {
-			if len(xlFile.Sheets[0].Rows[i].Cells) < 1 {
-				return nums, fmt.Errorf("Row number %d doesn't have any value.", i+1)
-			}
-			num := xlFile.Sheets[0].Rows[i].Cells[0].Value
-			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
-			if len(num) > 15 || len(num) < 5 {
-				return nums, fmt.Errorf("Row number %d in file %s is invalid. Number must be greater than 5 characters and lesser than 16. Please fix it and retry.", i+1, nf.Name)
-			}
-			nr := Row{
-				Destination: num,
-				Params:      map[string]string{},
-			}
-			if len(xlFile.Sheets[0].Rows[i].Cells) < len(keys) {
-				return nums, fmt.Errorf("Row number %d has blank values for some parameters.", i)
-			}
-			for j := 1; j < len(keys) && j < len(xlFile.Sheets[0].Rows[i].Cells); j++ {
-				val := xlFile.Sheets[0].Rows[i].Cells[j].Value
-				val = strings.Trim(val, "\t\n\v\f\r \u0085\u00a0")
-				if val == "" {
-					return nums, fmt.Errorf("Row number %d contains no value at cell number %d.", i, j)
-				}
-				nr.Params[keys[j]] = val
-			}
-			nummap[nr.Destination] = nr
-		}
-	} else {
-		return nums, fmt.Errorf("This file type isn't supported yet.")
-	}
-	if len(nummap) < 1 {
-		return nums, fmt.Errorf("No Numbers given in file.")
-	}
-	for _, v := range nummap {
-		nums = append(nums, v)
-	}
-	return nums, nil
 }
