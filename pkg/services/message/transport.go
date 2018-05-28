@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/kit/endpoint"
+	kithttp "github.com/go-kit/kit/transport/http"
+	"github.com/gorilla/mux"
 	"github.com/haisum/smpp-app/pkg/entities/message"
 	"github.com/haisum/smpp-app/pkg/errs"
 	"github.com/haisum/smpp-app/pkg/response"
 	"github.com/haisum/smpp-app/pkg/services/middleware"
-	"github.com/go-kit/kit/endpoint"
-	kithttp "github.com/go-kit/kit/transport/http"
-	"github.com/gorilla/mux"
 )
 
 // MakeHandler returns a http handler for the message service.

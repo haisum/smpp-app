@@ -8,16 +8,6 @@ import (
 	"github.com/haisum/smpp-app/pkg/entites/user/permission"
 )
 
-type filterRequest struct {
-	file.Criteria
-	URL   string
-	Token string
-}
-
-type filterResponse struct {
-	NumFiles []file.NumFile
-}
-
 // FilterHandler searches files in NumFiles table
 var FilterHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	uResp := filterResponse{}

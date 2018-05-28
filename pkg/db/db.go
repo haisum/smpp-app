@@ -7,9 +7,9 @@ import (
 
 	"context"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/haisum/smpp-app/pkg/db/fresh"
 	"github.com/haisum/smpp-app/pkg/logger"
-	"github.com/go-sql-driver/mysql"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"gopkg.in/doug-martin/goqu.v3"
 	_ "gopkg.in/doug-martin/goqu.v3/adapters/mysql"

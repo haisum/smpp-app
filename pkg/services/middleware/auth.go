@@ -7,11 +7,11 @@ import (
 	"encoding/base64"
 	"strings"
 
+	"github.com/go-kit/kit/endpoint"
+	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/haisum/smpp-app/pkg/entities/user"
 	"github.com/haisum/smpp-app/pkg/errs"
 	"github.com/haisum/smpp-app/pkg/stringutils"
-	"github.com/go-kit/kit/endpoint"
-	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/pkg/errors"
 )
 

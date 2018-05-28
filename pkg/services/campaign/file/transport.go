@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/haisum/smpp-app/pkg/errs"
-	"github.com/haisum/smpp-app/pkg/response"
-	"github.com/haisum/smpp-app/pkg/services/middleware"
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
+	"github.com/haisum/smpp-app/pkg/entities/campaign/file"
+	"github.com/haisum/smpp-app/pkg/errs"
+	"github.com/haisum/smpp-app/pkg/response"
+	"github.com/haisum/smpp-app/pkg/services/middleware"
 )
 
 // MakeHandler returns a http handler for the message service.
@@ -91,6 +92,39 @@ func makeDownloadEndpoint(svc Service) endpoint.Endpoint {
 
 func decodeDownloadRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request downloadRequest
+	request.URL = r.URL.RequestURI()
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+type listRequest struct {
+	file.Criteria
+	URL string
+}
+
+type listResponse struct {
+	Files []file.File
+}
+
+func makeListEndpoint(svc Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(listRequest)
+		v, err := svc.List(ctx, req)
+		if err != nil {
+			if errResponse, ok := err.(errs.ErrorResponse); ok {
+				errResponse.Response.Request = req
+				return nil, errResponse
+			}
+			return nil, err
+		}
+		return v, nil
+	}
+}
+
+func decodeListRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request listRequest
 	request.URL = r.URL.RequestURI()
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err

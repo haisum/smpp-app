@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/haisum/smpp-app/pkg/logger"
 	"github.com/go-kit/kit/endpoint"
+	"github.com/haisum/smpp-app/pkg/logger"
 )
 
 // LoggingMiddleware returns an endpoint middleware that logs the

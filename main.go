@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/haisum/smpp-app/pkg/db"
 	campaignmodel "github.com/haisum/smpp-app/pkg/db/models/campaign"
 	filemodel "github.com/haisum/smpp-app/pkg/db/models/campaign/file"
@@ -25,7 +26,6 @@ import (
 	"github.com/haisum/smpp-app/pkg/services/user"
 	"github.com/haisum/smpp-app/pkg/services/users"
 	"github.com/haisum/smpp-app/pkg/stringutils"
-	kithttp "github.com/go-kit/kit/transport/http"
 )
 
 const (
