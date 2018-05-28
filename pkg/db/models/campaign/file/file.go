@@ -56,7 +56,7 @@ func (s *store) List(c *file.Criteria) ([]file.File, error) {
 			var err error
 			from, err = strconv.ParseInt(c.From, 10, 64)
 			if err != nil {
-				return f, fmt.Errorf("Invalid value for from: %s", from)
+				return f, fmt.Errorf("invalid value for from: %s", from)
 			}
 		} else {
 			from = c.From
