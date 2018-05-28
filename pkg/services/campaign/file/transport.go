@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"io"
+
+	"fmt"
+
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
@@ -12,6 +16,7 @@ import (
 	"github.com/haisum/smpp-app/pkg/errs"
 	"github.com/haisum/smpp-app/pkg/response"
 	"github.com/haisum/smpp-app/pkg/services/middleware"
+	"github.com/pkg/errors"
 )
 
 // MakeHandler returns a http handler for the message service.
@@ -25,6 +30,10 @@ func MakeHandler(svc Service, opts []kithttp.ServerOption, responseEncoder kitht
 		authMid(makeDownloadEndpoint(svc)),
 		decodeDownloadRequest,
 		responseEncoder, opts...)
+	uploadHandler := kithttp.NewServer(
+		authMid(makeUploadEndpoint(svc)),
+		decodeUploadRequest,
+		responseEncoder, opts...)
 	listHandler := kithttp.NewServer(
 		authMid(makeListEndpoint(svc)),
 		decodeListRequest,
@@ -32,6 +41,7 @@ func MakeHandler(svc Service, opts []kithttp.ServerOption, responseEncoder kitht
 	r := mux.NewRouter()
 	r.Handle("/campaign/file/v1/delete", deleteHandler).Methods("POST")
 	r.Handle("/campaign/file/v1/download", downloadHandler).Methods("GET")
+	r.Handle("/campaign/file/v1/upload", uploadHandler).Methods("POST")
 	r.Handle("/campaign/file/v1/list", listHandler).Methods("POST", "GET")
 	return r
 }
@@ -133,5 +143,52 @@ func decodeListRequest(_ context.Context, r *http.Request) (interface{}, error) 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
+	return request, nil
+}
+
+type uploadRequest struct {
+	FileName    string
+	Description string
+	URL         string
+	ReadCloser  io.ReadCloser `json:"-"`
+}
+
+type uploadResponse struct {
+	ID int64
+}
+
+func makeUploadEndpoint(svc Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(uploadRequest)
+		v, err := svc.Upload(ctx, req)
+		if err != nil {
+			if errResponse, ok := err.(errs.ErrorResponse); ok {
+				errResponse.Response.Request = req
+				return nil, errResponse
+			}
+			return nil, err
+		}
+		return v, nil
+	}
+}
+
+func decodeUploadRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := uploadRequest{}
+	request.URL = r.URL.RequestURI()
+	maxPostSize := file.MaxFileSize + (1024 * 512)
+	if r.ContentLength > maxPostSize {
+		return request, fmt.Errorf("file size can't be larger than %d", file.MaxFileSize)
+	}
+	err := r.ParseMultipartForm(maxPostSize)
+	if err != nil {
+		return request, errors.Wrap(err, "error in parsing multi part form, check size")
+	}
+	f, h, err := r.FormFile("File")
+
+	request.ReadCloser = f
+	request.FileName = h.Filename
+	request.Description = r.PostFormValue("Description")
+	request.URL = r.URL.RequestURI()
+
 	return request, nil
 }

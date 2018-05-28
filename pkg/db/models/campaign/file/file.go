@@ -105,14 +105,17 @@ func (s *store) List(c *file.Criteria) ([]file.File, error) {
 	return f, err
 }
 
-// Save saves a message struct in Message table
-func (s *store) Save(f *file.File, name string, processExcelFunc file.ProcessExcelFunc, reader io.ReadCloser, writer io.WriteCloser) (int64, error) {
-	fileType := file.Type(filepath.Ext(strings.ToLower(name)))
+// Save saves a file in file system and db table
+// Generally io.ReadCloser should be uploaded file's pointer
+// io.Writer should be instance of file.opener
+// processExcelFunc is pkg/excel.ToNumbers
+// in testing, you may implement your own interfaces
+func (s *store) Save(f *file.File, processExcelFunc file.ProcessExcelFunc, reader io.ReadCloser, writer io.WriteCloser) (int64, error) {
+	fileType := file.Type(filepath.Ext(strings.ToLower(f.Name)))
 	if fileType != file.CSV && fileType != file.TXT && fileType != file.XLSX {
-		return 0, fmt.Errorf("only csv, txt and xlsx extensions are allowed; given file %s has extension %s", name, fileType)
+		return 0, fmt.Errorf("only csv, txt and xlsx extensions are allowed; given file %s has extension %s", f.Name, fileType)
 	}
 	f.Type = fileType
-	f.Name = name
 	_, err := file.ToNumbers(f, processExcelFunc, reader)
 	defer reader.Close()
 	if err != nil {

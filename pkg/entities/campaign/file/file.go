@@ -13,6 +13,7 @@ import (
 type Store interface {
 	List(c *Criteria) ([]File, error)
 	Delete(f *File) error
+	Save(f *File, processExcelFunc ProcessExcelFunc, reader io.ReadCloser, writer io.WriteCloser) (int64, error)
 }
 
 // ProcessExcelFunc takes a io.Reader as parameter
@@ -56,7 +57,7 @@ const (
 	// Rest of cells will be replacement values in message. A message with text "{{Param1}} {{Param2}} how are you" will become "hello World how are you"
 	XLSX = ".xlsx"
 	// MaxFileSize is maximum file size in bytes
-	MaxFileSize = 5 * 1024 * 1024
+	MaxFileSize int64 = 5 * 1024 * 1024
 	// DefaultPath is location where files are supposed to be stored
 	DefaultPath = "./files"
 )

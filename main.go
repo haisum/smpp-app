@@ -22,6 +22,7 @@ import (
 	"github.com/haisum/smpp-app/pkg/logger"
 	"github.com/haisum/smpp-app/pkg/response"
 	"github.com/haisum/smpp-app/pkg/services/campaign"
+	filesvc "github.com/haisum/smpp-app/pkg/services/campaign/file"
 	"github.com/haisum/smpp-app/pkg/services/message"
 	"github.com/haisum/smpp-app/pkg/services/user"
 	"github.com/haisum/smpp-app/pkg/services/users"
@@ -36,12 +37,13 @@ func main() {
 	var (
 		addr = envString("PORT", defaultPort)
 
-		httpAddr    = flag.String("http.addr", ":"+addr, "HTTP listen address")
-		ctx         = context.Background()
-		userSvc     user.Service
-		usersSvc    users.Service
-		msgSvc      message.Service
-		campaignSvc campaign.Service
+		httpAddr        = flag.String("http.addr", ":"+addr, "HTTP listen address")
+		ctx             = context.Background()
+		userSvc         user.Service
+		usersSvc        users.Service
+		msgSvc          message.Service
+		campaignSvc     campaign.Service
+		campaignFileSvc filesvc.Service
 	)
 	flag.Parse()
 
@@ -74,6 +76,14 @@ func main() {
 		campaignLogger := httpLogger.With("service", "campaign")
 		campaignSvc = campaign.NewService(campaignLogger, campaignStore, msgStore, fileStore, fileOpener, excel.ToNumbers, authenticator)
 	}
+	// campaign file service is used to upload, download and manage campaign files
+	{
+		campaignFileLogger := httpLogger.With("service", "campaign,file")
+		randFunc := func() string {
+			return stringutils.SecureRandomAlphaString(4) + time.Now().Format(".2006.01.02.15.04.05")
+		}
+		campaignFileSvc = filesvc.NewService(campaignFileLogger, fileStore, fileOpener, excel.ToNumbers, randFunc, authenticator)
+	}
 
 	mux := http.NewServeMux()
 
@@ -87,6 +97,7 @@ func main() {
 	mux.Handle("/users/v1/", users.MakeHandler(usersSvc, opts, respEncoder.EncodeSuccess))
 	mux.Handle("/message/v1/", message.MakeHandler(msgSvc, opts, respEncoder.EncodeSuccess))
 	mux.Handle("/campaign/v1/", campaign.MakeHandler(campaignSvc, opts, respEncoder.EncodeSuccess))
+	mux.Handle("/file/v1/", filesvc.MakeHandler(campaignFileSvc, opts, respEncoder.EncodeSuccess))
 	http.Handle("/", accessControl(mux))
 
 	errs := make(chan error, 2)

@@ -5,6 +5,8 @@ import (
 
 	"path/filepath"
 
+	"time"
+
 	"github.com/haisum/smpp-app/pkg/entities/campaign/file"
 	"github.com/haisum/smpp-app/pkg/entities/user"
 	"github.com/haisum/smpp-app/pkg/entities/user/permission"
@@ -19,20 +21,24 @@ type Service interface {
 	Delete(ctx context.Context, request deleteRequest) (deleteResponse, error)
 	Download(ctx context.Context, request downloadRequest) (response.Attachment, error)
 	List(ctx context.Context, request listRequest) (listResponse, error)
+	Upload(ctx context.Context, request uploadRequest) (uploadResponse, error)
 }
 
 type service struct {
-	logger        logger.Logger
-	fileStore     file.Store
-	fileManager   file.OpenReadWriteCloser
-	authenticator user.Authenticator
+	logger           logger.Logger
+	fileStore        file.Store
+	fileManager      file.OpenReadWriteCloser
+	processExcelFunc file.ProcessExcelFunc
+	randFunc         func() string
+	authenticator    user.Authenticator
 }
 
 // NewService returns a new user service
-func NewService(logger logger.Logger, fileStore file.Store, fileManager file.OpenReadWriteCloser, auth user.Authenticator) Service {
+func NewService(logger logger.Logger, fileStore file.Store, fileManager file.OpenReadWriteCloser, processExcelFunc file.ProcessExcelFunc, randFunc func() string, auth user.Authenticator) Service {
 	return &service{
 		logger,
 		fileStore, fileManager,
+		processExcelFunc, randFunc,
 		auth,
 	}
 }
@@ -95,4 +101,24 @@ func (svc *service) List(ctx context.Context, request listRequest) (listResponse
 	}
 	response.Files, err = svc.fileStore.List(&request.Criteria)
 	return response, err
+}
+
+// Upload lets us upload a campaign file
+func (svc *service) Upload(ctx context.Context, request uploadRequest) (uploadResponse, error) {
+	response := uploadResponse{}
+	u, err := user.FromContext(ctx)
+	if err != nil {
+		return response, err
+	}
+	f := file.File{
+		Description: request.Description,
+		Username:    u.Username,
+		SubmittedAt: time.Now().UTC().Unix(),
+		Name:        request.FileName,
+	}
+	f.LocalName = f.Name + svc.randFunc()
+	writer, err := svc.fileManager.Open(filepath.Join(u.Username, f.LocalName))
+	id, err := svc.fileStore.Save(&f, svc.processExcelFunc, request.ReadCloser, writer)
+	response.ID = id
+	return response, nil
 }
