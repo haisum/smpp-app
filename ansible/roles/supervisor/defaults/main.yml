@@ -1,7 +1,0 @@
----
-supervisor_admin_password: "system*1"
-supervisor_child_log_dir: "{{project_home}}/logs"
-supervisor_log_file: "{{supervisor_child_log_dir}}/supervisor.log"
-supervisor_user: "{{user}}"
-supervisor_group: "{{user}}"
-supervisor_admin: "admin"

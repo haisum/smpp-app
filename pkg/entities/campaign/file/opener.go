@@ -13,6 +13,12 @@ type Opener interface {
 	Open(filename string) (io.ReadWriteCloser, error)
 }
 
+// OpenReadWriteCloser is combination of Open + io.ReadWriteCloser
+type OpenReadWriteCloser interface {
+	Opener
+	io.ReadWriteCloser
+}
+
 type opener struct {
 	path      string
 	filepath  string

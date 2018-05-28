@@ -3,7 +3,6 @@ package campaign
 import (
 	"context"
 
-	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -34,15 +33,15 @@ type service struct {
 	messageStore     message.Store
 	fileStore        file.Store
 	processExcelFunc file.ProcessExcelFunc
-	fileReader       io.Reader
+	fileManager      file.OpenReadWriteCloser
 	authenticator    user.Authenticator
 }
 
 // NewService returns a new user service
-func NewService(logger logger.Logger, campaignStore campaign.Store, messageStore message.Store, fileStore file.Store, fileReader io.Reader, processExcelFunc file.ProcessExcelFunc, auth user.Authenticator) Service {
+func NewService(logger logger.Logger, campaignStore campaign.Store, messageStore message.Store, fileStore file.Store, fileManager file.OpenReadWriteCloser, processExcelFunc file.ProcessExcelFunc, auth user.Authenticator) Service {
 	return &service{
 		logger, campaignStore, messageStore,
-		fileStore, processExcelFunc, fileReader,
+		fileStore, processExcelFunc, fileManager,
 		auth,
 	}
 }
@@ -73,7 +72,20 @@ func (svc *service) Start(ctx context.Context, request startRequest) (startRespo
 		}
 	}
 	var numbers []file.Row
-	if request.FileID != 0 {
+	if request.FileID == 0 {
+		if request.Numbers != "" {
+			numbers = file.RowsFromString(request.Numbers)
+		} else {
+			resp := errs.ErrorResponse{}
+			resp.Errors = []errs.ResponseError{
+				{
+					Type:    errs.ErrorTypeRequest,
+					Message: "No numbers provided. You should either select a file or send comma separated list of numbers",
+				},
+			}
+			return response, errors.Wrap(resp, err.Error())
+		}
+	} else {
 		var files []file.File
 		files, err := svc.fileStore.List(&file.Criteria{
 			ID: request.FileID,
@@ -89,7 +101,12 @@ func (svc *service) Start(ctx context.Context, request startRequest) (startRespo
 			}
 			return response, errors.Wrap(resp, err.Error())
 		}
-		numbers, err = file.ToNumbers(&files[0], svc.processExcelFunc, svc.fileReader)
+		reader, err := svc.fileManager.Open(files[0].Name)
+		if err != nil {
+			return response, err
+		}
+		defer reader.Close()
+		numbers, err = file.ToNumbers(&files[0], svc.processExcelFunc, reader)
 		if err != nil {
 			resp := errs.ErrorResponse{}
 			resp.Errors = []errs.ResponseError{
@@ -101,17 +118,6 @@ func (svc *service) Start(ctx context.Context, request startRequest) (startRespo
 			}
 			return response, errors.Wrap(resp, err.Error())
 		}
-	} else if request.Numbers != "" {
-		numbers = file.RowsFromString(request.Numbers)
-	} else { // @todo this is dead end! check other branches for what happens here
-		resp := errs.ErrorResponse{}
-		resp.Errors = []errs.ResponseError{
-			{
-				Type:    errs.ErrorTypeRequest,
-				Message: "No numbers provided. You should either select a file or send comma separated list of numbers",
-			},
-		}
-		return response, errors.Wrap(resp, err.Error())
 	}
 
 	c := campaign.Campaign{

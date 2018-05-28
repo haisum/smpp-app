@@ -14,6 +14,7 @@ type Store interface {
 	List(c *Criteria) ([]File, error)
 }
 
+// ProcessExcelFunc takes a io.Reader as parameter
 type ProcessExcelFunc func(reader io.Reader) (map[string]Row, error)
 
 // File represents file uploaded to system for saving

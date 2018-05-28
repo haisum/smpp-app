@@ -4,7 +4,6 @@
 /scheduler
 /soapservice
 /tlvworker
-/smppworker
 *.log
 *.zip
 .vscode
