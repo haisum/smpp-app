@@ -25,10 +25,14 @@ func MakeHandler(svc Service, opts []kithttp.ServerOption, responseEncoder kitht
 		authMid(makeDownloadEndpoint(svc)),
 		decodeDownloadRequest,
 		responseEncoder, opts...)
+	listHandler := kithttp.NewServer(
+		authMid(makeListEndpoint(svc)),
+		decodeListRequest,
+		responseEncoder, opts...)
 	r := mux.NewRouter()
 	r.Handle("/campaign/file/v1/delete", deleteHandler).Methods("POST")
 	r.Handle("/campaign/file/v1/download", downloadHandler).Methods("GET")
-
+	r.Handle("/campaign/file/v1/list", listHandler).Methods("POST", "GET")
 	return r
 }
 

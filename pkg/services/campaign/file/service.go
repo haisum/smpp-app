@@ -18,6 +18,7 @@ import (
 type Service interface {
 	Delete(ctx context.Context, request deleteRequest) (deleteResponse, error)
 	Download(ctx context.Context, request downloadRequest) (response.Attachment, error)
+	List(ctx context.Context, request listRequest) (listResponse, error)
 }
 
 type service struct {
@@ -77,5 +78,21 @@ func (svc *service) Download(ctx context.Context, request downloadRequest) (resp
 		}
 	}
 	response.ReadCloser, err = svc.fileManager.Open(filepath.Join(files[0].Username, files[0].LocalName))
+	return response, err
+}
+
+// List lets user list and filter uploaded files
+func (svc *service) List(ctx context.Context, request listRequest) (listResponse, error) {
+	response := listResponse{}
+	u, err := user.FromContext(ctx)
+	if err != nil {
+		return response, err
+	}
+	if request.Username != u.Username {
+		if ok := u.Can(permission.ListCampaignFiles); !ok {
+			return response, errs.ForbiddenError{"user doesn't have permission to list campaign files"}
+		}
+	}
+	response.Files, err = svc.fileStore.List(&request.Criteria)
 	return response, err
 }

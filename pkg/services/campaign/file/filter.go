@@ -1,13 +1,6 @@
 package file
 
-import (
-	"net/http"
-
-	"github.com/haisum/smpp-app/pkg/db/models/campaign/file"
-	"github.com/haisum/smpp-app/pkg/db/models/user"
-	"github.com/haisum/smpp-app/pkg/entites/user/permission"
-)
-
+/*
 // FilterHandler searches files in NumFiles table
 var FilterHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	uResp := filterResponse{}
@@ -59,3 +52,4 @@ var FilterHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	resp.Request = uReq
 	resp.Send(w, *r, http.StatusOK)
 })
+*/

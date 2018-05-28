@@ -1,13 +1,5 @@
 package file
 
-import (
-	"net/http"
-	"time"
-
-	"github.com/haisum/smpp-app/pkg/db/models/campaign/file"
-	"github.com/haisum/smpp-app/pkg/db/models/user"
-)
-
 type uploadReq struct {
 	Description string
 	URL         string
@@ -18,6 +10,7 @@ type uploadResponse struct {
 	ID int64
 }
 
+/*
 // UploadHandler handles uploading of files
 var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	maxPostSize := file.MaxFileSize + (1024 * 512)
@@ -121,3 +114,4 @@ var UploadHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	resp.Request = uReq
 	resp.Send(w, *r, http.StatusOK)
 })
+*/
