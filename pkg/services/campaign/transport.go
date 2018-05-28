@@ -9,11 +9,11 @@ import (
 
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign"
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/user/permission"
-	"bitbucket.org/codefreak/hsmpp/pkg/errs"
-	"bitbucket.org/codefreak/hsmpp/pkg/response"
-	"bitbucket.org/codefreak/hsmpp/pkg/services/middleware"
+	"github.com/haisum/smpp-app/pkg/entities/campaign"
+	"github.com/haisum/smpp-app/pkg/entities/user/permission"
+	"github.com/haisum/smpp-app/pkg/errs"
+	"github.com/haisum/smpp-app/pkg/response"
+	"github.com/haisum/smpp-app/pkg/services/middleware"
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"

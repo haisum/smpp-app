@@ -5,10 +5,10 @@ import (
 
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/user"
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/user/permission"
-	"bitbucket.org/codefreak/hsmpp/pkg/errs"
-	"bitbucket.org/codefreak/hsmpp/pkg/logger"
+	"github.com/haisum/smpp-app/pkg/entities/user"
+	"github.com/haisum/smpp-app/pkg/entities/user/permission"
+	"github.com/haisum/smpp-app/pkg/errs"
+	"github.com/haisum/smpp-app/pkg/logger"
 	"github.com/pkg/errors"
 )
 

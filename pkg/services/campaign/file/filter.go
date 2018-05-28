@@ -3,9 +3,9 @@ package file
 import (
 	"net/http"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/db/models/campaign/file"
-	"bitbucket.org/codefreak/hsmpp/pkg/db/models/user"
-	"bitbucket.org/codefreak/hsmpp/pkg/entites/user/permission"
+	"github.com/haisum/smpp-app/pkg/db/models/campaign/file"
+	"github.com/haisum/smpp-app/pkg/db/models/user"
+	"github.com/haisum/smpp-app/pkg/entites/user/permission"
 )
 
 type filterRequest struct {

@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
+	"github.com/haisum/smpp-app/pkg/stringutils"
 )
 
 // Store represents a numbers file store

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"sync"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/db"
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/message"
-	"bitbucket.org/codefreak/hsmpp/pkg/logger"
+	"github.com/haisum/smpp-app/pkg/db"
+	"github.com/haisum/smpp-app/pkg/entities/message"
+	"github.com/haisum/smpp-app/pkg/logger"
 	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
 )

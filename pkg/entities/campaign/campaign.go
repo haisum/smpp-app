@@ -3,7 +3,7 @@ package campaign
 import (
 	"context"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
+	"github.com/haisum/smpp-app/pkg/stringutils"
 )
 
 // Store is interface for campaign store implementations

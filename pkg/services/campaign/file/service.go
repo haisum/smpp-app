@@ -5,12 +5,12 @@ import (
 
 	"path/filepath"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign/file"
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/user"
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/user/permission"
-	"bitbucket.org/codefreak/hsmpp/pkg/errs"
-	"bitbucket.org/codefreak/hsmpp/pkg/logger"
-	"bitbucket.org/codefreak/hsmpp/pkg/response"
+	"github.com/haisum/smpp-app/pkg/entities/campaign/file"
+	"github.com/haisum/smpp-app/pkg/entities/user"
+	"github.com/haisum/smpp-app/pkg/entities/user/permission"
+	"github.com/haisum/smpp-app/pkg/errs"
+	"github.com/haisum/smpp-app/pkg/logger"
+	"github.com/haisum/smpp-app/pkg/response"
 	"github.com/pkg/errors"
 )
 

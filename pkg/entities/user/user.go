@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/mail"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/user/permission"
-	"bitbucket.org/codefreak/hsmpp/pkg/errs"
+	"github.com/haisum/smpp-app/pkg/entities/user/permission"
+	"github.com/haisum/smpp-app/pkg/errs"
 	"github.com/pkg/errors"
 )
 

@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign/file"
+	"github.com/haisum/smpp-app/pkg/entities/campaign/file"
 	"github.com/tealeg/xlsx"
 )
 

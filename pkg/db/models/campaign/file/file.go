@@ -8,8 +8,8 @@ import (
 
 	"io"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/db"
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign/file"
+	"github.com/haisum/smpp-app/pkg/db"
+	"github.com/haisum/smpp-app/pkg/entities/campaign/file"
 	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
 )

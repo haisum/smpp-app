@@ -7,8 +7,8 @@ import (
 
 	"context"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/db/fresh"
-	"bitbucket.org/codefreak/hsmpp/pkg/logger"
+	"github.com/haisum/smpp-app/pkg/db/fresh"
+	"github.com/haisum/smpp-app/pkg/logger"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"gopkg.in/doug-martin/goqu.v3"

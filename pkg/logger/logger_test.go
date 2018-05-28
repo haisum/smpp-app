@@ -7,7 +7,7 @@ import (
 
 	"bytes"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
+	"github.com/haisum/smpp-app/pkg/stringutils"
 	"github.com/pkg/errors"
 	"gopkg.in/stretchr/testify.v1/assert"
 )

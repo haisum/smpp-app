@@ -6,8 +6,8 @@ import (
 
 	"strings"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/logger"
-	"bitbucket.org/codefreak/hsmpp/pkg/response"
+	"github.com/haisum/smpp-app/pkg/logger"
+	"github.com/haisum/smpp-app/pkg/response"
 	"github.com/pkg/errors"
 )
 

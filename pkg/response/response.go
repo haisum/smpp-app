@@ -7,7 +7,7 @@ import (
 
 	"io"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/logger"
+	"github.com/haisum/smpp-app/pkg/logger"
 	"github.com/pkg/errors"
 )
 

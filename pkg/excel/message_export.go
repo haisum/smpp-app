@@ -1,7 +1,7 @@
 package excel
 
 import (
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/message"
+	"github.com/haisum/smpp-app/pkg/entities/message"
 	"github.com/tealeg/xlsx"
 	"io"
 	"strconv"

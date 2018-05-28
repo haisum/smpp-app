@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"testing"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/db"
+	"github.com/haisum/smpp-app/pkg/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/tealeg/xlsx"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"

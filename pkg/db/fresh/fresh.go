@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/logger"
-	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
+	"github.com/haisum/smpp-app/pkg/logger"
+	"github.com/haisum/smpp-app/pkg/stringutils"
 	"gopkg.in/doug-martin/goqu.v3"
 )
 

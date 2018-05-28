@@ -7,9 +7,9 @@ import (
 	"encoding/base64"
 	"strings"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/user"
-	"bitbucket.org/codefreak/hsmpp/pkg/errs"
-	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
+	"github.com/haisum/smpp-app/pkg/entities/user"
+	"github.com/haisum/smpp-app/pkg/errs"
+	"github.com/haisum/smpp-app/pkg/stringutils"
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/pkg/errors"

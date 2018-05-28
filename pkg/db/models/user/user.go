@@ -6,9 +6,9 @@ import (
 
 	"strconv"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/db"
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/user"
-	"bitbucket.org/codefreak/hsmpp/pkg/logger"
+	"github.com/haisum/smpp-app/pkg/db"
+	"github.com/haisum/smpp-app/pkg/entities/user"
+	"github.com/haisum/smpp-app/pkg/logger"
 	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
 )

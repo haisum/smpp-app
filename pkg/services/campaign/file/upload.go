@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/db/models/campaign/file"
-	"bitbucket.org/codefreak/hsmpp/pkg/db/models/user"
+	"github.com/haisum/smpp-app/pkg/db/models/campaign/file"
+	"github.com/haisum/smpp-app/pkg/db/models/user"
 )
 
 type uploadReq struct {

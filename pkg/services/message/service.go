@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/message"
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/user"
-	"bitbucket.org/codefreak/hsmpp/pkg/entities/user/permission"
-	"bitbucket.org/codefreak/hsmpp/pkg/errs"
-	"bitbucket.org/codefreak/hsmpp/pkg/logger"
-	"bitbucket.org/codefreak/hsmpp/pkg/response"
-	"bitbucket.org/codefreak/hsmpp/pkg/stringutils"
+	"github.com/haisum/smpp-app/pkg/entities/message"
+	"github.com/haisum/smpp-app/pkg/entities/user"
+	"github.com/haisum/smpp-app/pkg/entities/user/permission"
+	"github.com/haisum/smpp-app/pkg/errs"
+	"github.com/haisum/smpp-app/pkg/logger"
+	"github.com/haisum/smpp-app/pkg/response"
+	"github.com/haisum/smpp-app/pkg/stringutils"
 )
 
 // Service is message service's interface

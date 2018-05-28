@@ -7,7 +7,7 @@ import (
 
 	"time"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/db"
+	"github.com/haisum/smpp-app/pkg/db"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"gopkg.in/doug-martin/goqu.v3"
 	"gopkg.in/stretchr/testify.v1/assert"

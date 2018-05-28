@@ -5,8 +5,8 @@ import (
 
 	"regexp"
 
-	"bitbucket.org/codefreak/hsmpp/pkg/db"
-	"bitbucket.org/codefreak/hsmpp/pkg/db/models/user/permission"
+	"github.com/haisum/smpp-app/pkg/db"
+	"github.com/haisum/smpp-app/pkg/db/models/user/permission"
 	"github.com/pkg/errors"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"gopkg.in/doug-martin/goqu.v3"
