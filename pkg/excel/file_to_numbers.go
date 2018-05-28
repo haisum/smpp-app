@@ -11,6 +11,11 @@ import (
 	"github.com/tealeg/xlsx"
 )
 
+// ToNumbers reads bytes from reader as excel file then
+// returns a map of file.Row records if valid records are found
+// excel file must have following pattern:
+// destination [ param1 param2 param3 ... ]
+// 439099009   [ val1   val2   val3  ... ]
 func ToNumbers(reader io.Reader) (map[string]file.Row, error) {
 	numbers := make(map[string]file.Row)
 	b, err := ioutil.ReadAll(reader)

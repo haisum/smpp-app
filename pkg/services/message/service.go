@@ -66,6 +66,9 @@ func (s *service) ListDownload(ctx context.Context, request listDownloadRequest)
 		return response, err
 	}
 	writeFunc, err := s.xlsExportFunc(listResp.Messages, request.TZ, strings.Split(request.ReportCols, ","))
+	if err != nil {
+		return response, err
+	}
 	response.Write = writeFunc
 	response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 	response.Filename = "SMSReport.xlsx"

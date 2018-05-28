@@ -26,12 +26,15 @@ type opener struct {
 	readFile  *os.File
 }
 
+// NewOpener returns a new instance of opener which satisfies OpenReadWriteCloser interface
 func NewOpener(path string) *opener {
 	return &opener{
 		path: path,
 	}
 }
 
+// Open saves filename as path+filename using path provided in NewOpener method.
+// directory is created if not already present
 func (o *opener) Open(filename string) (io.ReadWriteCloser, error) {
 	err := os.MkdirAll(o.path, 0711)
 	if err != nil {
@@ -41,6 +44,8 @@ func (o *opener) Open(filename string) (io.ReadWriteCloser, error) {
 	return o, nil
 }
 
+// Read opens file as defined in Open method and reads it
+// this method satisfied io.Reader
 func (o *opener) Read(p []byte) (n int, err error) {
 	if o.readFile == nil {
 		o.readFile, err = os.Open(o.filepath)
@@ -51,6 +56,8 @@ func (o *opener) Read(p []byte) (n int, err error) {
 	return o.readFile.Read(p)
 }
 
+// Write creates file as defined in Open method and writes to it
+// this method satisfied io.Writer
 func (o *opener) Write(p []byte) (n int, err error) {
 	if o.writeFile == nil {
 		o.writeFile, err = os.Create(o.filepath)
@@ -62,6 +69,8 @@ func (o *opener) Write(p []byte) (n int, err error) {
 	return o.writeFile.Write(p)
 }
 
+// Close closes any open file pointers
+// This satisfies io.Closer interface
 func (o *opener) Close() error {
 	if o.writeFile != nil {
 		o.writeFile.Close()

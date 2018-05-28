@@ -35,6 +35,7 @@ type File struct {
 // can be excel/csv etc.
 type Type string
 
+// Scan makes string from bytes then casts it as Type
 func (n *Type) Scan(nf interface{}) error {
 	*n = Type(fmt.Sprintf("%s", nf))
 	return nil

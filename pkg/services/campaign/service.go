@@ -243,15 +243,11 @@ func (svc *service) Progress(ctx context.Context, request progressRequest) (prog
 	)
 	if err == nil && len(cp) > 0 {
 		p, err = svc.campaignStore.Progress(cp[0].ID)
-	} else {
-		respErr := errs.ErrorResponse{}
-		respErr.Errors = []errs.ResponseError{
-			{
-				Type:    errs.ErrorTypeDB,
-				Message: "couldn't get campaign progress",
-			},
+		if err != nil {
+			return response, err
 		}
-		return response, respErr
+	} else {
+		return response, errors.Wrap(err, "couldn't get campaign progress")
 	}
 	response.Progress = p
 	return response, nil
@@ -261,15 +257,7 @@ func (svc *service) Stop(ctx context.Context, request stopRequest) (stopResponse
 	response := stopResponse{}
 	count, err := svc.messageStore.StopPending(request.CampaignID)
 	if err != nil {
-		respErr := errs.ErrorResponse{}
-		respErr.Errors = []errs.ResponseError{
-			{
-				Type:    errs.ErrorTypeDB,
-				Message: "Couldn't update campaign.",
-			},
-		}
-
-		return response, respErr
+		return response, errors.Wrap(err, "couldn't stop pending messages")
 	}
 	response.Count = count
 	return response, nil
@@ -283,14 +271,7 @@ func (svc *service) Report(ctx context.Context, request reportRequest) (reportRe
 		cr, err = svc.campaignStore.Report(c[0].ID)
 	}
 	if err != nil {
-		respErr := errs.ErrorResponse{}
-		respErr.Errors = []errs.ResponseError{
-			{
-				Type:    errs.ErrorTypeDB,
-				Message: "Couldn't get campaign report.",
-			},
-		}
-		return response, respErr
+		return response, errors.Wrap(err, "couldn't get campaign report")
 	}
 	response.Report = cr
 	return response, nil

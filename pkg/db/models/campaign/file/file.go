@@ -18,6 +18,7 @@ type store struct {
 	db *db.DB
 }
 
+// NewStore returns a new file store
 func NewStore(db *db.DB) *store {
 	return &store{
 		db,

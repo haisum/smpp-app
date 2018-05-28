@@ -98,11 +98,13 @@ func (u *User) Validate() error {
 	return nil
 }
 
-// context
-var contextKey = "user"
+type key int
+
+const (
+	contextKey key = iota
+)
 
 // FromContext returns a defaultLogger with context
-// @todo write tests
 func FromContext(ctx context.Context) (*User, error) {
 	user, ok := ctx.Value(contextKey).(*User)
 	if !ok {
@@ -112,7 +114,6 @@ func FromContext(ctx context.Context) (*User, error) {
 }
 
 // NewContext creates a new context containing defaultLogger
-// @todo write tests
 func NewContext(ctx context.Context, user *User) context.Context {
 	return context.WithValue(ctx, contextKey, user)
 }

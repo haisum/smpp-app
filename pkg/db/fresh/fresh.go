@@ -11,7 +11,8 @@ import (
 
 const (
 	dbValidationQuery = "select MIN(id) from Message"
-	SQLFile           = "./sqls/fresh-mysql.sql"
+	// SQLFile is default sql file name and location
+	SQLFile = "./sqls/fresh-mysql.sql"
 )
 
 // Create creates a fresh database, tables, indexes and populates primary data

@@ -15,7 +15,11 @@ import (
 	"github.com/go-kit/kit/log/level"
 )
 
-var loggerKey = "defaultLogger"
+type key int
+
+const (
+	loggerKey key = iota
+)
 
 // Logger is log interface
 type Logger interface {

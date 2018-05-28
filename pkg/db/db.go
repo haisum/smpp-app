@@ -12,6 +12,8 @@ import (
 	"github.com/haisum/smpp-app/pkg/logger"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"gopkg.in/doug-martin/goqu.v3"
+	// go lint warning: a blank import should be only in a main or test package, or have a comment justifying it
+	// this belongs here because we use goqu only in db/ package
 	_ "gopkg.in/doug-martin/goqu.v3/adapters/mysql"
 )
 

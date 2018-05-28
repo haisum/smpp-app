@@ -68,6 +68,8 @@ func GetList() List {
 	}
 }
 
+// Scan makes string from bytes, splits and trims resulting comma separated string
+// then makes a List of Permissions
 func (p *List) Scan(perms interface{}) error {
 	ps := strings.Split(fmt.Sprintf("%s", perms), ",")
 	for _, v := range ps {
