@@ -12,6 +12,7 @@ import (
 // Store represents a numbers file store
 type Store interface {
 	List(c *Criteria) ([]File, error)
+	Delete(f *File) error
 }
 
 // ProcessExcelFunc takes a io.Reader as parameter
@@ -97,34 +98,34 @@ func RowsFromString(numbers string) []Row {
 
 // ToNumbers reads a csv or xlsx file and returns array of Row with Destination and Params map
 func ToNumbers(f *File, processExcel ProcessExcelFunc, reader io.Reader) ([]Row, error) {
-	var nums []Row
-	nummap := make(map[string]Row) // used for unique numbers
+	var numbers []Row
+	numberMap := make(map[string]Row) // used for unique numbers
 	if f.Type == CSV || f.Type == TXT {
 		b, err := ioutil.ReadAll(reader)
 		if err != nil {
-			return nums, err
+			return numbers, err
 		}
 		for i, num := range strings.Split(stringutils.ByteToString(b), ",") {
 			num = strings.Trim(num, "\t\n\v\f\r \u0085\u00a0")
 			if len(num) > 15 || len(num) < 5 {
-				return nums, fmt.Errorf("entry number %d in file %s is invalid; number must be greater than 5 characters and lesser than 16; please fix it and retry", i+1, f.Name)
+				return numbers, fmt.Errorf("entry number %d in file %s is invalid; number must be greater than 5 characters and lesser than 16; please fix it and retry", i+1, f.Name)
 			}
-			nummap[num] = Row{Destination: num}
+			numberMap[num] = Row{Destination: num}
 		}
 	} else if f.Type == XLSX {
 		var err error
-		nummap, err = processExcel(reader)
+		numberMap, err = processExcel(reader)
 		if err != nil {
-			return nums, err
+			return numbers, err
 		}
 	} else {
-		return nums, fmt.Errorf("this file type isn't supported yet")
+		return numbers, fmt.Errorf("this file type isn't supported yet")
 	}
-	if len(nummap) < 1 {
-		return nums, fmt.Errorf("no numbers given in file")
+	if len(numberMap) < 1 {
+		return numbers, fmt.Errorf("no numbers given in file")
 	}
-	for _, v := range nummap {
-		nums = append(nums, v)
+	for _, v := range numberMap {
+		numbers = append(numbers, v)
 	}
-	return nums, nil
+	return numbers, nil
 }

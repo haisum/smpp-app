@@ -29,10 +29,10 @@ const (
 	SendMessage = "Send message"
 	// ListMessages permission to list/filter messages
 	ListMessages = "List messages"
-	// ListNumFiles permission to list number files
-	ListNumFiles = "List number files"
-	// DeleteNumFile permission to mark a file deleted.
-	DeleteNumFile = "Delete a number file"
+	// ListCampaignFiles permission to list number files
+	ListCampaignFiles = "List campaign files"
+	// DeleteCampaignFile permission to mark a file deleted.
+	DeleteCampaignFile = "Delete a campaign file"
 	// ListCampaigns permission to list campaigns
 	ListCampaigns = "List campaigns"
 	// StartCampaign permission to start a campaign
@@ -58,8 +58,8 @@ func GetList() List {
 		SendMessage,
 		StartCampaign,
 		ListMessages,
-		ListNumFiles,
-		DeleteNumFile,
+		ListCampaignFiles,
+		DeleteCampaignFile,
 		ListCampaigns,
 		StopCampaign,
 		RetryCampaign,

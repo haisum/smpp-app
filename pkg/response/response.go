@@ -24,8 +24,10 @@ type Success struct {
 }
 
 // Attachment is returned when we want to return a file for user to download
+// One of ReadCloser and Write must be not nil. Otherwise error will be thrown
 type Attachment struct {
 	Write       func(io.Writer) error
+	ReadCloser  io.ReadCloser
 	Filename    string
 	ContentType string
 }
@@ -53,7 +55,13 @@ func (r *encoder) EncodeSuccess(ctx context.Context, w http.ResponseWriter, resp
 		resp := response.(Attachment)
 		w.Header().Set("Content-Type", resp.ContentType)
 		w.Header().Set("Content-Disposition", "attachment;filename="+resp.Filename)
-		return resp.Write(w)
+		if resp.Write != nil {
+			return resp.Write(w)
+		} else if resp.ReadCloser != nil {
+			_, err := io.Copy(w, resp.ReadCloser)
+			defer resp.ReadCloser.Close()
+			return err
+		}
 	}
 	return errors.New("couldn't understand given success response")
 }

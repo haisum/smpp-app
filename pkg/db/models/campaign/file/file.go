@@ -24,7 +24,7 @@ func NewStore(db *db.DB) *store {
 	}
 }
 
-// Delete marks Deleted=true for a NumFile
+// Delete marks Deleted=true for a Campaign File
 func (s *store) Delete(f *file.File) error {
 	f.Deleted = true
 	return s.Update(f)
@@ -33,7 +33,7 @@ func (s *store) Delete(f *file.File) error {
 
 // Update updates values of a given num file. ID field must be populated in nf object before calling update.
 func (s *store) Update(f *file.File) error {
-	_, err := s.db.From("File").Where(goqu.I("id").Eq(f.ID)).Update(f).Exec()
+	_, err := s.db.From("CampaignFile").Where(goqu.I("id").Eq(f.ID)).Update(f).Exec()
 	return err
 }
 
@@ -42,7 +42,7 @@ func (s *store) List(c *file.Criteria) ([]file.File, error) {
 	var (
 		f []file.File
 	)
-	query := s.db.From("File")
+	query := s.db.From("CampaignFile")
 	if c.ID != 0 {
 		query = query.Where(goqu.I("ID").Eq(c.ID))
 	}
@@ -122,7 +122,7 @@ func (s *store) Save(f *file.File, name string, processExcelFunc file.ProcessExc
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't write file to disk")
 	}
-	resp, err := s.db.From("File").Insert(f).Exec()
+	resp, err := s.db.From("CampaignFile").Insert(f).Exec()
 	if err != nil {
 		return 0, err
 	}
