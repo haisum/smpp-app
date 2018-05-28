@@ -2,8 +2,6 @@
 // Logging should be done by methods provided in this package only
 // Any external library code for logging should go here so that we have a single place
 // to manage logs and related code.
-//
-// Currently we use github.com/sirupsen/logrus for logging.
 package logger
 
 import (
@@ -19,7 +17,7 @@ import (
 
 var loggerKey = "defaultLogger"
 
-// Logger is wrapper on logrus.FieldLogger interface
+// Logger is log interface
 type Logger interface {
 	Info(keyvals ...interface{}) error
 	Error(keyvals ...interface{}) error

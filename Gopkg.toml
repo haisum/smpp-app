@@ -26,10 +26,6 @@
 
 
 [[constraint]]
-  name = "github.com/Sirupsen/logrus"
-  version = "1.0.5"
-
-[[constraint]]
   branch = "master"
   name = "github.com/fiorix/go-smpp"
 

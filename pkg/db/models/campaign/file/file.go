@@ -10,7 +10,6 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/pkg/db"
 	"bitbucket.org/codefreak/hsmpp/pkg/entities/campaign/file"
-	log "github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
 	"gopkg.in/doug-martin/goqu.v3"
 )
@@ -101,12 +100,7 @@ func (s *store) List(c *file.Criteria) ([]file.File, error) {
 		c.PerPage = 100
 	}
 	query = query.Limit(c.PerPage)
-	queryStr, _, _ := query.ToSql()
-	log.WithFields(log.Fields{"query": queryStr, "crtieria": c}).Info("Running query.")
 	err := query.ScanStructs(&f)
-	if err != nil {
-		log.WithError(err).Error("Couldn't run query.")
-	}
 	return f, err
 }
 
@@ -121,7 +115,6 @@ func (s *store) Save(f *file.File, name string, processExcelFunc file.ProcessExc
 	_, err := file.ToNumbers(f, processExcelFunc, reader)
 	defer reader.Close()
 	if err != nil {
-		log.WithError(err).Error("Couldn't read numbers from file.")
 		return 0, err
 	}
 	_, err = io.Copy(writer, reader)
@@ -131,9 +124,6 @@ func (s *store) Save(f *file.File, name string, processExcelFunc file.ProcessExc
 	}
 	resp, err := s.db.From("File").Insert(f).Exec()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Error in inserting file in db.")
 		return 0, err
 	}
 	return resp.LastInsertId()

@@ -3,7 +3,7 @@ package stringutils
 import (
 	"crypto/rand"
 
-	log "github.com/Sirupsen/logrus"
+	"log"
 )
 
 const (

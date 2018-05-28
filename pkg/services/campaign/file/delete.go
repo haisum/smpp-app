@@ -5,8 +5,7 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/pkg/db/models/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/pkg/db/models/user"
-	"bitbucket.org/codefreak/hsmpp/pkg/db/models/user/permission"
-	log "github.com/Sirupsen/logrus"
+	"bitbucket.org/codefreak/hsmpp/pkg/entities/user/permission"
 )
 
 type deleteRequest struct {

@@ -6,7 +6,6 @@ import (
 
 	"bitbucket.org/codefreak/hsmpp/pkg/db/models/campaign/file"
 	"bitbucket.org/codefreak/hsmpp/pkg/db/models/user"
-	log "github.com/Sirupsen/logrus"
 )
 
 type uploadReq struct {
